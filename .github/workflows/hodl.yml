@@ -2,12 +2,14 @@ name: HODL Signal Bot
 
 on:
   schedule:
-    # NOTE: GitHub runs `schedule` best-effort — runs are often delayed (hours) or
-    # dropped under load, so these times are targets, not guarantees. The actual
-    # "don't notify off-hours" guarantee lives in bot.py's within_market_hours()
-    # guard (09:15–16:00 IST); a delayed run computes signals but skips the send.
-    - cron: '45 3-9 * * 1-5'  # Target: hourly 09:15–15:15 IST, weekdays
-    - cron: '45 4 * * 0,6'    # Target: 10:15 IST weekend summary
+    # GitHub runs `schedule` best-effort — runs are often delayed (commonly 1–2h)
+    # or dropped under load, so these times are targets, not guarantees. We
+    # deliberately schedule EARLY (08:33–14:33 IST) so that even a delayed run
+    # still lands inside bot.py's within_market_hours() window (09:15–16:00 IST);
+    # a run that fires outside that window computes signals but skips the send.
+    # Minute :03 (not :00/:30) dodges the top-of-hour scheduling stampede.
+    - cron: '3 3-9 * * 1-5'  # Target: hourly 08:33–14:33 IST, weekdays
+    - cron: '3 5 * * 0,6'    # Target: 10:33 IST weekend summary
   workflow_dispatch:
 
 jobs:
