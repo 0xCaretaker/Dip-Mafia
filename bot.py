@@ -28,14 +28,16 @@ def escape_md(text):
 # GitHub Actions runs `schedule` on a best-effort basis — runs are frequently
 # delayed (sometimes by hours) and some are dropped. bot.py has no control over
 # *when* it is invoked, so a delayed run could otherwise fire a Telegram alert
-# well after market close. This guard ensures we only ever notify during the NSE
-# regular session, regardless of when GitHub actually starts the job.
+# well after market close. This guard ensures we only ever notify within the
+# trading-day window, regardless of when GitHub actually starts the job.
+# Window is the NSE session start through ~30 min past close (09:15–16:00 IST),
+# so a moderately delayed run can still deliver.
 MARKET_OPEN = (9, 15)    # 09:15 IST
-MARKET_CLOSE = (15, 30)  # 15:30 IST
+MARKET_CLOSE = (16, 0)   # 16:00 IST
 
 
 def within_market_hours(now_ist=None):
-    """True if `now_ist` falls within the NSE regular session (09:15–15:30 IST)."""
+    """True if `now_ist` falls within the notification window (09:15–16:00 IST)."""
     if now_ist is None:
         now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
     open_t = now_ist.replace(hour=MARKET_OPEN[0], minute=MARKET_OPEN[1], second=0, microsecond=0)
@@ -261,7 +263,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     if not within_market_hours(now_ist):
         print(
             f"⏰ Skipping Telegram — {now_ist.strftime('%H:%M IST')} is outside "
-            f"market hours (09:15–15:30 IST)"
+            f"the notification window (09:15–16:00 IST)"
         )
         return
 

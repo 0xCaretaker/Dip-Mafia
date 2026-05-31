@@ -5,7 +5,7 @@ on:
     # NOTE: GitHub runs `schedule` best-effort — runs are often delayed (hours) or
     # dropped under load, so these times are targets, not guarantees. The actual
     # "don't notify off-hours" guarantee lives in bot.py's within_market_hours()
-    # guard (09:15–15:30 IST); a delayed run computes signals but skips the send.
+    # guard (09:15–16:00 IST); a delayed run computes signals but skips the send.
     - cron: '45 3-9 * * 1-5'  # Target: hourly 09:15–15:15 IST, weekdays
     - cron: '45 4 * * 0,6'    # Target: 10:15 IST weekend summary
   workflow_dispatch:
