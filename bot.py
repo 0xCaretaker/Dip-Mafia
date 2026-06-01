@@ -23,6 +23,29 @@ def escape_md(text):
 
 
 # =========================
+# Market-hours guard (IST)
+# =========================
+# GitHub Actions runs `schedule` on a best-effort basis — runs are frequently
+# delayed (sometimes by hours) and some are dropped. bot.py has no control over
+# *when* it is invoked, so a delayed run could otherwise fire a Telegram alert
+# well after market close. This guard ensures we only ever notify within the
+# trading-day window, regardless of when GitHub actually starts the job.
+# Window is the NSE session start through ~30 min past close (09:15–16:00 IST),
+# so a moderately delayed run can still deliver.
+MARKET_OPEN = (9, 15)    # 09:15 IST
+MARKET_CLOSE = (16, 0)   # 16:00 IST
+
+
+def within_market_hours(now_ist=None):
+    """True if `now_ist` falls within the notification window (09:15–16:00 IST)."""
+    if now_ist is None:
+        now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    open_t = now_ist.replace(hour=MARKET_OPEN[0], minute=MARKET_OPEN[1], second=0, microsecond=0)
+    close_t = now_ist.replace(hour=MARKET_CLOSE[0], minute=MARKET_CLOSE[1], second=0, microsecond=0)
+    return open_t <= now_ist <= close_t
+
+
+# =========================
 # Index movement
 # =========================
 def get_index_moves():
@@ -232,6 +255,17 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     print("=" * 60)
     print(final_message)
     print("=" * 60)
+
+    # Don't notify outside market hours (e.g. a GitHub-delayed run firing after
+    # close). Return before touching the hash file so the next in-hours run with
+    # these same signals still sends.
+    now_ist = datetime.now(ZoneInfo("Asia/Kolkata"))
+    if not within_market_hours(now_ist):
+        print(
+            f"⏰ Skipping Telegram — {now_ist.strftime('%H:%M IST')} is outside "
+            f"the notification window (09:15–16:00 IST)"
+        )
+        return
 
     if current_hash == prev_hash:
         print("⏭️  Skipping Telegram — signals unchanged from last run")
