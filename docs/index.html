@@ -191,9 +191,10 @@ footer a{color:var(--paper-dim)}
       <button data-sort="maxdd">Drawdown</button>
     </span></div>
   </div>
+  <p class="note mono" id="hzCaption" style="margin:-10px 0 16px;color:var(--paper-dim)"></p>
   <table class="board"><thead><tr>
-    <th>List</th><th>Stocks</th><th>Timed final</th><th></th>
-    <th>XIRR</th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
+    <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th></th>
+    <th>Return</th><th>XIRR<small style="font-weight:400">·ann</small></th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
   </tr></thead><tbody id="boardBody"></tbody></table>
 </div></section>
 
@@ -251,13 +252,13 @@ footer a{color:var(--paper-dim)}
 <script>
 const D = window.SIX7_DATA;
 const $ = s => document.querySelector(s);
-const fmtL = v => v==null ? "–" : "₹"+(v/1e5).toFixed(1)+"L";
-const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "₹"+(v/1e5).toFixed(1)+"L");
-const fmtPct = v => v==null ? "–" : v.toFixed(1)+"%";
+// 2-decimal precision so short-horizon finals (e.g. ₹0.78L vs ₹0.67L) stay distinct
+const fmtL = v => v==null ? "–" : "₹"+(v/1e5).toFixed(2)+"L";
+const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "₹"+(v/1e5).toFixed(2)+"L");
+const fmtPct = v => v==null ? "–" : (v>=0?"+":"")+v.toFixed(1)+"%";
 const fmt2 = v => v==null ? "–" : v.toFixed(2);
 const signCls = v => v==null ? "" : (v>=0 ? "val-pos" : "val-neg");
-const UNI = {stocks_current:1};
-const isOld = k => k && k.indexOf("OLD")>=0;
+const UNI = {stocks_current:1, univest_old:1};   // Univest-family watchlists (teal)
 
 /* state */
 let HZ = "full", SORT = "final", LIST = "buy_plus";
@@ -293,25 +294,28 @@ function sortVal(r){
 function renderBoard(){
   const rows = (D.comparison[HZ]||[]).slice();
   rows.sort((a,b)=>sortVal(b)-sortVal(a));
-  const live = rows.filter(r=>!isOld(r.key));
+  const live = rows.filter(r=>!r.benchmark);                 // indices don't compete for "best"
   const bestFinal = Math.max(...live.map(r=>r.timed.final||0));
   const tb = $("#boardBody"); tb.innerHTML="";
-  rows.forEach((r,i)=>{
+  rows.forEach((r)=>{
     const tr=document.createElement("tr");
-    const best = (r.timed.final||0)===bestFinal && !isOld(r.key);
-    if(best) tr.className="best";
+    const best = (r.timed.final||0)===bestFinal && !r.benchmark;
+    if(r.benchmark) tr.className="old";                      // dimmed slate reference
+    else if(best) tr.className="best";
     else if(UNI[r.key]) tr.className="uni";
-    else if(isOld(r.key)) tr.className="old";
     const w = Math.max(2,(r.timed.final||0)/bestFinal*100);
     let tags="";
     if(best) tags+=`<span class="tag crown">★ best</span>`;
-    if(UNI[r.key]) tags+=`<span class="tag uni">live</span>`;
-    if(isOld(r.key)) tags+=`<span class="tag">legacy</span>`;
+    else if(r.key==="stocks_current") tags+=`<span class="tag uni">live</span>`;
+    else if(r.key==="univest_old") tags+=`<span class="tag uni">legacy</span>`;
+    else if(r.benchmark) tags+=`<span class="tag">index</span>`;
     tr.innerHTML=`
       <td><div class="name-cell"><span>${r.label}</span>${tags}</div></td>
       <td>${r.n??"–"}</td>
+      <td style="color:var(--paper-dim)">${fmtL(r.invested)}</td>
       <td>${fmtCr(r.timed.final)}</td>
       <td class="barcell"><span class="bar" style="width:${w}%"></span></td>
+      <td class="${signCls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td>
       <td class="${signCls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
       <td>${fmt2(r.timed.sharpe)}</td>
       <td>${fmt2(r.timed.sortino)}</td>
@@ -319,6 +323,11 @@ function renderBoard(){
       <td style="color:var(--slate)">${fmtCr(r.sip.final)}</td>`;
     tb.appendChild(tr);
   });
+  const hz=D.horizons.find(h=>h.key===HZ);
+  const invAny=(rows.find(r=>!r.benchmark)||{}).invested;
+  $("#hzCaption").textContent =
+    `${hz?hz.period:""} · ₹${(invAny/1e5).toFixed(2)}L invested per list `+
+    `· Return = total (final/invested−1), XIRR = annualised. NIFTY rows = same money SIP'd into the index.`;
 }
 
 /* ── inspect chips ── */

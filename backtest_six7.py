@@ -72,6 +72,15 @@ def load_lists():
                 syms = [ln.strip() for ln in f if ln.strip()]
             if syms:
                 lists[name] = syms
+    # Univest Old = the Univest base before six7's perfect-stock auto-additions
+    # (current stocks.txt minus the six7-added tickers). Run across every horizon.
+    uo = os.path.join(LISTS_DIR, "univest_old.txt")
+    if os.path.isfile(uo):
+        with open(uo) as f:
+            syms = [ln.strip() for ln in f if ln.strip()]
+        if syms:
+            lists["univest_old"] = syms
+    # Univest + six7 Hybrid = the live watchlist (current stocks.txt)
     if os.path.isfile(STOCKS_TXT):
         with open(STOCKS_TXT) as f:
             syms = [ln.strip() for ln in f if ln.strip()]
@@ -105,6 +114,22 @@ def nifty_sip(nifty_data, monthly_inv, slippage_bps=5):
             cash = 0.0
         records.append({"date": dt, "portfolio": units * price + cash})
     return pd.DataFrame(records).set_index("date"), cashflows
+
+
+def bench_row(key, index_data, cfg, hstart):
+    """Benchmark row: SIP the same monthly money into an index over the window."""
+    if index_data is None:
+        return None
+    bd = index_data[index_data.index >= pd.Timestamp(hstart)]
+    if bd.empty:
+        return None
+    minv = bt.build_monthly_investments(sorted(bd.index), cfg)
+    sim, cf = nifty_sip(bd, minv, cfg["slippage_bps"])
+    m = bt.compute_metrics(sim["portfolio"], key, cf)
+    return {"list": key, "n_with_data": None,
+            "total_invested": sum(v["amount"] for v in minv.values()),
+            "start": str(sim.index[0].date()), "end": str(sim.index[-1].date()),
+            "timed": m, "sip": {}, "nifty": None, "benchmark": True}
 
 
 def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data):
@@ -258,7 +283,8 @@ def write_comparison(horizon, period, results):
     table.auto_set_font_size(False); table.set_fontsize(9); table.scale(1, 1.55)
     for j in range(len(FIELDS)):
         table[(0, j)].set_facecolor("#263238"); table[(0, j)].set_text_props(color="white", fontweight="bold")
-    best = max(range(len(rows)), key=lambda i: (rows[i]["timed_final"] or 0) if "OLD" not in rows[i]["list"] else -1)
+    is_ref = lambda nm: "OLD" in nm or nm.startswith("nifty")
+    best = max(range(len(rows)), key=lambda i: (rows[i]["timed_final"] or 0) if not is_ref(rows[i]["list"]) else -1)
     for i, row in enumerate(rows, start=1):
         if "OLD" in row["list"]:
             for j in range(len(FIELDS)): table[(i, j)].set_facecolor("#FFF3E0")
@@ -320,6 +346,24 @@ def main():
                     open(cache_path, "wb"))
     nifty_price = nifty_data["Close"] if nifty_data is not None else None
 
+    # NIFTY Midcap 100 benchmark (downloaded separately so it doesn't churn the
+    # union price cache). Cached in its own small file.
+    mid_cache = os.path.join(OUT_DIR, "_midcap_cache.pkl")
+    midcap_data = None
+    if os.path.isfile(mid_cache):
+        try:
+            mc = pickle.load(open(mid_cache, "rb"))
+            if mc.get("end") == END:
+                midcap_data = mc["data"]
+        except Exception:
+            pass
+    if midcap_data is None:
+        print("Downloading NIFTY Midcap 100...")
+        mraw = yf.download("NIFTY_MIDCAP_100.NS", start="2010-01-01", end=END, progress=False)
+        midcap_data = bt.flatten_cols(mraw).dropna() if not mraw.empty else None
+        pickle.dump({"end": END, "data": midcap_data}, open(mid_cache, "wb"))
+    BENCH = [("nifty50", nifty_data), ("nifty_midcap", midcap_data)]
+
     print("Computing BB + Impulse signals on full history (once)...")
     bb, bb_mid, imp, imp_st, skipped = bt.generate_all_signals(stock_dfs, full_cfg)
     signals = (bb, bb_mid, imp, imp_st)
@@ -346,10 +390,11 @@ def main():
                 r = run_metrics(name, [s + ".NS" for s in syms], stock_dfs, signals, cfg, start, nifty_data)
                 if r:
                     results.append(r)
-        if label == "full":
-            base = old_baseline()
-            if base:
-                results.append(base)
+        # index benchmarks (same monthly money SIP'd into the index)
+        for bkey, bdata in BENCH:
+            br = bench_row(bkey, bdata, cfg, start)
+            if br:
+                results.append(br)
         write_comparison(label, period, results)
 
     print("\nDone.")

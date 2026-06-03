@@ -33,11 +33,13 @@ META = {
     "buy_plus":   ("Buy+",     "Composite ≥ 6.5 (site 'Buy+')"),
     "six_plus":   ("6+ Criteria", "≥ 6 criteria met · Financials 5/5"),
     "perfect7":   ("Perfect 7", "All criteria · 7/7 or 5/5"),
-    "stocks_current":      ("Univest + six7 Hybrid", "Current live watchlist (stocks.txt)"),
-    "stocks.txt (OLD 61)": ("Univest Old", "Previous 61-stock watchlist"),
+    "univest_old":    ("Univest Old", "Univest base · before six7 additions"),
+    "stocks_current": ("Univest + six7 Hybrid", "Live watchlist · Univest + six7 perfect stocks"),
+    "nifty50":        ("NIFTY 50", "Index SIP benchmark"),
+    "nifty_midcap":   ("NIFTY Midcap 100", "Index SIP benchmark"),
 }
 CURVE_LISTS = ["top10", "top30", "top50", "top100", "strong_buy",
-               "buy_plus", "six_plus", "perfect7", "stocks_current"]
+               "buy_plus", "six_plus", "perfect7", "univest_old", "stocks_current"]
 
 # dashboard_data.json strategy labels -> short web names
 SERIES = {
@@ -70,12 +72,15 @@ def comparison_row(r):
     key = r["list"]
     label = META.get(key, (key, ""))[0]
     t, s, n = r.get("timed", {}), r.get("sip", {}), r.get("nifty") or {}
+    inv = float(r.get("total_invested", 0)) or None
+    # honest total return = final/invested-1 (NOT the misleading portfolio-series CAGR)
+    ret = (t.get("final_value") / inv - 1) * 100 if (inv and t.get("final_value") is not None) else None
     return {
         "key": key, "label": label, "n": r.get("n_with_data"),
-        "invested": round(float(r.get("total_invested", 0))),
-        "timed": {"final": t.get("final_value"), "xirr": t.get("xirr"), "cagr": t.get("cagr"),
+        "invested": round(inv) if inv else None, "benchmark": bool(r.get("benchmark")),
+        "timed": {"final": t.get("final_value"), "ret": ret, "xirr": t.get("xirr"),
                   "sharpe": t.get("sharpe"), "sortino": t.get("sortino"), "maxdd": t.get("max_drawdown")},
-        "sip": {"final": s.get("final_value"), "xirr": s.get("xirr"), "maxdd": s.get("max_drawdown")},
+        "sip": {"final": s.get("final_value"), "xirr": s.get("xirr")},
         "nifty": {"final": n.get("final_value"), "xirr": n.get("xirr")},
     }
 
@@ -83,6 +88,11 @@ def comparison_row(r):
 def main():
     manifest = json.load(open(os.path.join("six7_stocks", "lists", "_manifest.json")))
     counts = {k: v["count"] for k, v in manifest["lists"].items()}
+    # the two watchlists aren't in the six7 manifest — count their files directly
+    for key, path in [("univest_old", os.path.join("six7_stocks", "lists", "univest_old.txt")),
+                      ("stocks_current", "stocks.txt")]:
+        if os.path.isfile(path):
+            counts[key] = sum(1 for ln in open(path) if ln.strip())
 
     comparison = {}
     for h, _ in HORIZONS:
