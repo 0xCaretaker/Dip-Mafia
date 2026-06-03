@@ -57,6 +57,21 @@ HORIZONS = [          # (label, start_date) -- end is END for all
     ("3y", "2023-06-03"),
     ("1y", "2025-06-03"),
 ]
+# Short windows use a flat monthly SIP instead of the 2010 salary-growth model
+# (a recent investor putting in a fixed amount). full/10y keep the salary model.
+FLAT_MONTHLY = {"5y": 20000, "3y": 20000, "1y": 20000}
+
+
+def build_schedule(dates, cfg, flat):
+    """Monthly investment schedule: flat ₹/mo if `flat` set, else the salary model."""
+    if not flat:
+        return bt.build_monthly_investments(dates, cfg)
+    inv = {}
+    for dt in sorted(dates):
+        key = (dt.year, dt.month)
+        if key not in inv:
+            inv[key] = {"date": dt, "amount": float(flat)}
+    return inv
 
 C_TIMED, C_SIP, C_NIFTY, C_GRAY = "#4CAF50", "#2196F3", "#9C27B0", "#9E9E9E"
 
@@ -116,23 +131,40 @@ def nifty_sip(nifty_data, monthly_inv, slippage_bps=5):
     return pd.DataFrame(records).set_index("date"), cashflows
 
 
-def bench_row(key, index_data, cfg, hstart):
+def nav_metrics(sim_df, cashflows, name):
+    """Metrics where risk is measured on the cash-flow-adjusted NAV (unit value).
+
+    Sharpe/Sortino/MaxDD/volatility/CAGR on the raw accumulating portfolio value
+    are meaningless — monthly contributions show up as always-positive daily
+    "returns", so a money-losing SIP can post a high Sharpe. The NAV (unit value)
+    strips contributions, giving the true time-weighted risk profile. Final value
+    and XIRR stay money-weighted (computed on the value series + cashflows).
+    """
+    nav = bt._compute_nav(sim_df, cashflows)
+    m = bt.compute_metrics(nav, name)                       # risk metrics from NAV
+    vm = bt.compute_metrics(sim_df["portfolio"], name, cashflows)
+    m["final_value"] = vm["final_value"]                    # money-weighted final
+    m["xirr"] = vm["xirr"]                                  # money-weighted return
+    return m
+
+
+def bench_row(key, index_data, cfg, hstart, flat=None):
     """Benchmark row: SIP the same monthly money into an index over the window."""
     if index_data is None:
         return None
     bd = index_data[index_data.index >= pd.Timestamp(hstart)]
     if bd.empty:
         return None
-    minv = bt.build_monthly_investments(sorted(bd.index), cfg)
+    minv = build_schedule(sorted(bd.index), cfg, flat)
     sim, cf = nifty_sip(bd, minv, cfg["slippage_bps"])
-    m = bt.compute_metrics(sim["portfolio"], key, cf)
+    m = nav_metrics(sim, cf, key)
     return {"list": key, "n_with_data": None,
             "total_invested": sum(v["amount"] for v in minv.values()),
             "start": str(sim.index[0].date()), "end": str(sim.index[-1].date()),
             "timed": m, "sip": {}, "nifty": None, "benchmark": True}
 
 
-def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data):
+def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data, flat=None):
     """Timed HODL + SIP + NIFTY over [hstart, END]; metrics only. Fast path."""
     bb, bb_mid, imp, imp_st = signals
     dfs = slice_window(stock_dfs_full, hstart)
@@ -142,7 +174,7 @@ def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data)
     dates = bt.get_all_dates(dfs, syms)
     if len(dates) < 30:
         return None
-    monthly_inv = bt.build_monthly_investments(dates, cfg)
+    monthly_inv = build_schedule(dates, cfg, flat)
     timed, timed_cf, buy_log, _ = bt.simulate_timed_hodl(
         dfs, syms, monthly_inv, bb, bb_mid, imp, cfg["slippage_bps"])
     sip, sip_cf = bt.simulate_sip(dfs, syms, monthly_inv, cfg["slippage_bps"])
@@ -152,9 +184,9 @@ def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data)
         "list": name, "n_with_data": len(syms),
         "total_invested": sum(v["amount"] for v in monthly_inv.values()),
         "start": str(timed.index[0].date()), "end": str(timed.index[-1].date()),
-        "timed": bt.compute_metrics(timed["portfolio"], bt.LABEL_TIMED, timed_cf),
-        "sip": bt.compute_metrics(sip["portfolio"], bt.LABEL_SIP, sip_cf),
-        "nifty": bt.compute_metrics(nifty["portfolio"], bt.LABEL_NIFTY, nifty_cf),
+        "timed": nav_metrics(timed, timed_cf, bt.LABEL_TIMED),
+        "sip": nav_metrics(sip, sip_cf, bt.LABEL_SIP),
+        "nifty": nav_metrics(nifty, nifty_cf, bt.LABEL_NIFTY),
     }
 
 
@@ -224,7 +256,9 @@ def run_full_suite(name, syms_ns, stock_dfs_full, signals, cfg, nifty_price):
           f"XIRR {m_timed['xirr']:.1f}% | {n_charts} charts -> {out_dir}/")
     return {"list": name, "n_with_data": len(syms), "total_invested": total_invested,
             "start": str(timed_sim.index[0].date()), "end": str(timed_sim.index[-1].date()),
-            "timed": m_timed, "sip": m_sip, "nifty": m_nifty}
+            "timed": nav_metrics(timed_sim, timed_cf, bt.LABEL_TIMED),
+            "sip": nav_metrics(sip_sim, sip_cf, bt.LABEL_SIP),
+            "nifty": nav_metrics(nifty_sim, nifty_cf, bt.LABEL_NIFTY) if nifty_sim is not None else None}
 
 
 # ── comparison output (per horizon) ────────────────────────────────────────────
@@ -382,17 +416,18 @@ def main():
     for label, start in HORIZONS:
         cfg = copy.deepcopy(bt.CONFIG); cfg["start"], cfg["end"] = start, END
         period = f"{start} → {END}"
+        flat = FLAT_MONTHLY.get(label)
         if label == "full":
             results = full_results[:]            # reuse the suite metrics
         else:
             results = []
             for name, syms in lists.items():
-                r = run_metrics(name, [s + ".NS" for s in syms], stock_dfs, signals, cfg, start, nifty_data)
+                r = run_metrics(name, [s + ".NS" for s in syms], stock_dfs, signals, cfg, start, nifty_data, flat)
                 if r:
                     results.append(r)
         # index benchmarks (same monthly money SIP'd into the index)
         for bkey, bdata in BENCH:
-            br = bench_row(bkey, bdata, cfg, start)
+            br = bench_row(bkey, bdata, cfg, start, flat)
             if br:
                 results.append(br)
         write_comparison(label, period, results)

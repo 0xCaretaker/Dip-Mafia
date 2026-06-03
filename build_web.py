@@ -20,6 +20,10 @@ OUT = "six7_backtest_output"
 DOCS = "docs"
 HORIZONS = [("full", "Full · ~16y"), ("10y", "10 years"), ("5y", "5 years"),
             ("3y", "3 years"), ("1y", "1 year")]
+# Monthly investment model per horizon (mirrors FLAT_MONTHLY in backtest_six7.py):
+# salary-growth model for full/10y, flat ₹20,000/mo for the short windows.
+CONTRIB = {"full": "₹5,500/mo → +10%/yr", "10y": "₹5,500/mo → +10%/yr",
+           "5y": "₹20,000/mo", "3y": "₹20,000/mo", "1y": "₹20,000/mo"}
 
 # Display order + labels + one-line definitions. Two requested renames:
 #   stocks_current        -> "Univest + six7 Hybrid"  (today's live watchlist)
@@ -79,6 +83,7 @@ def comparison_row(r):
         "key": key, "label": label, "n": r.get("n_with_data"),
         "invested": round(inv) if inv else None, "benchmark": bool(r.get("benchmark")),
         "timed": {"final": t.get("final_value"), "ret": ret, "xirr": t.get("xirr"),
+                  "cagr": t.get("cagr"), "vol": t.get("volatility"),
                   "sharpe": t.get("sharpe"), "sortino": t.get("sortino"), "maxdd": t.get("max_drawdown")},
         "sip": {"final": s.get("final_value"), "xirr": s.get("xirr")},
         "nifty": {"final": n.get("final_value"), "xirr": n.get("xirr")},
@@ -107,20 +112,18 @@ def main():
         if not os.path.isfile(path):
             continue
         d = json.load(open(path))
-        eq, dd, mets = {}, {}, {}
+        eq, dd = {}, {}
         for raw, short in SERIES.items():
             if raw in d["equity"]:
                 if short in EQUITY_KEEP:
                     eq[short] = downsample(d["equity"][raw])
                 if short in DD_KEEP and raw in d["drawdowns"]:
                     dd[short] = downsample(d["drawdowns"][raw])
-        for m in d["metrics"]:
-            short = SERIES.get(m["name"], m["name"])
-            mets[short] = slim_metrics(m)
+        # metric cards read from the (NAV-based) full-horizon comparison row, so
+        # curves only need the chart series + summary, not a metrics block.
         curves[key] = {
             "invested": round(float(d["total_invested"])),
-            "summary": d["summary"], "assumptions": d["assumptions"],
-            "equity": eq, "drawdowns": dd, "metrics": mets,
+            "summary": d["summary"], "equity": eq, "drawdowns": dd,
         }
 
     period_full = comparison.get("full", [{}])
@@ -128,7 +131,7 @@ def main():
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
         "snapshot_date": (manifest.get("snapshot_generated_at") or "")[:10],
         "universe": manifest.get("universe_scanned"),
-        "horizons": [{"key": k, "label": lbl,
+        "horizons": [{"key": k, "label": lbl, "contrib": CONTRIB.get(k, ""),
                       "period": (json.load(open(os.path.join(OUT, f"comparison_{k}.json"))).get("period")
                                  if os.path.isfile(os.path.join(OUT, f"comparison_{k}.json")) else "")}
                      for k, lbl in HORIZONS],

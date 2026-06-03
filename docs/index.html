@@ -270,9 +270,7 @@ const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "
 const fmtPct = v => v==null ? "–" : (v>=0?"+":"")+v.toFixed(1)+"%";
 const fmt2 = v => v==null ? "–" : v.toFixed(2);
 const fmtX = (final, inv) => (final==null||!inv) ? "–" : (final/inv).toFixed(2)+"×";
-// short horizons (1y/3y) read better as full Indian-grouped rupees than as lakhs
-const inrFull = v => v==null ? "–" : "₹"+Math.round(v).toLocaleString("en-IN");
-const moneyHZ = v => (HZ==="1y"||HZ==="3y") ? inrFull(v) : fmtCr(v);
+const moneyHZ = v => fmtCr(v);   // lakhs/crore across every horizon
 const signCls = v => v==null ? "" : (v>=0 ? "val-pos" : "val-neg");
 const UNI = {stocks_current:1, univest_old:1};   // Univest-family watchlists (teal)
 
@@ -366,7 +364,7 @@ function renderBoard(){
   $("#hzMeta").innerHTML =
     mi("Period", periodPretty(hz&&hz.period)) +
     mi("Invested / list", moneyHZ(invAny), true) +
-    mi("Contribution", "₹5,500/mo → +10%/yr") +
+    mi("Contribution", (hz&&hz.contrib)||"—") +
     mi("Engine", "Timed HODL");
   $("#hzLegend").innerHTML =
     `<span class="sym">×</span> final ÷ invested <span class="sep">·</span> `+
@@ -489,21 +487,23 @@ function renderInspect(){
   }));
   const ddMin=Math.min(...[].concat(...ddSeries.map(s=>s.pts.v)));
   lineChart($("#ddChart"),ddSeries,{h:180,ymin:Math.floor(ddMin/10)*10,ymax:2,yticks:3,yfmt:v=>v.toFixed(0)+"%",fill:true});
-  // metric cards (Timed HODL)
-  const t=c.metrics["Timed HODL"], s=c.metrics["SIP"], nf=c.metrics["NIFTY 50"];
+  // metric cards — read from the full-horizon comparison row (NAV-based, same
+  // numbers as the leaderboard) so the whole site is internally consistent.
+  const frow=(D.comparison.full||[]).find(r=>r.key===LIST)||{timed:{},sip:{},nifty:{}};
+  const t=frow.timed, s=frow.sip, nf=frow.nifty||{};
   const cards=[
-    ["Final value", fmtCr(t.final_value), ""],
+    ["Final value", fmtCr(t.final), ""],
     ["XIRR", fmtPct(t.xirr), "annualised"],
-    ["Sharpe", fmt2(t.sharpe), ""],
-    ["Sortino", fmt2(t.sortino), ""],
-    ["Max drawdown", fmtPct(t.max_drawdown), "peak→trough"],
-    ["Volatility", fmtPct(t.volatility), "annualised"],
+    ["Sharpe", fmt2(t.sharpe), "NAV"],
+    ["Sortino", fmt2(t.sortino), "NAV"],
+    ["Max drawdown", fmtPct(t.maxdd), "NAV peak→trough"],
+    ["Volatility", fmtPct(t.vol), "NAV, annualised"],
   ];
   $("#metricCards").innerHTML=cards.map(([k,v,sub])=>
     `<div class="metric"><div class="k">${k}</div><div class="v">${v} ${sub?`<small>${sub}</small>`:""}</div></div>`).join("");
   const su=c.summary;
   $("#factline").innerHTML=
-    `<b>Invested</b> ${fmtCr(c.invested)} &nbsp;·&nbsp; <b>vs SIP</b> ${fmtCr(s.final_value)} (${fmtPct(s.xirr)}) &nbsp;·&nbsp; <b>vs NIFTY</b> ${fmtCr(nf.final_value)} (${fmtPct(nf.xirr)})<br>`+
+    `<b>Invested</b> ${fmtCr(c.invested)} &nbsp;·&nbsp; <b>vs SIP</b> ${fmtCr(s.final)} (${fmtPct(s.xirr)}) &nbsp;·&nbsp; <b>vs NIFTY</b> ${fmtCr(nf.final)} (${fmtPct(nf.xirr)})<br>`+
     `<b>Cash drag</b> ${su.cash_pct}% &nbsp;·&nbsp; <b>Bought</b> ${su.n_stocks_bought}/${su.n_stocks} &nbsp;·&nbsp; <b>Signals</b> ${su.n_signals} &nbsp;·&nbsp; <b>Fallback buys</b> ${su.n_fallback}`;
 }
 function getCss(v){ if(v.startsWith("var(")){return getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();} return v;}
