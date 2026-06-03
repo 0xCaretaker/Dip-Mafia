@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HODL · six7 — Backtest Almanac</title>
+<meta name="description" content="Multi-horizon backtest of six7 fundamental-screen stock lists vs the Univest watchlists — NSE, 2010–2026.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --ink:#0a0b0d; --ink-2:#101216; --panel:#121419; --panel-2:#161922;
+  --line:#23262f; --line-2:#2d313c;
+  --paper:#ece6d8; --paper-dim:#a7a293; --muted:#74757d;
+  --gold:#e8b73f; --gold-dim:#9c7d2c;
+  --teal:#48c9b0; --slate:#8b90a6; --green:#5fd38a; --red:#ef6f6f;
+  --r:14px;
+}
+*{margin:0;padding:0;box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{
+  background:var(--ink); color:var(--paper);
+  font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
+  -webkit-font-smoothing:antialiased;
+  background-image:
+    radial-gradient(1200px 600px at 78% -8%, rgba(232,183,63,.10), transparent 60%),
+    radial-gradient(900px 500px at 5% 0%, rgba(72,201,176,.06), transparent 55%);
+  background-attachment:fixed;
+}
+/* film grain */
+body::before{
+  content:""; position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.35; mix-blend-mode:overlay;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+}
+.wrap{max-width:1180px; margin:0 auto; padding:0 28px; position:relative; z-index:2}
+.mono{font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.disp{font-family:"Fraunces",serif}
+
+/* ── top bar ── */
+.topbar{position:sticky; top:0; z-index:30; backdrop-filter:blur(10px);
+  background:linear-gradient(180deg, rgba(10,11,13,.92), rgba(10,11,13,.7));
+  border-bottom:1px solid var(--line)}
+.topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:62px}
+.brand{display:flex; align-items:baseline; gap:10px; font-weight:600}
+.brand .seal{font-family:"Fraunces",serif; font-weight:900; font-size:1.15rem; color:var(--gold);
+  letter-spacing:.02em}
+.brand .div{color:var(--line-2)}
+.brand .sub{font-size:.74rem; letter-spacing:.32em; text-transform:uppercase; color:var(--paper-dim);
+  font-family:"JetBrains Mono",monospace}
+.stamp{font-family:"JetBrains Mono",monospace; font-size:.7rem; color:var(--muted); text-align:right; line-height:1.5}
+.stamp b{color:var(--paper-dim); font-weight:500}
+
+/* ── hero ── */
+.hero{padding:64px 0 30px; border-bottom:1px solid var(--line)}
+.kicker{font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:.4em; text-transform:uppercase;
+  color:var(--gold-dim); margin-bottom:20px}
+.hero h1{font-family:"Fraunces",serif; font-weight:400; font-size:clamp(2.4rem,6vw,4.6rem); line-height:.98;
+  letter-spacing:-.015em; color:var(--paper)}
+.hero h1 em{font-style:italic; color:var(--gold)}
+.hero .lede{margin-top:22px; max-width:62ch; font-size:1.16rem; color:var(--paper-dim)}
+.ledger-note{margin-top:26px; display:flex; gap:14px; align-items:flex-start; max-width:74ch;
+  padding:14px 18px; border:1px solid var(--line); border-left:3px solid var(--gold-dim);
+  border-radius:0 10px 10px 0; background:rgba(232,183,63,.04)}
+.ledger-note .mk{font-family:"Fraunces",serif; font-weight:900; color:var(--gold); font-size:1.3rem; line-height:1}
+.ledger-note p{font-size:.92rem; color:var(--paper-dim); font-style:italic}
+
+/* ── section scaffold ── */
+section{padding:46px 0; border-bottom:1px solid var(--line)}
+.sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:26px}
+.sec-head h2{font-family:"Fraunces",serif; font-weight:500; font-size:1.9rem; letter-spacing:-.01em}
+.sec-head .note{font-size:.86rem; color:var(--muted); max-width:46ch}
+
+/* ── segmented controls ── */
+.seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:4px; gap:2px}
+.seg button{font-family:"JetBrains Mono",monospace; font-size:.78rem; letter-spacing:.02em; color:var(--paper-dim);
+  background:none; border:none; padding:8px 16px; border-radius:999px; cursor:pointer; transition:.2s; white-space:nowrap}
+.seg button:hover{color:var(--paper)}
+.seg button[aria-pressed="true"]{background:var(--gold); color:#1b1505; font-weight:700}
+
+.toolbar{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px}
+.toolbar .lbl{font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:var(--muted); margin-right:10px}
+
+/* ── leaderboard table ── */
+.board{width:100%; border-collapse:collapse; font-size:.92rem}
+.board thead th{font-family:"JetBrains Mono",monospace; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
+  color:var(--muted); font-weight:500; text-align:right; padding:0 14px 12px; border-bottom:1px solid var(--line-2)}
+.board thead th:first-child{text-align:left}
+.board tbody td{padding:13px 14px; border-bottom:1px solid var(--line); text-align:right;
+  font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums}
+.board tbody td:first-child{text-align:left; font-family:"Newsreader",serif; font-size:1.02rem}
+.board tbody tr{transition:background .18s}
+.board tbody tr:hover{background:var(--panel)}
+.board tr.best td{background:rgba(232,183,63,.07)}
+.board tr.best td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
+.board tr.uni td:first-child{box-shadow:inset 3px 0 0 var(--teal)}
+.board tr.old td{opacity:.72}
+.name-cell{display:flex; align-items:center; gap:10px}
+.tag{font-family:"JetBrains Mono",monospace; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase;
+  padding:2px 7px; border-radius:999px; border:1px solid var(--line-2); color:var(--paper-dim); white-space:nowrap}
+.tag.uni{color:var(--teal); border-color:rgba(72,201,176,.4)}
+.tag.crown{color:var(--gold); border-color:var(--gold-dim)}
+.val-pos{color:var(--green)} .val-neg{color:var(--red)}
+.barcell{position:relative; min-width:120px}
+.bar{height:7px; border-radius:4px; background:var(--gold); display:inline-block; vertical-align:middle;
+  box-shadow:0 0 12px rgba(232,183,63,.35)}
+.board tr.old .bar{background:var(--slate); box-shadow:none}
+.board tr.uni .bar{background:var(--teal); box-shadow:0 0 12px rgba(72,201,176,.3)}
+
+/* ── inspect ── */
+.chips{display:flex; flex-wrap:wrap; gap:8px}
+.chip{font-family:"JetBrains Mono",monospace; font-size:.76rem; color:var(--paper-dim); cursor:pointer;
+  padding:7px 13px; border:1px solid var(--line); border-radius:999px; background:var(--panel); transition:.18s; white-space:nowrap}
+.chip:hover{border-color:var(--line-2); color:var(--paper)}
+.chip[aria-pressed="true"]{background:var(--paper); color:var(--ink); border-color:var(--paper); font-weight:700}
+.chip .ct{opacity:.55; margin-left:6px}
+
+.inspect-grid{display:grid; grid-template-columns:1.6fr 1fr; gap:22px; margin-top:24px}
+@media(max-width:880px){.inspect-grid{grid-template-columns:1fr}}
+.card{background:linear-gradient(180deg,var(--panel),var(--ink-2)); border:1px solid var(--line); border-radius:var(--r); padding:20px}
+.card h3{font-family:"JetBrains Mono",monospace; font-size:.68rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:4px}
+.card .blurb{font-style:italic; color:var(--paper-dim); font-size:.92rem; margin-bottom:16px}
+.chart-legend{display:flex; gap:18px; flex-wrap:wrap; margin:6px 0 12px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--paper-dim)}
+.chart-legend span{display:inline-flex; align-items:center; gap:7px}
+.chart-legend i{width:14px; height:3px; border-radius:2px; display:inline-block}
+svg.chart{width:100%; height:auto; display:block; overflow:visible}
+.axis text{font-family:"JetBrains Mono",monospace; font-size:10px; fill:var(--muted)}
+.grid line{stroke:var(--line); stroke-width:1}
+.crosshair{stroke:var(--line-2); stroke-dasharray:3 3}
+.tip{position:absolute; pointer-events:none; background:rgba(8,9,11,.96); border:1px solid var(--line-2);
+  border-radius:8px; padding:9px 11px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--paper);
+  opacity:0; transition:opacity .12s; z-index:20; white-space:nowrap}
+.tip b{color:var(--gold)} .tip .row{display:flex; justify-content:space-between; gap:14px}
+
+.metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+.metric{border:1px solid var(--line); border-radius:10px; padding:13px 14px; background:var(--ink-2)}
+.metric .k{font-family:"JetBrains Mono",monospace; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
+.metric .v{font-family:"Fraunces",serif; font-size:1.7rem; font-weight:500; margin-top:3px; line-height:1; font-variant-numeric:tabular-nums}
+.metric .v small{font-size:.9rem; color:var(--paper-dim); font-family:"JetBrains Mono",monospace; font-weight:400}
+.factline{margin-top:14px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--muted); line-height:1.9}
+.factline b{color:var(--paper-dim); font-weight:500}
+
+/* reveal */
+.reveal{opacity:0; transform:translateY(14px); animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
+@keyframes rise{to{opacity:1; transform:none}}
+.draw{stroke-dasharray:var(--len); stroke-dashoffset:var(--len); animation:draw 1.3s cubic-bezier(.4,0,.1,1) forwards}
+@keyframes draw{to{stroke-dashoffset:0}}
+
+footer{padding:40px 0 70px; color:var(--muted); font-size:.82rem}
+footer .mono{font-size:.72rem}
+footer a{color:var(--paper-dim)}
+.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin-right:6px}
+</style>
+</head>
+<body>
+
+<div class="topbar"><div class="wrap">
+  <div class="brand">
+    <span class="seal">HODL · six7</span><span class="div">/</span>
+    <span class="sub">Backtest Almanac</span>
+  </div>
+  <div class="stamp" id="stamp"></div>
+</div></div>
+
+<header class="hero"><div class="wrap">
+  <div class="kicker reveal">NSE · Bollinger + Impulse MACD · Timed HODL</div>
+  <h1 class="reveal" style="animation-delay:.05s">Which screen would<br>have <em>compounded</em> best?</h1>
+  <p class="lede reveal" style="animation-delay:.12s">
+    Nine stock lists from the six7 fundamental screen — plus the live <b>Univest + six7 Hybrid</b>
+    watchlist and the older <b>Univest Old</b> set — run through the same monthly Timed-HODL engine
+    across five horizons.
+  </p>
+  <div class="ledger-note reveal" style="animation-delay:.18s">
+    <span class="mk">¶</span>
+    <p id="caveat"></p>
+  </div>
+</div></header>
+
+<!-- LEADERBOARD -->
+<section><div class="wrap">
+  <div class="sec-head">
+    <h2 class="disp">The Leaderboard</h2>
+    <p class="note">Final value, return and risk for every list. Bars scale to the best Timed-HODL outcome in the window.</p>
+  </div>
+  <div class="toolbar">
+    <div><span class="lbl">Horizon</span><span class="seg" id="horizonSeg"></span></div>
+    <div><span class="lbl">Rank by</span><span class="seg" id="sortSeg">
+      <button data-sort="final" aria-pressed="true">Final ₹</button>
+      <button data-sort="xirr">XIRR</button>
+      <button data-sort="sharpe">Sharpe</button>
+      <button data-sort="maxdd">Drawdown</button>
+    </span></div>
+  </div>
+  <table class="board"><thead><tr>
+    <th>List</th><th>Stocks</th><th>Timed final</th><th></th>
+    <th>XIRR</th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
+  </tr></thead><tbody id="boardBody"></tbody></table>
+</div></section>
+
+<!-- INSPECT -->
+<section><div class="wrap">
+  <div class="sec-head">
+    <h2 class="disp">Inspect a List</h2>
+    <p class="note">Full-horizon equity &amp; drawdown (2010–2026). Timed HODL vs equal-weight SIP vs NIFTY&nbsp;50.</p>
+  </div>
+  <div class="chips" id="listChips"></div>
+  <div class="inspect-grid">
+    <div>
+      <div class="card">
+        <h3 id="curveTitle">Equity curve</h3>
+        <div class="blurb" id="curveBlurb"></div>
+        <div class="chart-legend">
+          <span><i style="background:var(--gold)"></i>Timed HODL</span>
+          <span><i style="background:var(--teal)"></i>SIP</span>
+          <span><i style="background:var(--slate)"></i>NIFTY 50</span>
+        </div>
+        <div style="position:relative">
+          <svg class="chart" id="equityChart" viewBox="0 0 720 300" preserveAspectRatio="none"></svg>
+          <div class="tip" id="equityTip"></div>
+        </div>
+      </div>
+      <div class="card" style="margin-top:22px">
+        <h3>Drawdown — peak to trough</h3>
+        <div class="chart-legend">
+          <span><i style="background:var(--gold)"></i>Timed HODL</span>
+          <span><i style="background:var(--teal)"></i>SIP</span>
+        </div>
+        <svg class="chart" id="ddChart" viewBox="0 0 720 180" preserveAspectRatio="none"></svg>
+      </div>
+    </div>
+    <div>
+      <div class="card">
+        <h3>Timed HODL — full horizon</h3>
+        <div class="metrics" id="metricCards"></div>
+        <div class="factline" id="factline"></div>
+      </div>
+    </div>
+  </div>
+</div></section>
+
+<footer><div class="wrap">
+  <p class="disp" style="font-size:1.15rem;color:var(--paper-dim)">An almanac of hindsight, not advice.</p>
+  <p class="mono" style="margin-top:10px" id="footnote"></p>
+  <p class="mono" style="margin-top:14px">
+    ₹22k/mo salary from 2010 · 25% invested · +10%/yr · 5 bps slippage · risk-free 6% ·
+    generated by <a href="#">backtest_six7.py</a>
+  </p>
+</div></footer>
+
+<script src="data.js"></script>
+<script>
+const D = window.SIX7_DATA;
+const $ = s => document.querySelector(s);
+const fmtL = v => v==null ? "–" : "₹"+(v/1e5).toFixed(1)+"L";
+const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "₹"+(v/1e5).toFixed(1)+"L");
+const fmtPct = v => v==null ? "–" : v.toFixed(1)+"%";
+const fmt2 = v => v==null ? "–" : v.toFixed(2);
+const signCls = v => v==null ? "" : (v>=0 ? "val-pos" : "val-neg");
+const UNI = {stocks_current:1};
+const isOld = k => k && k.indexOf("OLD")>=0;
+
+/* state */
+let HZ = "full", SORT = "final", LIST = "buy_plus";
+
+/* ── stamp / caveat ── */
+$("#stamp").innerHTML = `scan <b>${D.snapshot_date}</b> · ${(D.universe||0).toLocaleString()} stocks scored<br>built <b>${D.generated_at}</b>`;
+$("#caveat").textContent = D.caveat;
+$("#footnote").textContent = `Snapshot ${D.snapshot_date} · universe ${(D.universe||0).toLocaleString()} · horizons: ` +
+  D.horizons.map(h=>h.label).join(" · ");
+
+/* ── horizon segmented ── */
+const hSeg = $("#horizonSeg");
+D.horizons.forEach((h,i)=>{
+  const b=document.createElement("button");
+  b.textContent = h.label.replace("·","").trim().replace("Full  ~16y","Full");
+  b.dataset.h=h.key; b.setAttribute("aria-pressed", h.key===HZ);
+  b.onclick=()=>{HZ=h.key; paintSeg(hSeg,"h",HZ); renderBoard();};
+  hSeg.appendChild(b);
+});
+function paintSeg(seg,attr,val){[...seg.children].forEach(b=>b.setAttribute("aria-pressed", b.dataset[attr]===val));}
+$("#sortSeg").querySelectorAll("button").forEach(b=>{
+  b.onclick=()=>{SORT=b.dataset.sort; paintSeg($("#sortSeg"),"sort",SORT); renderBoard();};
+});
+
+/* ── leaderboard ── */
+function sortVal(r){
+  if(SORT==="final") return r.timed.final||0;
+  if(SORT==="xirr") return r.timed.xirr??-999;
+  if(SORT==="sharpe") return r.timed.sharpe??-999;
+  if(SORT==="maxdd") return r.timed.maxdd??-999; // less negative = better
+  return r.timed.final||0;
+}
+function renderBoard(){
+  const rows = (D.comparison[HZ]||[]).slice();
+  rows.sort((a,b)=>sortVal(b)-sortVal(a));
+  const live = rows.filter(r=>!isOld(r.key));
+  const bestFinal = Math.max(...live.map(r=>r.timed.final||0));
+  const tb = $("#boardBody"); tb.innerHTML="";
+  rows.forEach((r,i)=>{
+    const tr=document.createElement("tr");
+    const best = (r.timed.final||0)===bestFinal && !isOld(r.key);
+    if(best) tr.className="best";
+    else if(UNI[r.key]) tr.className="uni";
+    else if(isOld(r.key)) tr.className="old";
+    const w = Math.max(2,(r.timed.final||0)/bestFinal*100);
+    let tags="";
+    if(best) tags+=`<span class="tag crown">★ best</span>`;
+    if(UNI[r.key]) tags+=`<span class="tag uni">live</span>`;
+    if(isOld(r.key)) tags+=`<span class="tag">legacy</span>`;
+    tr.innerHTML=`
+      <td><div class="name-cell"><span>${r.label}</span>${tags}</div></td>
+      <td>${r.n??"–"}</td>
+      <td>${fmtCr(r.timed.final)}</td>
+      <td class="barcell"><span class="bar" style="width:${w}%"></span></td>
+      <td class="${signCls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
+      <td>${fmt2(r.timed.sharpe)}</td>
+      <td>${fmt2(r.timed.sortino)}</td>
+      <td class="val-neg">${fmtPct(r.timed.maxdd)}</td>
+      <td style="color:var(--slate)">${fmtCr(r.sip.final)}</td>`;
+    tb.appendChild(tr);
+  });
+}
+
+/* ── inspect chips ── */
+const chipWrap=$("#listChips");
+D.list_order.forEach(k=>{
+  const m=D.meta[k]; if(!D.curves[k]) return;
+  const c=document.createElement("button");
+  c.className="chip"; c.dataset.k=k; c.setAttribute("aria-pressed",k===LIST);
+  c.innerHTML=`${m.label}<span class="ct">${m.count??""}</span>`;
+  c.onclick=()=>{LIST=k; [...chipWrap.children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.k===k)); renderInspect();};
+  chipWrap.appendChild(c);
+});
+
+/* ── SVG helpers ── */
+const NS="http://www.w3.org/2000/svg";
+const el=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a)e.setAttribute(k,a[k]); return e;};
+function ts(d){return new Date(d).getTime();}
+
+function lineChart(svg, series, opts){
+  svg.innerHTML="";
+  const W=720, H=opts.h, P={l:46,r:12,t:12,b:22};
+  const all=[].concat(...series.map(s=>s.pts.v));
+  let ymin=opts.ymin!=null?opts.ymin:Math.min(...all), ymax=opts.ymax!=null?opts.ymax:Math.max(...all);
+  if(ymin===ymax)ymax=ymin+1;
+  const xs=[].concat(...series.map(s=>s.pts.d.map(ts)));
+  const xmin=Math.min(...xs), xmax=Math.max(...xs);
+  const X=t=>P.l+(t-xmin)/(xmax-xmin)*(W-P.l-P.r);
+  const Y=v=>P.t+(1-(v-ymin)/(ymax-ymin))*(H-P.t-P.b);
+  // gridlines
+  const g=el("g",{class:"grid"}); const ax=el("g",{class:"axis"});
+  const ticks=opts.yticks||4;
+  for(let i=0;i<=ticks;i++){
+    const v=ymin+(ymax-ymin)*i/ticks, y=Y(v);
+    g.appendChild(el("line",{x1:P.l,y1:y,x2:W-P.r,y2:y}));
+    const t=el("text",{x:P.l-8,y:y+3,"text-anchor":"end"}); t.textContent=opts.yfmt(v); ax.appendChild(t);
+  }
+  // x year labels
+  const y0=new Date(xmin).getFullYear(), y1=new Date(xmax).getFullYear();
+  const stepY=Math.max(1,Math.ceil((y1-y0)/8));
+  for(let yr=y0; yr<=y1; yr+=stepY){
+    const x=X(new Date(yr+"-01-01").getTime());
+    if(x<P.l-2||x>W) continue;
+    const t=el("text",{x:x,y:H-6,"text-anchor":"middle"}); t.textContent="'"+String(yr).slice(2); ax.appendChild(t);
+  }
+  svg.appendChild(g); svg.appendChild(ax);
+  // area under first series
+  if(opts.fill){
+    const s=series[0]; let d=`M ${X(ts(s.pts.d[0]))} ${Y(s.pts.v[0])}`;
+    s.pts.d.forEach((dd,i)=>d+=` L ${X(ts(dd))} ${Y(s.pts.v[i])}`);
+    d+=` L ${X(ts(s.pts.d[s.pts.d.length-1]))} ${Y(ymin)} L ${X(ts(s.pts.d[0]))} ${Y(ymin)} Z`;
+    const grad=el("linearGradient",{id:"fillg",x1:0,y1:0,x2:0,y2:1});
+    grad.appendChild(el("stop",{offset:"0%","stop-color":series[0].color,"stop-opacity":.22}));
+    grad.appendChild(el("stop",{offset:"100%","stop-color":series[0].color,"stop-opacity":0}));
+    svg.appendChild(grad);
+    svg.appendChild(el("path",{d,fill:"url(#fillg)",stroke:"none"}));
+  }
+  // lines
+  series.forEach((s,si)=>{
+    let d=`M ${X(ts(s.pts.d[0]))} ${Y(s.pts.v[0])}`;
+    s.pts.d.forEach((dd,i)=>{ if(i) d+=` L ${X(ts(dd))} ${Y(s.pts.v[i])}`; });
+    const p=el("path",{d,fill:"none",stroke:s.color,"stroke-width":s.w||2,
+      "stroke-linejoin":"round","stroke-linecap":"round"});
+    if(s.dash) p.setAttribute("stroke-dasharray",s.dash);
+    if(opts.animate){ const len=p.getTotalLength?2600:2600; p.classList.add("draw"); p.style.setProperty("--len",2600); p.style.animationDelay=(si*.12)+"s"; }
+    svg.appendChild(p);
+  });
+  return {X,Y,xmin,xmax,P,W,H};
+}
+
+/* equity hover */
+let hoverGeo=null, hoverSeries=null;
+function attachHover(svg, geo, series){
+  hoverGeo=geo; hoverSeries=series;
+  const tip=$("#equityTip");
+  const cross=el("line",{class:"crosshair",x1:0,y1:geo.P.t,x2:0,y2:geo.H-geo.P.b,opacity:0});
+  svg.appendChild(cross);
+  const dots=series.map(s=>{const c=el("circle",{r:3.5,fill:s.color,opacity:0,stroke:"#0a0b0d","stroke-width":1.5}); svg.appendChild(c); return c;});
+  svg.onmousemove=e=>{
+    const rect=svg.getBoundingClientRect();
+    const px=(e.clientX-rect.left)/rect.width*geo.W;
+    const t=geo.xmin+(px-geo.P.l)/(geo.W-geo.P.l-geo.P.r)*(geo.xmax-geo.xmin);
+    const base=series[0].pts;
+    let bi=0,bd=1e18; base.d.forEach((dd,i)=>{const dist=Math.abs(ts(dd)-t); if(dist<bd){bd=dist;bi=i;}});
+    const xx=geo.X(ts(base.d[bi]));
+    cross.setAttribute("x1",xx); cross.setAttribute("x2",xx); cross.setAttribute("opacity",1);
+    let rows="";
+    series.forEach((s,si)=>{
+      const v=s.pts.v[bi]!=null?s.pts.v[bi]:null;
+      dots[si].setAttribute("cx",xx); dots[si].setAttribute("cy",geo.Y(v!=null?v:s.pts.v[bi]||0)); dots[si].setAttribute("opacity",v!=null?1:0);
+      rows+=`<div class="row"><span><i class="legend-dot" style="background:${s.color}"></i>${s.name}</span><b>${fmtCr(v)}</b></div>`;
+    });
+    tip.innerHTML=`<div style="color:var(--muted);margin-bottom:5px">${base.d[bi]}</div>${rows}`;
+    tip.style.opacity=1;
+    let tx=e.clientX-rect.left+14; if(tx>rect.width-150)tx=e.clientX-rect.left-150;
+    tip.style.left=tx+"px"; tip.style.top=(e.clientY-rect.top-10)+"px";
+  };
+  svg.onmouseleave=()=>{tip.style.opacity=0; cross.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0));};
+}
+
+/* ── inspect render ── */
+function renderInspect(){
+  const c=D.curves[LIST], m=D.meta[LIST];
+  $("#curveTitle").textContent=`${m.label} — equity curve`;
+  $("#curveBlurb").textContent=`${m.blurb} · ${c.summary.n_stocks} of ${m.count||c.summary.n_stocks} with price history`;
+  const COL={"Timed HODL":"var(--gold)","SIP":"var(--teal)","NIFTY 50":"var(--slate)"};
+  const eqSeries=["Timed HODL","SIP","NIFTY 50"].filter(k=>c.equity[k]).map(k=>({
+    name:k, color:getCss(COL[k]), pts:c.equity[k], w:k==="Timed HODL"?2.6:1.8, dash:k==="NIFTY 50"?"5 4":null
+  }));
+  const geo=lineChart($("#equityChart"),eqSeries,{h:300,fill:true,ymin:0,yfmt:v=>"₹"+(v/1e5).toFixed(0)+"L",animate:true});
+  attachHover($("#equityChart"),geo,eqSeries);
+  // drawdown
+  const ddSeries=["Timed HODL","SIP"].filter(k=>c.drawdowns[k]).map(k=>({
+    name:k,color:getCss(k==="Timed HODL"?"var(--gold)":"var(--teal)"),pts:c.drawdowns[k],w:k==="Timed HODL"?2.2:1.6
+  }));
+  const ddMin=Math.min(...[].concat(...ddSeries.map(s=>s.pts.v)));
+  lineChart($("#ddChart"),ddSeries,{h:180,ymin:Math.floor(ddMin/10)*10,ymax:2,yticks:3,yfmt:v=>v.toFixed(0)+"%",fill:true});
+  // metric cards (Timed HODL)
+  const t=c.metrics["Timed HODL"], s=c.metrics["SIP"], nf=c.metrics["NIFTY 50"];
+  const cards=[
+    ["Final value", fmtCr(t.final_value), ""],
+    ["XIRR", fmtPct(t.xirr), "annualised"],
+    ["Sharpe", fmt2(t.sharpe), ""],
+    ["Sortino", fmt2(t.sortino), ""],
+    ["Max drawdown", fmtPct(t.max_drawdown), "peak→trough"],
+    ["Volatility", fmtPct(t.volatility), "annualised"],
+  ];
+  $("#metricCards").innerHTML=cards.map(([k,v,sub])=>
+    `<div class="metric"><div class="k">${k}</div><div class="v">${v} ${sub?`<small>${sub}</small>`:""}</div></div>`).join("");
+  const su=c.summary;
+  $("#factline").innerHTML=
+    `<b>Invested</b> ${fmtCr(c.invested)} &nbsp;·&nbsp; <b>vs SIP</b> ${fmtCr(s.final_value)} (${fmtPct(s.xirr)}) &nbsp;·&nbsp; <b>vs NIFTY</b> ${fmtCr(nf.final_value)} (${fmtPct(nf.xirr)})<br>`+
+    `<b>Cash drag</b> ${su.cash_pct}% &nbsp;·&nbsp; <b>Bought</b> ${su.n_stocks_bought}/${su.n_stocks} &nbsp;·&nbsp; <b>Signals</b> ${su.n_signals} &nbsp;·&nbsp; <b>Fallback buys</b> ${su.n_fallback}`;
+}
+function getCss(v){ if(v.startsWith("var(")){return getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();} return v;}
+
+renderBoard();
+renderInspect();
+</script>
+</body>
+</html>
