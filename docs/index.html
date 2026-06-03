@@ -194,7 +194,7 @@ footer a{color:var(--paper-dim)}
   <p class="note mono" id="hzCaption" style="margin:-10px 0 16px;color:var(--paper-dim)"></p>
   <table class="board"><thead><tr>
     <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th></th>
-    <th>Return</th><th>XIRR<small style="font-weight:400">·ann</small></th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
+    <th>×</th><th>Return</th><th>XIRR<small style="font-weight:400">·ann</small></th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
   </tr></thead><tbody id="boardBody"></tbody></table>
 </div></section>
 
@@ -257,6 +257,10 @@ const fmtL = v => v==null ? "–" : "₹"+(v/1e5).toFixed(2)+"L";
 const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "₹"+(v/1e5).toFixed(2)+"L");
 const fmtPct = v => v==null ? "–" : (v>=0?"+":"")+v.toFixed(1)+"%";
 const fmt2 = v => v==null ? "–" : v.toFixed(2);
+const fmtX = (final, inv) => (final==null||!inv) ? "–" : (final/inv).toFixed(2)+"×";
+// short horizons (1y/3y) read better as full Indian-grouped rupees than as lakhs
+const inrFull = v => v==null ? "–" : "₹"+Math.round(v).toLocaleString("en-IN");
+const moneyHZ = v => (HZ==="1y"||HZ==="3y") ? inrFull(v) : fmtCr(v);
 const signCls = v => v==null ? "" : (v>=0 ? "val-pos" : "val-neg");
 const UNI = {stocks_current:1, univest_old:1};   // Univest-family watchlists (teal)
 
@@ -312,22 +316,23 @@ function renderBoard(){
     tr.innerHTML=`
       <td><div class="name-cell"><span>${r.label}</span>${tags}</div></td>
       <td>${r.n??"–"}</td>
-      <td style="color:var(--paper-dim)">${fmtL(r.invested)}</td>
-      <td>${fmtCr(r.timed.final)}</td>
+      <td style="color:var(--paper-dim)">${moneyHZ(r.invested)}</td>
+      <td>${moneyHZ(r.timed.final)}</td>
       <td class="barcell"><span class="bar" style="width:${w}%"></span></td>
+      <td>${fmtX(r.timed.final, r.invested)}</td>
       <td class="${signCls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td>
       <td class="${signCls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
       <td>${fmt2(r.timed.sharpe)}</td>
       <td>${fmt2(r.timed.sortino)}</td>
       <td class="val-neg">${fmtPct(r.timed.maxdd)}</td>
-      <td style="color:var(--slate)">${fmtCr(r.sip.final)}</td>`;
+      <td style="color:var(--slate)">${moneyHZ(r.sip.final)}</td>`;
     tb.appendChild(tr);
   });
   const hz=D.horizons.find(h=>h.key===HZ);
   const invAny=(rows.find(r=>!r.benchmark)||{}).invested;
   $("#hzCaption").textContent =
-    `${hz?hz.period:""} · ₹${(invAny/1e5).toFixed(2)}L invested per list `+
-    `· Return = total (final/invested−1), XIRR = annualised. NIFTY rows = same money SIP'd into the index.`;
+    `${hz?hz.period:""} · ${moneyHZ(invAny)} invested per list (₹5,500/mo at window start, +10%/yr, salary×25%) `+
+    `· × = final/invested · Return = total · XIRR = annualised · NIFTY rows = same money SIP'd into the index.`;
 }
 
 /* ── inspect chips ── */
