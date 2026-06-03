@@ -1,1 +1,10 @@
 .last_signal_hash
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# six7 backtest: large regenerable artifacts (scripts + docs/data.js are committed)
+six7_backtest_output/
+six7_stocks/snapshot_*.json
