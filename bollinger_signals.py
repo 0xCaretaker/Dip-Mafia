@@ -79,6 +79,43 @@ def calculate_bb_past_lower_touch(df, length=200, std_dev=2, lookback=60):
     return bool(np.any(touched))
 
 
+def _position_from_levels(close, lower, middle, upper):
+    """Map a price to a band-position icon. Returns None if any value is
+    missing or NaN (`v != v` is True only for NaN)."""
+    for v in (close, lower, middle, upper):
+        if v is None or v != v:
+            return None
+    if close < lower:
+        return "⏬"      # below lower band — deepest dip
+    if close < middle:
+        return "🔽"     # below mid-line
+    if close < upper:
+        return "🔼"     # above mid-line
+    return "⏫"          # above upper band — extended
+
+
+def calculate_bb_position(df, length=200, std_dev=2):
+    """Where the latest close sits inside its Bollinger envelope:
+    ⏬ below lower, 🔽 below mid, 🔼 above mid, ⏫ above upper.
+    Returns None when there is insufficient history for the band.
+    """
+    if df.empty or len(df) < length:
+        return None
+
+    close = to_1d(df["Close"])
+    middle = pd.Series(close).rolling(window=length).mean().values
+    std = pd.Series(close).rolling(window=length).std().values
+
+    m = middle[-1]
+    s = std[-1]
+    if m != m or s != s:  # NaN guard (warmup)
+        return None
+
+    lower = m - std_dev * s
+    upper = m + std_dev * s
+    return _position_from_levels(close[-1], lower, m, upper)
+
+
 # =========================
 # Process signals from pre-downloaded data
 # =========================
@@ -121,10 +158,13 @@ def process_bollinger_signals(data, stocks, length=200):
             if action != "Buy" and past_touch:
                 action = "Watch"
 
+            position = calculate_bb_position(df, length=length)
+
             bollinger_actions[stock] = {
                 "action": action,
                 "time": df.index[-1],
                 "price": float(df["Close"].iloc[-1]),
+                "position": position,
             }
 
             print("✓")

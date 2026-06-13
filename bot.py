@@ -179,7 +179,8 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
                     wait_count += 1
             if action in ["Buy", "Sell"] and time and price:
                 stock_clean = stock.replace(".NS", "").replace(".BO", "")
-                entries.append((stock_clean, action, price))
+                position = bollinger_signals.get(stock, {}).get("position")
+                entries.append((stock_clean, action, price, position))
 
         if not entries and total == 0:
             return
@@ -187,11 +188,12 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         combined_lines.append(f"\n{title}")
         combined_lines.append("⏱️ `1d`")
 
-        for stock, action, price in entries:
+        for stock, action, price, position in entries:
             padded_stock = stock.ljust(max_len)
             price_str = f"{price:.2f}"
+            pos_prefix = f"{position} " if position else ""
             combined_lines.append(
-                f"{emoji[action]} `{escape_md(padded_stock)} ₹{escape_md(price_str)}`"
+                f"{emoji[action]} {pos_prefix}`{escape_md(padded_stock)} ₹{escape_md(price_str)}`"
             )
 
         if total > 0:
