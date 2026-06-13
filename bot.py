@@ -167,7 +167,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     # A monospace rule sized to the data columns: long enough to feel like a
     # real divider, but never wider than the rows (so it can't wrap on mobile).
     content_width = max_len + 2 + price_width  # "{ticker} ₹{price}"
-    divider = "`" + "─" * max(content_width, 10) + "`"
+    divider = "`" + "─" * max(content_width + 5, 14) + "`"
     rendered = [False]
 
     # MACD section builder. filter_set=None renders the full universe;
