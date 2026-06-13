@@ -233,9 +233,9 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
-        combined_lines.append("ℹ️ *what the arrows mean*")
-        combined_lines.append("⏬ deep dip · 🔽 undervalued")
-        combined_lines.append("🔼 above avg · ⏫ overvalued")
+        combined_lines.append("_ℹ️ what the arrows mean_")
+        combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
+        combined_lines.append("_🔼 above avg · ⏫ overvalued_")
         combined_lines.append("")
         combined_lines.append(
             "_Dip Mafia never sells, red just flags weakness · we only buy dips & HODL_"
