@@ -98,23 +98,28 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         if info["action"] in ["Buy", "Watch"]
     }
 
-    all_stock_names = []
-
-    # Collect stock names across the full universe (unfiltered sections render
-    # every Buy/Sell, so padding must account for all symbols, not just BB ones)
+    # Column widths over the lines that actually render (Buy/Sell across all
+    # sections), so the ticker and price columns line up in monospace.
+    name_widths = [0]
+    price_widths = [0]
     for all_signals in all_interval_signals.values():
         for stock, info in all_signals.items():
             action, time, price = info["action"], info["time"], info["price"]
-            if action and time and price:
-                stock_clean = stock.replace(".NS", "").replace(".BO", "")
-                all_stock_names.append(stock_clean)
+            if action in ("Buy", "Sell") and time and price:
+                name = stock.replace(".NS", "").replace(".BO", "")
+                name_widths.append(len(name))
+                price_widths.append(len(f"{price:.2f}"))
 
-    max_len = max((len(stock) for stock in all_stock_names), default=0)
+    max_len = max(name_widths)
+    price_width = max(price_widths)
 
     combined_lines = []
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
-    now_str = now.strftime('%d %B, %I:%M%p')
-    combined_lines.append(f"*📊 Signal Alert \\| [{escape_md(now_str)}]*")
+    day = now.strftime('%d %b').lstrip('0')
+    clock = now.strftime('%I:%M %p').lstrip('0')
+    combined_lines.append("📊 *Signal Alert*")
+    combined_lines.append(f"_{escape_md(day)} · {escape_md(clock)} IST_")
+    combined_lines.append("")
 
     # Index summary
     if index_moves:
@@ -125,8 +130,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             pct_str = f"{pct:+.2f}%"
             ath_str = f"{ath_diff:+.2f}%"
             combined_lines.append(
-                f"{arrow} {escape_md(name)}: `{escape_md(pct_str)}` "
-                f"_\\(from ATH: `{escape_md(ath_str)}`\\)_"
+                f"{arrow} {escape_md(name)} `{pct_str}` · ATH `{ath_str}`"
             )
         combined_lines.append("")
 
@@ -159,7 +163,8 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         else:
             mood, icon = "Cautious", "🟠"
         combined_lines.append(f"{icon} *Sentiment: {mood}*")
-        combined_lines.append("")
+
+    divider = "─" * 20
 
     # MACD section builder. filter_set=None renders the full universe;
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
@@ -185,43 +190,53 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         if not entries and total == 0:
             return
 
-        combined_lines.append(f"\n{title}")
-        combined_lines.append("⏱️ `1d`")
+        combined_lines.append("")
+        combined_lines.append(divider)
+        combined_lines.append(title)
 
         for stock, action, price, position in entries:
             padded_stock = stock.ljust(max_len)
-            price_str = f"{price:.2f}"
+            price_str = f"{price:.2f}".rjust(price_width)
             pos_prefix = f"{position} " if position else ""
             combined_lines.append(
-                f"{emoji[action]} {pos_prefix}`{escape_md(padded_stock)} ₹{escape_md(price_str)}`"
+                f"{emoji[action]} {pos_prefix}`{padded_stock} ₹{price_str}`"
             )
 
         if total > 0:
             wait_pct = (wait_count / total) * 100
             hold_pct = (hold_count / total) * 100
-            summary = (
-                f"\n📈 *Summary:*  \n"
-                f"🟣 Wait for Buy: "
-                f"`{wait_count}/{total} \\({wait_pct:.1f}%\\)`\n"
-                f"🟡 Hold: "
-                f"`{hold_count}/{total} \\({hold_pct:.1f}%\\)`\n"
+            combined_lines.append("")
+            combined_lines.append(
+                f"🟣 Wait for Buy `{wait_count}/{total} · {wait_pct:.1f}%`"
             )
-            combined_lines.append(summary)
+            combined_lines.append(
+                f"🟡 Hold `{hold_count}/{total} · {hold_pct:.1f}%`"
+            )
 
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
     # 1) Standard MACD — full universe, no Bollinger gate
-    append_macd_section("🔵 *STANDARD MACD:*", std_signals, None)
+    append_macd_section("*STANDARD MACD*", std_signals, None)
     # 2) Impulse MACD — full universe, no Bollinger gate
-    append_macd_section("🟠 *IMPULSE MACD \\(LazyBear\\):*", impulse_signals, None)
+    append_macd_section("*IMPULSE MACD* _\\(LazyBear\\)_", impulse_signals, None)
     # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter
-    append_macd_section("🔵🟣 *BOLLINGER \\+ IMPULSE MACD:*", impulse_signals, bollinger_filter)
+    append_macd_section("*BOLLINGER \\+ IMPULSE MACD*", impulse_signals, bollinger_filter)
 
-    if len(combined_lines) <= 1:
+    # Nothing rendered (no section divider added) → nothing worth sending.
+    if divider not in combined_lines:
         return
 
-    final_message = "\n".join(combined_lines)
+    # Collapse runs of blank lines and trim edges for even spacing.
+    cleaned = []
+    for line in combined_lines:
+        if line == "" and (not cleaned or cleaned[-1] == ""):
+            continue
+        cleaned.append(line)
+    while cleaned and cleaned[-1] == "":
+        cleaned.pop()
+
+    final_message = "\n".join(cleaned)
 
     # Hash raw signal data (actions + prices) — independent of formatting/timestamps
     signal_data = []
