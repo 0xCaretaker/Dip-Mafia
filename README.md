@@ -218,13 +218,25 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 ## Architecture
 
 ```
-├── bot.py                 # Orchestrator, Telegram sender, sentiment
+├── bot.py                 # live entry: orchestrator, Telegram sender, sentiment
 ├── macd_signals.py        # Standard + Impulse MACD (standalone capable)
 ├── bollinger_signals.py   # 200-period Bollinger Bands (standalone capable)
-├── stocks.txt             # Watchlist
+├── stocks.txt             # watchlist
+├── analysis/              # research/backtest tooling (run from the repo root)
+│   ├── backtest.py        # portfolio backtest — Timed HODL (V4 fallback + midline + bb-60)
+│   ├── horizon_compare.py # 1y/3y/5y/Full horizon table for the strat dashboard
+│   ├── portfolio_view.py  # builds dashboard.html + docs/strat.html
+│   ├── backtest_six7.py   # six7 almanac: lists × horizons (same Timed HODL strategy)
+│   ├── build_web.py       # assembles docs/data.js for the almanac
+│   └── run_paths.py       # backtest_output/ layout helper
+├── pine/                  # TradingView ports (indicator + strategy)
+├── notes/                 # STRATEGY_COMPARISON.md, context.md, TODO.md
+├── tests/                 # test_bb_position.py
+├── backtest_output/       # dated run subfolders + six7/ almanac + dashboard.html
+├── docs/                  # GitHub Pages (six7 almanac + strat.html)
 ├── requirements.txt       # yfinance, requests
 └── .github/workflows/
-    └── dip-mafia.yml      # GitHub Actions (cron + cache)
+    └── dip-mafia.yml      # GitHub Actions (cron + cache); runs `python bot.py`
 ```
 
 Each signal module can run standalone for quick analysis:
