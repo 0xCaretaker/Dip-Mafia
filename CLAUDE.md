@@ -86,3 +86,10 @@ Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtes
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 
 `BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y — see `notes/STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.
+
+## Rebuilding the six7 almanac
+
+The six7 almanac (`docs/`, published on GitHub Pages) compares the screener lists in `six7_stocks/lists/` plus the live watchlist, running **Timed HODL vs SIP** across 1y/3y/5y/10y/Full horizons. `analysis/backtest_six7.py` does *not* define its own strategy — it deep-copies `bt.CONFIG` (so `bb_lookback=60`) and calls `bt.simulate_timed_hodl`, which honors `BUY_REQUIRE_BELOW_MID` and the V4 idle-cash fallback by default. **So the almanac's "Timed" numbers are the same V4 + midline + bb-60 strategy as the strat dashboard** — whenever that strategy or `stocks.txt` changes, the almanac is stale until rebuilt:
+
+1. **Recompute** `python3 analysis/backtest_six7.py` (from the repo root) → writes `backtest_output/six7/` (per-list 8-chart suites + `comparison_<h>.{csv,json,png}`). Reuses `backtest_output/six7/_price_cache.pkl` when the ticker-union + `END` match; otherwise it re-downloads and rewrites the cache. `END` is pinned in the script for reproducibility.
+2. **Rebuild the web data** `python3 analysis/build_web.py` → assembles `docs/data.js` (`window.SIX7_DATA`) from the comparison JSON, which the GitHub Pages almanac reads.
