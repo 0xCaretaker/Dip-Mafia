@@ -131,7 +131,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             pct_str = f"{pct:+.2f}%"
             ath_str = f"{ath_diff:+.1f}%"
             combined_lines.append(f"{arrow} *{escape_md(short)}*")
-            combined_lines.append(f"today `{pct_str}`  ·  ATH `{ath_str}`")
+            combined_lines.append(f"Today `{pct_str}`  ·  ATH `{ath_str}`")
         combined_lines.append("")
 
     # Compute sentiment first (need it before MACD sections)
