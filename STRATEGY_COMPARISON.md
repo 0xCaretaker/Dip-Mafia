@@ -41,7 +41,7 @@ Timed HODL, bb-60, **flat ₹20k/month**, trailing windows ending 2026-04-17.
 Signals are computed over full history (so the 200-bar Bollinger warmup is always
 satisfied); only the investing/measurement window is the trailing horizon — that's
 why a 1y horizon is valid even though it's shorter than the 200-day warmup.
-Source: full-history price cache (`six7_backtest_output/_price_cache.pkl`).
+Source: full-history price cache (`backtest_output/six7/_price_cache.pkl`).
 
 "+mid" = bb-60 with the extra "close below BB midline" buy gate.
 

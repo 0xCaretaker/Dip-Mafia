@@ -11,10 +11,10 @@ gate + Impulse MACD Timed HODL, SIP, NIFTY 50 benchmark). It:
   3. Runs every list over 5 horizons -- full (~16y), trailing 10y / 5y / 3y / 1y,
      all ending at the latest date -- and writes a comparison table+chart per
      horizon (the full-horizon table also shows the old saved 61-stock run).
-  4. Generates the full 8-chart suite (like backtest_output/) for every list on
-     the full horizon, into six7_backtest_output/<list>/.
+  4. Generates the full 8-chart suite (like a normal run) for every list on
+     the full horizon, into backtest_output/six7/<list>/.
 
-backtest.py and backtest_output/ (the old stocks.txt run) are left untouched;
+backtest.py's own run subfolders under backtest_output/ are left untouched;
 chart output is redirected by setting bt.OUTPUT_DIR per list.
 
 CAVEAT (labelled in output): the lists are a *current* (2026-06-01) fundamental
@@ -39,11 +39,12 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 
 import backtest as bt
+import run_paths
 
 LISTS_DIR = "six7_stocks/lists"
 STOCKS_TXT = "stocks.txt"
-OUT_DIR = "six7_backtest_output"
-OLD_DASHBOARD = "backtest_output/dashboard_data.json"
+OUT_DIR = run_paths.SIX7
+OLD_DASHBOARD = os.path.join(run_paths.current_run() or run_paths.BASE, "dashboard_data.json")
 
 # six7 lists first, then the live portfolio. stocks_current is read from stocks.txt.
 SIX7_LISTS = ["top10", "top30", "top50", "top100",

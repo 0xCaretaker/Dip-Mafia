@@ -11,6 +11,7 @@ Output: console summary + PNG charts in backtest_output/
 
 import os
 import json
+import shutil
 import warnings
 import numpy as np
 import pandas as pd
@@ -22,10 +23,13 @@ import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import brentq
 from macd_signals import calc_smma, calc_zlema, to_1d
+import run_paths
 
 warnings.filterwarnings("ignore")
 
-OUTPUT_DIR = "backtest_output"
+# Parent folder; main() repoints OUTPUT_DIR at a dated per-run subfolder
+# (e.g. backtest_output/20260417_75sym_bb60) once the run's end_date is known.
+OUTPUT_DIR = run_paths.BASE
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 C_SIP     = "#2196F3"
@@ -1078,6 +1082,27 @@ def main():
     assumptions = compute_investment_assumptions(cfg, dates)
     n_fallback = sum(1 for b in buy_log if b.get("type") == "fallback")
     print_summary(metrics_list, total_invested, len(sig_syms), len(buy_dates), len(stocks_bought), cash_pct, assumptions, max_idle, avg_idle, n_fallback)
+
+    # Write this run into its own dated, self-describing subfolder so every run
+    # (current included) lives under backtest_output/ and the dashboard can pick
+    # the newest as "current". All chart/json/csv writers below read the module
+    # global OUTPUT_DIR at call time, so repointing it here is enough.
+    global OUTPUT_DIR
+    n_watch = len(watchlist)
+    OUTPUT_DIR = os.path.join(run_paths.BASE,
+                              run_paths.run_name(assumptions["end_date"], n_watch, cfg["bb_lookback"]))
+    os.makedirs(OUTPUT_DIR, exist_ok=True)
+    with open(os.path.join(OUTPUT_DIR, "meta.json"), "w") as f:
+        json.dump({
+            "date": str(assumptions["end_date"]),
+            "label": f"{n_watch}-symbol, bb-{cfg['bb_lookback']}",
+            "watchlist_size": n_watch,
+            "bb_lookback": cfg["bb_lookback"],
+        }, f, indent=2)
+    try:
+        shutil.copy("stocks.txt", os.path.join(OUTPUT_DIR, "stocks.txt"))
+    except OSError:
+        pass
 
     print(f"\n  Generating charts...")
     chart_1_equity(portfolios, nifty_series, total_invested, "1_equity_curves.png")

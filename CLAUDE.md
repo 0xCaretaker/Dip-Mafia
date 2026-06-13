@@ -46,14 +46,28 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
 **Secrets.** `TELEGRAM_TOKEN` and `TELEGRAM_CHAT_IDS` (comma-separated) are read from environment variables. Set them in GitHub Secrets and pass via the workflow.
 
+## Backtest output layout
+
+All backtest artifacts live under a single parent, `backtest_output/`, defined in one place by **`run_paths.py`**:
+
+```
+backtest_output/
+  <YYYYMMDD>_<N>sym_bb<L>/   one self-contained run (charts, dashboard_data.json,
+                             horizons.json, trades.csv, meta.json, stocks.txt snapshot)
+  …                          older runs, same naming
+  six7/                      six7 almanac outputs (results tracked; *.pkl caches git-ignored)
+  dashboard.html             rendered dashboard (also published to docs/strat.html)
+```
+
+There is **no separate archive folder**. The "current" run is simply the newest subfolder — `run_paths.current_run()` returns the one with the highest `meta.json` date (ties broken by folder name); `run_paths.archived_runs()` returns the rest. `portfolio_view.py`, `horizon_compare.py`, and `backtest_six7.py` all resolve paths through `run_paths` — never hard-code `backtest_output/...`.
+
 ## Re-running the strat backtest (iteration workflow)
 
-Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtest **and keep the prior one for comparison**. The Iterations tab on the strat dashboard auto-discovers archived runs, so the only manual step is archiving before the new run:
+Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtest. Prior runs are kept automatically (each run is its own dated subfolder), so the Iterations tab always compares against them — no manual archiving step:
 
-1. **Archive the current run** into a dated folder before overwriting: `backtest_output_archive_YYYYMMDD/` (the data-as-of date from `dashboard_data.json` → `assumptions.end_date`). Copy the whole `backtest_output/` contents plus the generated `dashboard.html`, a snapshot of the old `stocks.txt`, and a `meta.json` (`{date, label, watchlist_size, bb_lookback}`). `portfolio_view.py` reads `meta.json` to label the iteration; `load_iterations()` globs `backtest_output_archive_*`, so new archives appear in the UI automatically — no code change.
-2. **Re-run** `python3 backtest.py` (writes fresh `backtest_output/`).
-3. **Recompute horizons**: `python3 horizon_compare.py` writes `backtest_output/horizons.json` — Timed HODL 1y/3y/5y/Full returns for the current + each archived watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `six7_backtest_output/_price_cache.pkl` when present, else downloads). Feeds the Iterations tab's Horizon Returns tables (best per row in red).
-4. **Rebuild the views**: `python3 portfolio_view.py` regenerates `dashboard.html` and publishes a copy to `docs/strat.html` (live on GitHub Pages, linked from the six7 almanac). It reads `horizons.json` if present. Then update the README "Latest Results" block.
+1. **Re-run** `python3 backtest.py`. It writes a fresh `backtest_output/<YYYYMMDD>_<N>sym_bb<L>/` (date from `assumptions.end_date`, N from `stocks.txt`, L from `CONFIG.bb_lookback`), auto-emitting `meta.json` and a `stocks.txt` snapshot so the run is self-describing. Older run folders are left untouched. (Prune stale runs by hand if the Iterations list gets noisy.)
+2. **Recompute horizons**: `python3 horizon_compare.py` writes `<current run>/horizons.json` — Timed HODL 1y/3y/5y/Full returns for the current + each older watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `backtest_output/six7/_price_cache.pkl` when present, else downloads). Feeds the Iterations tab's Horizon Returns tables (best per row in red).
+3. **Rebuild the views**: `python3 portfolio_view.py` regenerates `dashboard.html` and publishes a copy to `docs/strat.html` (live on GitHub Pages, linked from the six7 almanac). It reads the newest run's `horizons.json` if present. Then update the README "Latest Results" block.
 
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 

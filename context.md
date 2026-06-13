@@ -13,7 +13,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
     cash drag 5.7%→1.2%, longest idle 214d→21d; Timed HODL now best on Sharpe/Sortino/MaxDD
   - SIP nearly matches on absolute returns (neck and neck)
   - Both crush NIFTY 50 by ~3.6x
-  - Prior 62-symbol / 30-bar run archived in backtest_output_archive_20260417/
+  - Prior 62-symbol / 30-bar run kept as its own subfolder backtest_output/20260417_62sym_bb30/
   - Gate divergence (intentional): backtest BUY_REQUIRE_BELOW_MID=True (tighter, better 1/3/5y);
     live bot REQUIRE_CLOSE_BELOW_MIDLINE=False (sends ALL Buy/Watch alerts, no midline filter).
 
@@ -23,7 +23,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 - `macd_signals.py` — Standard MACD (12/26/9) + Impulse MACD (LazyBear, SMMA/ZLEMA, length=34, signal=9). Crossover → Buy/Sell/Hold/Wait.
 - `backtest.py` — Portfolio-level backtest. Reads stocks.txt, downloads via yfinance, runs 3 strategies + NIFTY 50. Outputs 8 numbered PNG charts + console summary + trade log CSVs.
 
-# Backtest Charts (backtest_output/)
+# Backtest Charts (backtest_output/<dated run>/)
 1. `1_equity_curves.png` — All strategies + NIFTY 50 + invested line on one chart
 2. `2_drawdowns.png` — Side-by-side drawdowns with max annotated
 3. `3_cash_utilization.png` — % invested vs cash over time
@@ -45,7 +45,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 - `bot.py` — production entry point
 - `backtest.py` — portfolio-level backtest (run: `python3 backtest.py`)
 - `stocks.txt` — watchlist (75 symbols, no `.NS` suffix)
-- `backtest_output/` — 8 numbered PNG charts + trades.csv + trades_monthly_summary.csv
+- `backtest_output/<dated run>/` — 8 numbered PNG charts + trades.csv + trades_monthly_summary.csv (newest run = current; see `run_paths.py`)
 - `.github/workflows/dip-mafia.yml` — cron schedule
 - `requirements.txt` — yfinance, requests (backtest also needs matplotlib, scipy)
 

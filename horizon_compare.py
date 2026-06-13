@@ -2,8 +2,8 @@
 """
 Horizon comparison for the dashboard Iterations tab.
 
-For the current watchlist (stocks.txt) and every archived watchlist
-(backtest_output_archive_*/stocks.txt), computes Timed HODL returns over
+For the current watchlist and every archived watchlist (each run's
+<run>/stocks.txt under backtest_output/), computes Timed HODL returns over
 1y / 3y / 5y / Full trailing windows, for three signal variants:
 
   bb60      — Bollinger watch lookback 60 (the default / live config)
@@ -15,15 +15,14 @@ satisfied); only the investing/measurement window is the trailing horizon. A fla
 ₹20k/month contribution is used so horizons are comparable to each other and to the
 six7 almanac.
 
-Prices come from six7_backtest_output/_price_cache.pkl when present (full history,
+Prices come from backtest_output/six7/_price_cache.pkl when present (full history,
 no download); otherwise they are downloaded once via backtest.download_batch.
 
-Output: backtest_output/horizons.json  (read by portfolio_view.py)
+Output: <current run>/horizons.json  (read by portfolio_view.py)
 Run:    .venv/bin/python horizon_compare.py   (after backtest.py)
 """
 
 import os
-import glob
 import json
 import pickle
 
@@ -32,10 +31,11 @@ import pandas as pd
 import yfinance as yf
 
 import backtest as bt
+import run_paths
 
 END = pd.Timestamp("2026-04-20")               # data-as-of (matches the strat run)
-PRICE_CACHE = "six7_backtest_output/_price_cache.pkl"
-OUT = "backtest_output/horizons.json"
+PRICE_CACHE = os.path.join(run_paths.SIX7, "_price_cache.pkl")
+OUT = os.path.join(run_paths.current_run() or run_paths.BASE, "horizons.json")
 
 HORIZONS = [("1y", 1), ("3y", 3), ("5y", 5), ("Full", None)]
 # 3-strategy horizon table (Backtest tab). Metrics kept: all of them.
@@ -194,9 +194,11 @@ def strategy_horizons(data, symbols, sig, end_dt):
 
 def build():
     # watchlists: current first, then each archive (matches Iterations tab ordering)
+    cur = run_paths.current_run()
+    cur_syms = (read_list(os.path.join(cur, "stocks.txt")) if cur else []) or read_list("stocks.txt")
     watchlists = [{"key": "Current", "label": "Current", "is_current": True,
-                   "symbols": read_list("stocks.txt")}]
-    for d in sorted(glob.glob("backtest_output_archive_*"), reverse=True):
+                   "symbols": cur_syms}]
+    for d in run_paths.archived_runs():
         syms = read_list(os.path.join(d, "stocks.txt"))
         if not syms:
             continue
@@ -207,7 +209,7 @@ def build():
                 meta = json.load(open(mp))
             except (json.JSONDecodeError, OSError):
                 meta = {}
-        label = meta.get("label") or d.replace("backtest_output_archive_", "")
+        label = meta.get("label") or os.path.basename(d)
         # strip the "(… bb-30)" parenthetical so the variant columns aren't redundant
         label = label.split(" (")[0].split(", bb")[0]
         watchlists.append({"key": d, "label": label, "is_current": False, "symbols": syms})

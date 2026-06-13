@@ -3,8 +3,8 @@
 
 Reads:
   six7_stocks/lists/_manifest.json          - list counts + definitions + snapshot date
-  six7_backtest_output/comparison_<h>.json  - per-horizon metrics (raw numbers)
-  six7_backtest_output/<list>/dashboard_data.json - full-horizon curves + metrics
+  backtest_output/six7/comparison_<h>.json  - per-horizon metrics (raw numbers)
+  backtest_output/six7/<list>/dashboard_data.json - full-horizon curves + metrics
 
 Writes docs/data.js as `window.SIX7_DATA = {...}` (a JS file, not JSON, so the
 site works from file:// AND GitHub Pages with no server / no CORS).
@@ -16,7 +16,9 @@ import os
 import json
 from datetime import datetime, timezone
 
-OUT = "six7_backtest_output"
+import run_paths
+
+OUT = run_paths.SIX7
 DOCS = "docs"
 HORIZONS = [("full", "Full · ~16y"), ("10y", "10 years"), ("5y", "5 years"),
             ("3y", "3 years"), ("1y", "1 year")]
