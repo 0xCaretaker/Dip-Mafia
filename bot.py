@@ -164,7 +164,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             mood, icon = "Cautious", "🟠"
         combined_lines.append(f"{icon} *Sentiment: {mood}*")
 
-    divider = "─" * 20
+    divider = "─" * 12
 
     # MACD section builder. filter_set=None renders the full universe;
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
