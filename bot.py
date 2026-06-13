@@ -117,7 +117,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     day = now.strftime('%d %b').lstrip('0')
     clock = now.strftime('%I:%M %p').lstrip('0')
-    combined_lines.append("🔻 *DIP MAFIA*")
+    combined_lines.append("🩸 *DIP MAFIA*")
     combined_lines.append(f"_signal alert · {escape_md(day)} · {escape_md(clock)} IST_")
     combined_lines.append("")
 
@@ -228,14 +228,15 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     # 2) Impulse MACD — full universe, no Bollinger gate (stronger confirmation)
     append_macd_section("⚡ *Strong Signal* _\\(iMACD\\)_", impulse_signals, None)
     # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter (the verdict)
-    append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
+    append_macd_section("🎯 *THE VERDICT* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
-        combined_lines.append("⏬ deep dip · 🔽 below avg")
-        combined_lines.append("🔼 above avg · ⏫ stretched")
+        combined_lines.append("ℹ️ *BTW — what the arrows mean*")
+        combined_lines.append("⏬ deep dip · 🔽 undervalued")
+        combined_lines.append("🔼 above avg · ⏫ overvalued")
         combined_lines.append("")
         combined_lines.append(
             "_Dip Mafia never sells — red just flags weakness · we only buy dips & HODL_"
