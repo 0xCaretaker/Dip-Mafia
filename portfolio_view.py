@@ -755,7 +755,7 @@ const TILES = [
   {{key:'cash',      title:'Cash Utilization',     sub:"% of portfolio actually deployed — lower = cash sitting idle"}},
   {{key:'alpha',     title:'Rolling Alpha vs SIP', sub:"How much Timed HODL beats SIP over rolling windows — positive = outperforming"}},
   {{key:'buydist',   title:'Buy Distribution',     sub:"Which stocks got the most buy signals (top 30)", tall:true}},
-  {{key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month — gaps are idle cash periods", full:true}},
+  {{key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month. With the 21-day fallback, cash is rarely idle >1 month — a blank month just means its cash deployed ~3 weeks later (the next bar), not a long idle stretch", full:true}},
 ];
 
 function openChartModal(key, title, sub) {{

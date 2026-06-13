@@ -170,7 +170,7 @@ tr.total-row td { border-top: 2px solid var(--border); }
 
 <div class="header">
   <h1>Dip Mafia Dashboard</h1>
-  <div class="sub">Updated 13 Jun 2026, 10:52 PM &bull; <a href="index.html" style="color:var(--accent);text-decoration:none">six7 Almanac →</a></div>
+  <div class="sub">Updated 13 Jun 2026, 11:10 PM &bull; <a href="index.html" style="color:var(--accent);text-decoration:none">six7 Almanac →</a></div>
 </div>
 
 <div class="tabs">
@@ -531,7 +531,7 @@ const TILES = [
   {key:'cash',      title:'Cash Utilization',     sub:"% of portfolio actually deployed — lower = cash sitting idle"},
   {key:'alpha',     title:'Rolling Alpha vs SIP', sub:"How much Timed HODL beats SIP over rolling windows — positive = outperforming"},
   {key:'buydist',   title:'Buy Distribution',     sub:"Which stocks got the most buy signals (top 30)", tall:true},
-  {key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month — gaps are idle cash periods", full:true},
+  {key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month. With the 21-day fallback, cash is rarely idle >1 month — a blank month just means its cash deployed ~3 weeks later (the next bar), not a long idle stretch", full:true},
 ];
 
 function openChartModal(key, title, sub) {
