@@ -139,14 +139,14 @@ A portfolio-level backtest validates the timing strategy against plain SIP inves
 
 ```bash
 pip install matplotlib scipy  # one-time, in addition to requirements.txt
-python3 backtest.py
+python3 analysis/backtest.py  # run from the repo root
 ```
 
 Generates 8 charts in a dated run subfolder under `backtest_output/` + console summary.
 
 ### Latest Results (73 stocks, 2010–2026)
 
-> Run as of 2026-04-17 against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), 60-bar Bollinger watch window, **midline buy gate** (matches the live bot), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `STRATEGY_COMPARISON.md`). The previous 62-symbol / 30-bar run is kept as its own subfolder `backtest_output/20260417_62sym_bb30/`.
+> Run as of 2026-04-17 against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), 60-bar Bollinger watch window, **midline buy gate** (matches the live bot), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`). The previous 62-symbol / 30-bar run is kept as its own subfolder `backtest_output/20260417_62sym_bb30/`.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════

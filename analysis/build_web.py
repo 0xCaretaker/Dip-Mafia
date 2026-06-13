@@ -9,7 +9,7 @@ Reads:
 Writes docs/data.js as `window.SIX7_DATA = {...}` (a JS file, not JSON, so the
 site works from file:// AND GitHub Pages with no server / no CORS).
 
-Run: .venv/bin/python build_web.py   (after backtest_six7.py)
+Run: python3 analysis/build_web.py   (from the repo root, after backtest_six7.py)
 """
 
 import os

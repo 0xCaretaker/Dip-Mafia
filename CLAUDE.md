@@ -14,6 +14,20 @@ pip install -r requirements.txt
 python bot.py
 ```
 
+## Repo layout
+
+```
+bot.py  bollinger_signals.py  macd_signals.py   live signal path (run by the workflow); root
+analysis/   backtest.py  horizon_compare.py  portfolio_view.py  backtest_six7.py
+            build_web.py  run_paths.py         research/backtest tooling
+pine/       dip_mafia*.pine                     standalone TradingView ports (+ README)
+notes/      STRATEGY_COMPARISON.md  context.md  TODO.md
+tests/      test_bb_position.py
+backtest_output/   dated run subfolders + six7/   docs/   six7_stocks/
+```
+
+**Run `analysis/` scripts from the repo root** (e.g. `python3 analysis/backtest.py`) — they use paths relative to the working directory (`backtest_output/`, `stocks.txt`, `docs/`). `analysis/backtest.py` adds the repo root to `sys.path` so it can import the root-level `macd_signals`.
+
 ## Strategy
 
 Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` suffix; `bot.py` appends it). The pipeline is:
@@ -26,7 +40,7 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
    Both feed `_trend_to_action`, which walks the crossover series and emits the *latest* state: `Buy`/`Sell` on the crossover bar, then `Hold` (after Buy) or `Wait for Buy` (after Sell) until the next cross. Only `Buy`/`Sell` rows render as stock lines in Telegram; `Hold`/`Wait for Buy` are counted into the summary.
 
-3. **Fallback averaging** (backtest only, `simulate_timed_hodl`). The "V4" default adopted after the cash-drag study (`STRATEGY_COMPARISON.md`): if cash sits idle for >21 trading days (~1 month), deploy it equally across **any watchlist stock** below the BB midline (200-SMA); if nothing is below midline (raging bull), `fallback_force` deploys across all priced stocks so cash never rots. Each stock is capped at 15% of portfolio value. This cut the longest idle streak 214d→21d and cash drag 5.7%→1.2% while improving returns/Sharpe. Pass `("held", False, 42)` to `simulate_timed_hodl` to restore the old conservative fallback (held-only, below-midline, 42-day threshold).
+3. **Fallback averaging** (backtest only, `simulate_timed_hodl`). The "V4" default adopted after the cash-drag study (`notes/STRATEGY_COMPARISON.md`): if cash sits idle for >21 trading days (~1 month), deploy it equally across **any watchlist stock** below the BB midline (200-SMA); if nothing is below midline (raging bull), `fallback_force` deploys across all priced stocks so cash never rots. Each stock is capped at 15% of portfolio value. This cut the longest idle streak 214d→21d and cash drag 5.7%→1.2% while improving returns/Sharpe. Pass `("held", False, 42)` to `simulate_timed_hodl` to restore the old conservative fallback (held-only, below-midline, 42-day threshold).
 
 4. **Partial SIP+Timed** (backtest only, `simulate_partial_sip`). Splits each month's budget 50/50: half goes as plain SIP across all stocks regardless of signals, half waits for BB+MACD buy signals (with the same fallback logic as the timed strategy). Included as a comparison, currently underperforms pure timed with fallback (₹193.7L vs ₹207.1L) but has better risk-adjusted metrics (Sharpe 1.29, Sortino 3.05).
 
@@ -38,7 +52,7 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
 **Bollinger is the filter, not a co-equal signal.** If you add or change signals, preserve the invariant that MACD lines in Telegram are gated by the Bollinger filter `{Buy, Watch}` (via `passes_bollinger_gate`). Console output prints full Bollinger results separately.
 
-**Live bot vs backtest gate (intentional divergence).** `bot.py` `REQUIRE_CLOSE_BELOW_MIDLINE = False` — the live Telegram bot shows the **full** Buy/Watch universe (no midline filter) so no alerts are suppressed. The **backtest** runs tighter: `backtest.py` `BUY_REQUIRE_BELOW_MID = True` adds the close-below-200-SMA requirement to Timed HODL buys (better recent-horizon returns; see `STRATEGY_COMPARISON.md`). So the backtest models a stricter strategy than the bot signals, on purpose. `passes_bollinger_gate` in `bot.py` still supports the gate if the flag is flipped True.
+**Live bot vs backtest gate (intentional divergence).** `bot.py` `REQUIRE_CLOSE_BELOW_MIDLINE = False` — the live Telegram bot shows the **full** Buy/Watch universe (no midline filter) so no alerts are suppressed. The **backtest** runs tighter: `backtest.py` `BUY_REQUIRE_BELOW_MID = True` adds the close-below-200-SMA requirement to Timed HODL buys (better recent-horizon returns; see `notes/STRATEGY_COMPARISON.md`). So the backtest models a stricter strategy than the bot signals, on purpose. `passes_bollinger_gate` in `bot.py` still supports the gate if the flag is flipped True.
 
 **MarkdownV2 escaping.** Any dynamic text inserted into the Telegram message must go through `escape_md`, the special-char set is broad (`.`, `-`, `!`, `(`, `)` etc. all require escaping) and unescaped output will cause Telegram to reject the message.
 
@@ -48,7 +62,7 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
 ## Backtest output layout
 
-All backtest artifacts live under a single parent, `backtest_output/`, defined in one place by **`run_paths.py`**:
+All backtest artifacts live under a single parent, `backtest_output/`, defined in one place by **`analysis/run_paths.py`**:
 
 ```
 backtest_output/
@@ -65,10 +79,10 @@ There is **no separate archive folder**. The "current" run is simply the newest 
 
 Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtest. Prior runs are kept automatically (each run is its own dated subfolder), so the Iterations tab always compares against them — no manual archiving step:
 
-1. **Re-run** `python3 backtest.py`. It writes a fresh `backtest_output/<YYYYMMDD>_<N>sym_bb<L>/` (date from `assumptions.end_date`, N from `stocks.txt`, L from `CONFIG.bb_lookback`), auto-emitting `meta.json` and a `stocks.txt` snapshot so the run is self-describing. Older run folders are left untouched. (Prune stale runs by hand if the Iterations list gets noisy.)
-2. **Recompute horizons**: `python3 horizon_compare.py` writes `<current run>/horizons.json` — Timed HODL 1y/3y/5y/Full returns for the current + each older watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `backtest_output/six7/_price_cache.pkl` when present, else downloads). Feeds the Iterations tab's Horizon Returns tables (best per row in red).
-3. **Rebuild the views**: `python3 portfolio_view.py` regenerates `dashboard.html` and publishes a copy to `docs/strat.html` (live on GitHub Pages, linked from the six7 almanac). It reads the newest run's `horizons.json` if present. Then update the README "Latest Results" block.
+1. **Re-run** `python3 analysis/backtest.py` (from the repo root). It writes a fresh `backtest_output/<YYYYMMDD>_<N>sym_bb<L>/` (date from `assumptions.end_date`, N from `stocks.txt`, L from `CONFIG.bb_lookback`), auto-emitting `meta.json` and a `stocks.txt` snapshot so the run is self-describing. Older run folders are left untouched. (Prune stale runs by hand if the Iterations list gets noisy.)
+2. **Recompute horizons**: `python3 analysis/horizon_compare.py` writes `<current run>/horizons.json` — Timed HODL 1y/3y/5y/Full returns for the current + each older watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `backtest_output/six7/_price_cache.pkl` when present, else downloads). Feeds the Iterations tab's Horizon Returns tables (best per row in red).
+3. **Rebuild the views**: `python3 analysis/portfolio_view.py` regenerates `dashboard.html` and publishes a copy to `docs/strat.html` (live on GitHub Pages, linked from the six7 almanac). It reads the newest run's `horizons.json` if present. Then update the README "Latest Results" block.
 
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 
-`BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y — see `STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.
+`BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y — see `notes/STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.

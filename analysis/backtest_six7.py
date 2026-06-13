@@ -21,7 +21,7 @@ CAVEAT (labelled in output): the lists are a *current* (2026-06-01) fundamental
 screen, so this is survivorship/look-ahead-biased hindsight -- good for ranking
 lists against each other and across horizons, NOT a tradeable signal.
 
-Run: .venv/bin/python backtest_six7.py
+Run: python3 analysis/backtest_six7.py   (from the repo root)
 """
 
 import os

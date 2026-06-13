@@ -5,11 +5,12 @@ Backtest: Portfolio-level BB + Impulse MACD timed investing vs SIP.
 Uses stocks from stocks.txt as a single portfolio with shared monthly budget.
 Compares: Your Strategy (Timed HODL) vs SIP on same stocks vs SIP on NIFTY 50.
 
-Run: python3 backtest.py
-Output: console summary + PNG charts in backtest_output/
+Run: python3 analysis/backtest.py   (from the repo root)
+Output: console summary + PNG charts in a dated subfolder under backtest_output/
 """
 
 import os
+import sys
 import json
 import shutil
 import warnings
@@ -22,6 +23,11 @@ import matplotlib.pyplot as plt
 import matplotlib.ticker as mticker
 from matplotlib.gridspec import GridSpec
 from scipy.optimize import brentq
+
+# This module lives in analysis/; macd_signals.py is the live signal module at the
+# repo root. Add the repo root to sys.path so the import resolves when run as
+# `python analysis/backtest.py` (whose sys.path[0] is analysis/, not the root).
+sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from macd_signals import calc_smma, calc_zlema, to_1d
 import run_paths
 
@@ -64,7 +70,7 @@ CONFIG = {
 # Signal-buy gate (Timed HODL): when True, a signal buy also requires the close to
 # be below the BB midline (200-SMA), not just a band touch within lookback. Set True
 # to match the live bot (bot.py REQUIRE_CLOSE_BELOW_MIDLINE). Improves recent-horizon
-# (1/3/5y) returns, neutral over full history — see STRATEGY_COMPARISON.md.
+# (1/3/5y) returns, neutral over full history — see notes/STRATEGY_COMPARISON.md.
 BUY_REQUIRE_BELOW_MID = True
 
 REGIMES = {
@@ -224,7 +230,7 @@ def simulate_timed_hodl(stock_dfs, symbols, monthly_inv, bb_sig, bb_mid, imp_sig
                         idle_threshold=21, max_stock_pct=0.15,
                         fallback_universe="watchlist", fallback_force=True):
     """Idle-cash deployment fallback (default = the "V4" config adopted after the
-    cash-drag study in STRATEGY_COMPARISON.md):
+    cash-drag study in notes/STRATEGY_COMPARISON.md):
       idle_threshold=21    deploy after ~1 month of idle cash (was 42)
       fallback_universe    "watchlist" = any watchlist stock below midline
                            (was "held" = only existing holdings below midline)

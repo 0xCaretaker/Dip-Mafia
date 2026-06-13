@@ -19,7 +19,7 @@ Prices come from backtest_output/six7/_price_cache.pkl when present (full histor
 no download); otherwise they are downloaded once via backtest.download_batch.
 
 Output: <current run>/horizons.json  (read by portfolio_view.py)
-Run:    .venv/bin/python horizon_compare.py   (after backtest.py)
+Run:    python3 analysis/horizon_compare.py   (from the repo root, after backtest.py)
 """
 
 import os
