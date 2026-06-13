@@ -1,0 +1,111 @@
+//@version=6
+// =============================================================================
+// Dip Mafia — long-only dip-buying signals for NSE stocks (TradingView port)
+//
+// Faithful port of the live bot's signal layer:
+//   1. Bollinger Bands (200, 2σ) as a UNIVERSE FILTER (the "gate")
+//   2. Standard MACD (12/26/9) crossovers as the long signal
+//   3. Impulse MACD (LazyBear variant, as implemented in macd_signals.py)
+//   4. A BUY only fires when a MACD bullish crossover happens AND the stock is
+//      inside the Bollinger {Buy, Watch} universe.
+//
+// INVARIANT: signals only, NEVER sells. "Weakness" markers are informational
+// awareness of technical weakness — they are never executed. We only buy dips
+// and HODL.
+//
+// NOT portable to Pine (backtest-only, portfolio-level concepts): fallback
+// averaging / cash deployment, the 15%-per-stock cap, partial SIP+Timed. Pine
+// runs per-symbol with no shared cash pool, so those live in backtest.py only.
+// =============================================================================
+indicator("Dip Mafia — BB(200) gate + MACD / Impulse MACD", overlay = true, max_labels_count = 500)
+
+// ---------- Inputs ----------------------------------------------------------
+bbLength        = input.int(200,  "Bollinger length",            minval = 1, group = "Bollinger gate")
+bbStdDev        = input.float(2.0,"Bollinger std dev",           step = 0.1, group = "Bollinger gate")
+watchLookback   = input.int(60,   "Watch lookback (bars)",       minval = 1, group = "Bollinger gate")
+requireBelowMid = input.bool(false,"Require close < BB midline (backtest stricter mode)", group = "Bollinger gate",
+     tooltip = "Live bot = false (full Buy/Watch universe). backtest.py BUY_REQUIRE_BELOW_MID = true.")
+
+macdFast = input.int(12, "MACD fast EMA",   group = "Standard MACD")
+macdSlow = input.int(26, "MACD slow EMA",   group = "Standard MACD")
+macdSig  = input.int(9,  "MACD signal EMA", group = "Standard MACD")
+
+impLenMA = input.int(34, "Impulse MA length",     group = "Impulse MACD")
+impSig   = input.int(9,  "Impulse signal length", group = "Impulse MACD")
+
+signalSrc = input.string("Either", "MACD trigger",
+     options = ["Standard", "Impulse", "Either", "Both"], group = "Combine",
+     tooltip = "Either = Standard OR Impulse buy. Both = require both. Matches the two parallel indicators in the bot.")
+
+// ---------- Bollinger Bands (length=200, 2σ) --------------------------------
+// std uses biased=false -> sample stdev (ddof=1), matching pandas .std().
+basis = ta.sma(close, bbLength)
+dev   = ta.stdev(close, bbLength, false)
+upper = basis + bbStdDev * dev
+lower = basis - bbStdDev * dev
+
+plot(basis, "BB Mid (200 SMA)", color = color.new(color.orange, 0))
+pU = plot(upper, "BB Upper", color = color.new(color.gray, 50))
+pL = plot(lower, "BB Lower", color = color.new(color.gray, 50))
+fill(pU, pL, color = color.new(color.blue, 92), title = "BB envelope")
+
+// Buy: today's low OR close touches/breaks the lower band (calculate_bollinger_bands)
+touched = (low <= lower) or (close <= lower)
+
+// Watch: touched the lower band within the last `watchLookback` bars, excluding
+// the current bar (calculate_bb_past_lower_touch). barssince counts the current
+// bar as 0, so "not touched and barssince <= lookback" reproduces the exclusion.
+bsTouch    = ta.barssince(touched)
+bbBuy      = touched
+bbWatch    = (not touched) and (not na(bsTouch)) and (bsTouch <= watchLookback)
+inUniverse = bbBuy or bbWatch                              // the {Buy, Watch} gate
+
+midOk = (not requireBelowMid) or (close < basis)
+
+// ---------- Standard MACD (12/26/9) -----------------------------------------
+emaFast  = ta.ema(close, macdFast)
+emaSlow  = ta.ema(close, macdSlow)
+macdLine = emaFast - emaSlow
+sigLine  = ta.ema(macdLine, macdSig)
+stdBuy   = ta.crossover(macdLine, sigLine)                 // prev macd<sig & macd>sig
+stdSell  = ta.crossunder(macdLine, sigLine)
+
+// ---------- Impulse MACD (LazyBear variant, per macd_signals.py) ------------
+hlc3src = (high + low + close) / 3
+hi = ta.rma(high, impLenMA)        // SMMA == Pine RMA (alpha = 1/length) == calc_smma
+lo = ta.rma(low,  impLenMA)
+e1 = ta.ema(hlc3src, impLenMA)
+e2 = ta.ema(e1, impLenMA)
+mi = e1 + (e1 - e2)                // repo's calc_zlema == DEMA: 2*ema1 - ema2
+md = mi > hi ? mi - hi : (mi < lo ? mi - lo : 0.0)
+sb = ta.sma(md, impSig)            // signal = SMA(md, 9)
+impBuy  = ta.crossover(md, sb)
+impSell = ta.crossunder(md, sb)
+
+// ---------- Combine ---------------------------------------------------------
+macdBuy  = signalSrc == "Standard" ? stdBuy  :
+           signalSrc == "Impulse"  ? impBuy  :
+           signalSrc == "Both"     ? (stdBuy  and impBuy)  :
+                                      (stdBuy  or  impBuy)      // Either
+macdSell = signalSrc == "Standard" ? stdSell :
+           signalSrc == "Impulse"  ? impSell :
+           signalSrc == "Both"     ? (stdSell and impSell) :
+                                      (stdSell or  impSell)
+
+// Gated BUY: MACD bullish crossover, inside BB {Buy,Watch}, passing midline rule
+dipBuy = macdBuy and inUniverse and midOk
+
+// ---------- Markers ---------------------------------------------------------
+plotshape(dipBuy, "Dip BUY", shape.triangleup, location.belowbar,
+     color.new(color.green, 0), size = size.small, text = "BUY")
+plotshape(bbWatch and not dipBuy, "Watch (in universe, no MACD buy yet)", shape.circle,
+     location.belowbar, color.new(color.purple, 30), size = size.tiny)
+// Informational only — the strategy NEVER acts on weakness.
+plotshape(macdSell, "Weakness (info only, never sold)", shape.triangledown, location.abovebar,
+     color.new(color.red, 25), size = size.tiny, text = "weak")
+
+bgcolor(bbBuy ? color.new(color.green, 90) : na, title = "Lower-band touch zone")
+
+// ---------- Alerts ----------------------------------------------------------
+alertcondition(dipBuy,   "Dip Mafia BUY",   "Dip Mafia: gated BUY signal (BB + MACD)")
+alertcondition(bbWatch,  "Dip Mafia WATCH", "Dip Mafia: stock entered Watch universe")
