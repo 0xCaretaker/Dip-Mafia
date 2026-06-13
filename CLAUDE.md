@@ -55,4 +55,4 @@ Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtes
 
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 
-`BUY_REQUIRE_BELOW_MID` in `backtest.py` (default False) is an experiment flag: when True, a Timed HODL signal buy also requires close < BB midline. Neutral over the full period but the best recent-1y variant on the current list — see `STRATEGY_COMPARISON.md`.
+`BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y — see `STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.

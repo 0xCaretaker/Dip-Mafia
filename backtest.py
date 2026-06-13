@@ -57,10 +57,11 @@ CONFIG = {
     "slippage_bps": 5,
 }
 
-# Signal-buy gate experiment (Timed HODL): when True, a signal buy also requires
-# the close to be below the BB midline (200-SMA), not just a band touch within
-# lookback. Default False preserves the standard BB(touch)+MACD gate.
-BUY_REQUIRE_BELOW_MID = False
+# Signal-buy gate (Timed HODL): when True, a signal buy also requires the close to
+# be below the BB midline (200-SMA), not just a band touch within lookback. Set True
+# to match the live bot (bot.py REQUIRE_CLOSE_BELOW_MIDLINE). Improves recent-horizon
+# (1/3/5y) returns, neutral over full history — see STRATEGY_COMPARISON.md.
+BUY_REQUIRE_BELOW_MID = True
 
 REGIMES = {
     "Dot-com crash\n(2000-03)":     ("2000-01-01", "2003-05-01", "Bear/Crash"),
