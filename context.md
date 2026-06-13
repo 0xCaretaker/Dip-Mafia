@@ -14,8 +14,8 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
   - SIP nearly matches on absolute returns (neck and neck)
   - Both crush NIFTY 50 by ~3.6x
   - Prior 62-symbol / 30-bar run archived in backtest_output_archive_20260417/
-  - Backtest now matches live bot: BUY_REQUIRE_BELOW_MID=True (= REQUIRE_CLOSE_BELOW_MIDLINE).
-    Midline gate adds returns over 1/3/5y horizons, ~neutral over full 16y.
+  - Gate divergence (intentional): backtest BUY_REQUIRE_BELOW_MID=True (tighter, better 1/3/5y);
+    live bot REQUIRE_CLOSE_BELOW_MIDLINE=False (sends ALL Buy/Watch alerts, no midline filter).
 
 # Architecture
 - `bot.py` — single entry point. Downloads all tickers once via `yf.download`, passes shared DataFrame to signal modules. Sends MarkdownV2 Telegram messages.

@@ -55,7 +55,7 @@
 | **Gate** | Bollinger Bands (200, 2σ) | Buy | Price at or below lower band today |
 | | | Watch | Touched lower band in last 60 days |
 | | | Hold | No recent lower band interaction, **filtered out** |
-| | | _midline gate_ | Buy/Watch must also be **below the 200-SMA midline** (`REQUIRE_CLOSE_BELOW_MIDLINE`, on by default) |
+| | | _midline gate_ | **Backtest only**: Buy/Watch must also be below the 200-SMA midline (`BUY_REQUIRE_BELOW_MID`). The live bot sends all Buy/Watch (`REQUIRE_CLOSE_BELOW_MIDLINE=False`) |
 | **Signal** | Standard MACD (12/26/9) | Buy/Sell | Crossover on current bar |
 | | Impulse MACD (LazyBear) | Buy/Sell | SMMA + ZLEMA crossover on current bar |
 | | Both | Hold / Wait for Buy | Between crossovers |
@@ -193,7 +193,7 @@ Generates 8 charts in `backtest_output/` + console summary.
 | Volatility | 39.0% | 39.5% | 37.7% |
 
 - **Both strategies crush NIFTY 50 by ~3.6x**, stock picking matters more than timing
-- **Backtest matches the live bot** — midline buy gate on (`BUY_REQUIRE_BELOW_MID`); it adds returns over 1/3/5y horizons, ~neutral over the full 16y
+- **Backtest is gated, the live bot is not** (by design) — `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest (better 1/3/5y returns, ~neutral over 16y); the Telegram bot stays ungated so all Buy/Watch alerts come through
 - **Cash drag down to 1.2%** (from 5.7%) with the V4 fallback, longest idle stretch cut from 214 to 21 trading days
 - **Real returns beat inflation easily**, 20.4% real XIRR for Timed HODL vs 4.9% for NIFTY 50
 - **Entry+Exit is terrible**, selling on MACD Sell destroys compounding

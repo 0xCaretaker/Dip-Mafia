@@ -36,7 +36,9 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
 **Single download, shared DataFrame.** `bot.py` calls `yf.download` once for all tickers (period=1y, interval=1d) and passes that multi-index DataFrame to `process_both_signals` and `process_bollinger_signals`. Per-stock frames are sliced with `data.xs(stock, axis=1, level=1)`. Do not reintroduce per-stock downloads in the hot path.
 
-**Bollinger is the filter, not a co-equal signal.** If you add or change signals, preserve the invariant that MACD lines in Telegram are gated by the Bollinger filter. The gate is `{Buy, Watch}` and — when `REQUIRE_CLOSE_BELOW_MIDLINE = True` (current default in `bot.py`) — also requires the latest close to sit below the BB midline (band position ⏬/🔽), via `passes_bollinger_gate`. Buy names always qualify; this only drops Watch names that recovered above their 200-SMA. Set the flag False to revert to the plain `{Buy, Watch}` gate. Console output prints full Bollinger results separately.
+**Bollinger is the filter, not a co-equal signal.** If you add or change signals, preserve the invariant that MACD lines in Telegram are gated by the Bollinger filter `{Buy, Watch}` (via `passes_bollinger_gate`). Console output prints full Bollinger results separately.
+
+**Live bot vs backtest gate (intentional divergence).** `bot.py` `REQUIRE_CLOSE_BELOW_MIDLINE = False` — the live Telegram bot shows the **full** Buy/Watch universe (no midline filter) so no alerts are suppressed. The **backtest** runs tighter: `backtest.py` `BUY_REQUIRE_BELOW_MID = True` adds the close-below-200-SMA requirement to Timed HODL buys (better recent-horizon returns; see `STRATEGY_COMPARISON.md`). So the backtest models a stricter strategy than the bot signals, on purpose. `passes_bollinger_gate` in `bot.py` still supports the gate if the flag is flipped True.
 
 **MarkdownV2 escaping.** Any dynamic text inserted into the Telegram message must go through `escape_md`, the special-char set is broad (`.`, `-`, `!`, `(`, `)` etc. all require escaping) and unescaped output will cause Telegram to reject the message.
 

@@ -13,13 +13,14 @@ from bollinger_signals import process_bollinger_signals
 # =========================
 # Bollinger buy gate
 # =========================
-# When True, the Bollinger gate (the Buy/Watch universe that feeds the Verdict and
-# the sentiment counts) additionally requires the latest close to sit below the BB
-# midline (200-SMA) — i.e. band position ⏬ (below lower) or 🔽 (below mid). Buy
-# stocks always qualify (a lower-band touch is below the mid); this only drops
-# "Watch" names that have already recovered above their 200-SMA. Mirrors the
-# backtest's BUY_REQUIRE_BELOW_MID experiment — see STRATEGY_COMPARISON.md.
-REQUIRE_CLOSE_BELOW_MIDLINE = True
+# Intentionally OFF for the live bot: notifications show the FULL Bollinger
+# Buy/Watch universe (lower-band touch within 60 bars + MACD), so nothing is
+# filtered out of Telegram. The midline gate lives ONLY in the backtest
+# (backtest.py BUY_REQUIRE_BELOW_MID=True), which models a tighter strategy; the
+# bot deliberately stays looser for awareness. If set True here, the Verdict and
+# sentiment would also require close < BB midline (band position ⏬/🔽), dropping
+# Watch names that recovered above their 200-SMA. See STRATEGY_COMPARISON.md.
+REQUIRE_CLOSE_BELOW_MIDLINE = False
 _BELOW_MID_POSITIONS = {"⏬", "🔽"}
 
 
