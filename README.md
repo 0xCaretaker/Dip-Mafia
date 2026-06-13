@@ -1,8 +1,10 @@
-# Algorithmic Trading Bot — Crash-Buy Signals for Indian Equities (NSE)
+# Dip Mafia — Crash-Buy Signals for Indian Equities (NSE)
 
-An automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram — fully automated via GitHub Actions.
+**Dip Mafia** (formerly HODL-bot) is an automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram — fully automated via GitHub Actions.
 
 > **Philosophy**: Buy the crash, hold forever. This bot watches 60+ fundamentally screened NSE stocks and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits — just long entries at high-conviction dips.
+>
+> **We never sell.** Sell / red signals are **indications only** — they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
 > The watchlist in `stocks.txt` is curated via a separate fundamental analysis tool (not included in this repo) — this bot handles the technical timing layer on top of that fundamental filter.
 
@@ -219,7 +221,7 @@ Generates 8 charts in `backtest_output/` + console summary.
 ├── stocks.txt             # Watchlist
 ├── requirements.txt       # yfinance, requests
 └── .github/workflows/
-    └── hodl.yml           # GitHub Actions (cron + cache)
+    └── dip-mafia.yml      # GitHub Actions (cron + cache)
 ```
 
 Each signal module can run standalone for quick analysis:

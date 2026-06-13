@@ -2,9 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+**Project: Dip Mafia** (formerly HODL-bot) — a long-only dip-buying signal bot for NSE stocks. Crucial invariant: it is *signals only*. The strategy **never sells** — Sell/red signals are indications of technical weakness for awareness, never executed. Everything user-facing (Telegram, README, repo bio) must reflect "we only buy dips and HODL."
+
 ## How this runs
 
-The only real entry point is `bot.py`, invoked by `.github/workflows/hodl.yml` on a cron schedule. `bollinger_signals.py` and `macd_signals.py` have `__main__` blocks but they are not part of the production path — treat them as import-only modules. There are no tests, linter, or build step.
+The only real entry point is `bot.py`, invoked by `.github/workflows/dip-mafia.yml` on a cron schedule. `bollinger_signals.py` and `macd_signals.py` have `__main__` blocks but they are not part of the production path — treat them as import-only modules. There are no tests, linter, or build step.
 
 Local invocation (rarely needed):
 ```bash

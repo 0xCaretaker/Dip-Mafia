@@ -8,3 +8,8 @@ __pycache__/
 # six7 backtest: large regenerable artifacts (scripts + docs/data.js are committed)
 six7_backtest_output/
 six7_stocks/snapshot_*.json
+
+# Claude Code local tooling / skills (not part of the project)
+.claude/
+.github/skills/
+docs/superpowers/

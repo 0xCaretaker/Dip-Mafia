@@ -158,7 +158,7 @@ def generate_html(portfolio_data, backtest_data):
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HODL Bot Dashboard</title>
+<title>Dip Mafia Dashboard</title>
 <style>
 :root {{
   --bg: #0f0f1a; --card: #1a1a2e; --border: #2a2a3e;
@@ -320,7 +320,7 @@ tr.total-row td {{ border-top: 2px solid var(--border); }}
 <body>
 
 <div class="header">
-  <h1>HODL Bot Dashboard</h1>
+  <h1>Dip Mafia Dashboard</h1>
   <div class="sub">Updated {datetime.now().strftime('%d %b %Y, %I:%M %p')}</div>
 </div>
 

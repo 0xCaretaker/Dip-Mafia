@@ -2,7 +2,7 @@
 Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Telegram delivery. Backtest validates the strategy at portfolio level against equal-weight SIP and NIFTY 50.
 
 # Current Status
-- **Bot**: Production-ready, runs via GitHub Actions cron (`hodl.yml`)
+- **Bot**: Production-ready, runs via GitHub Actions cron (`dip-mafia.yml`)
 - **Backtest**: Focused portfolio-level simulation. stocks.txt stocks share a single monthly budget. Compares 3 strategies + NIFTY 50 benchmark. Generates 8 clean PNG charts + console summary.
 - **Latest results** (2026-04-20, 61 stocks, ₹24.7L invested over 16.3 years):
   - Your Strategy (Timed HODL): ₹194.2L, XIRR 26.9%, Sharpe 1.24, MaxDD -54.1%
@@ -43,7 +43,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 - `backtest.py` — portfolio-level backtest (run: `python3 backtest.py`)
 - `stocks.txt` — watchlist (62 symbols, no `.NS` suffix)
 - `backtest_output/` — 8 numbered PNG charts + trades.csv + trades_monthly_summary.csv
-- `.github/workflows/hodl.yml` — cron schedule
+- `.github/workflows/dip-mafia.yml` — cron schedule
 - `requirements.txt` — yfinance, requests (backtest also needs matplotlib, scipy)
 
 # Known Issues

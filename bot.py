@@ -117,11 +117,8 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     now = datetime.now(ZoneInfo("Asia/Kolkata"))
     day = now.strftime('%d %b').lstrip('0')
     clock = now.strftime('%I:%M %p').lstrip('0')
-    combined_lines.append("📊 *Signal Alert*")
-    combined_lines.append(f"_{escape_md(day)} · {escape_md(clock)} IST_")
-    combined_lines.append("")
-    combined_lines.append("⏬ deep dip · 🔽 below avg")
-    combined_lines.append("🔼 above avg · ⏫ stretched")
+    combined_lines.append("🔻 *DIP MAFIA*")
+    combined_lines.append(f"_signal alert · {escape_md(day)} · {escape_md(clock)} IST_")
     combined_lines.append("")
 
     # Index summary
@@ -130,10 +127,11 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             pct = info['pct_move']
             ath_diff = info['from_ath']
             arrow = "🔺" if pct > 0 else "🔻"
+            short = {"NIFTY Midcap 100": "MIDCAP 100"}.get(name, name)
             pct_str = f"{pct:+.2f}%"
-            ath_str = f"{ath_diff:+.2f}%"
+            ath_str = f"{ath_diff:+.1f}%"
             combined_lines.append(
-                f"{arrow} {escape_md(name)} `{pct_str}` · ATH `{ath_str}`"
+                f"{arrow} *{escape_md(short)}*  `{pct_str}`  ·  ATH `{ath_str}`"
             )
         combined_lines.append("")
 
@@ -167,7 +165,11 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             mood, icon = "Cautious", "🟠"
         combined_lines.append(f"{icon} *Sentiment: {mood}*")
 
-    divider = "─" * 12
+    # A monospace rule sized to the data columns: long enough to feel like a
+    # real divider, but never wider than the rows (so it can't wrap on mobile).
+    content_width = max_len + 2 + price_width  # "{ticker} ₹{price}"
+    divider = "`" + "─" * max(content_width, 10) + "`"
+    rendered = [False]
 
     # MACD section builder. filter_set=None renders the full universe;
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
@@ -194,7 +196,9 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             return
 
         combined_lines.append("")
-        combined_lines.append(divider)
+        if rendered[0]:          # divider only *between* sections, not before the first
+            combined_lines.append(divider)
+        rendered[0] = True
         combined_lines.append(title)
 
         for stock, action, price, position in entries:
@@ -219,15 +223,26 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
-    # 1) Standard MACD — full universe, no Bollinger gate
-    append_macd_section("📈 *Trend* _\\(MACD\\)_", std_signals, None)
-    # 2) Impulse MACD — full universe, no Bollinger gate
-    append_macd_section("⚡ *Momentum* _\\(Impulse\\)_", impulse_signals, None)
+    # 1) Standard MACD — full universe, no Bollinger gate (earlier, noisier read)
+    append_macd_section("📈 *Early Signal* _\\(MACD\\)_", std_signals, None)
+    # 2) Impulse MACD — full universe, no Bollinger gate (stronger confirmation)
+    append_macd_section("⚡ *Strong Signal* _\\(iMACD\\)_", impulse_signals, None)
     # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter (the verdict)
-    append_macd_section("🎯 *HODL Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
+    append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
-    # Nothing rendered (no section divider added) → nothing worth sending.
-    if divider not in combined_lines:
+    # Footer: arrow legend + the "we never sell" reminder.
+    if rendered[0]:
+        combined_lines.append("")
+        combined_lines.append(divider)
+        combined_lines.append("⏬ deep dip · 🔽 below avg")
+        combined_lines.append("🔼 above avg · ⏫ stretched")
+        combined_lines.append("")
+        combined_lines.append(
+            "_Dip Mafia never sells — red just flags weakness · we only buy dips & HODL_"
+        )
+
+    # Nothing rendered → nothing worth sending.
+    if not rendered[0]:
         return
 
     # Collapse runs of blank lines and trim edges for even spacing.
