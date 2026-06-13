@@ -881,6 +881,8 @@ function renderBacktest() {{
   }});
   html += `</tbody></table></div></div>`;
 
+  if (HZ && HZ.strategy_horizons) html += renderStrategyHorizons();
+
   el.innerHTML = html;
 
   // Render tile charts from the config registry
@@ -989,6 +991,43 @@ function renderIterations() {{
         y:{{ticks:{{color:'#888',callback:v=>fmtInr(v)}},grid:{{color:'#ffffff10'}}}} }}
     }}
   }});
+}}
+
+// 3-strategy horizon tables (Backtest tab): one block per horizon, metric rows ×
+// strategy columns, best per metric row in red. Keeps the Full-period table above.
+function renderStrategyHorizons() {{
+  const sh = HZ.strategy_horizons;
+  const strategies = sh.strategies, metrics = sh.metrics, cells = sh.cells;
+  const fmt = (v, f) => (v==null ? '—' : (f==='pct' ? v.toFixed(1)+'%' : v.toFixed(2)));
+  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns — by Strategy</h3>
+    <div style="color:var(--muted);font-size:0.76rem;margin-bottom:8px">
+      Trailing windows to ${{sh.end_date || HZ.end_date}} &bull; ${{sh.contribution}} &bull;
+      gate ${{sh.gated ? 'on' : 'off'}} (matches backtest) &bull; best per row in
+      <span style="color:#ff3b3b;font-weight:800">red</span>. Full uses flat contributions,
+      so its XIRR is ~ the salary-model headline above.
+    </div><div class="bt-grid">`;
+  sh.horizons.forEach(hl => {{
+    h += `<div class="bt-tile" style="cursor:default"><h3>${{hl}}</h3>
+      <div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th class="row-label"></th>`;
+    strategies.forEach(s => {{ h += `<th${{s==='Timed HODL'?' style="color:var(--green)"':''}}>${{s}}</th>`; }});
+    h += `</tr></thead><tbody>`;
+    metrics.forEach(m => {{
+      const vals = strategies.map(s => {{ const c = cells[`${{s}}|${{hl}}`]; return c ? c[m.key] : null; }});
+      const nums = vals.filter(v => v!=null);
+      // higher is better for all (XIRR, Sharpe, MaxDD-closer-to-0); cash drag lower is better
+      let best = null;
+      if (nums.length) best = (m.key==='cash') ? Math.min(...nums) : Math.max(...nums);
+      h += `<tr><td class="row-label">${{m.label}}</td>`;
+      vals.forEach(v => {{
+        if (v==null) {{ h += `<td>—</td>`; return; }}
+        h += `<td${{v===best ? ' class="hz-best"' : ''}}>${{fmt(v, m.fmt)}}</td>`;
+      }});
+      h += `</tr>`;
+    }});
+    h += `</tbody></table></div></div>`;
+  }});
+  h += `</div></div>`;
+  return h;
 }}
 
 // Horizon comparison tables — 1y/3y/5y/Full × (watchlist × bb-variant), best per row in red.

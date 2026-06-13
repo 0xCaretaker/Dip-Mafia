@@ -27,7 +27,9 @@ import glob
 import json
 import pickle
 
+import numpy as np
 import pandas as pd
+import yfinance as yf
 
 import backtest as bt
 
@@ -36,6 +38,13 @@ PRICE_CACHE = "six7_backtest_output/_price_cache.pkl"
 OUT = "backtest_output/horizons.json"
 
 HORIZONS = [("1y", 1), ("3y", 3), ("5y", 5), ("Full", None)]
+# 3-strategy horizon table (Backtest tab). Metrics kept: all of them.
+STRAT_METRICS = [
+    {"key": "xirr",   "label": "XIRR",      "fmt": "pct"},
+    {"key": "sharpe", "label": "Sharpe",    "fmt": "num"},
+    {"key": "maxdd",  "label": "Max DD",    "fmt": "pct"},
+    {"key": "cash",   "label": "Cash drag", "fmt": "pct"},
+]
 # bb-60 first = the default. (key, label, lookback, require_below_mid)
 VARIANTS = [
     ("bb60",    "bb-60",      60, False),
@@ -105,6 +114,84 @@ def run_cell(data, symbols, years, sig, end_dt):
             "maxdd": round(m["max_drawdown"], 1)}
 
 
+def _load_nifty():
+    """^NSEI close series, full history to END (single-ticker download)."""
+    try:
+        d = yf.download("^NSEI", start="2010-01-01", end=str(END.date()), progress=False)
+        d = bt.flatten_cols(d).dropna()
+        s = d["Close"]
+        return s[s.index <= END]
+    except Exception as e:
+        print(f"  NIFTY download failed ({e}); skipping NIFTY in strategy horizons")
+        return None
+
+
+def _nifty_sip_window(nd, monthly):
+    units = cash = 0.0
+    done, recs, cf = set(), [], []
+    for dt, price in nd.items():
+        price = float(price)
+        key = (dt.year, dt.month)
+        if key in monthly and key not in done:
+            amt = monthly[key]["amount"]
+            cash += amt; done.add(key); cf.append((dt, -amt))
+            units += cash / (price * (1 + 5 / 10000)); cash = 0.0
+        recs.append({"date": dt, "portfolio": units * price + cash})
+    return pd.DataFrame(recs).set_index("date")["portfolio"], cf
+
+
+def strategy_horizons(data, symbols, sig, end_dt):
+    """Timed HODL / SIP / NIFTY 50 across horizons, all metrics, flat ₹20k, gated
+    to match the backtest default (bt.BUY_REQUIRE_BELOW_MID)."""
+    cfg, bb, bb_mid, imp, _mid = sig
+    fcfg = dict(bt.CONFIG); fcfg["bb_lookback"] = 60
+    fcfg["initial_salary"] = 80_000; fcfg["salary_growth"] = 0.0; fcfg["invest_pct"] = 0.25
+    # Match the gated backtest default (the run_cell loop above leaves the global off).
+    prev_gate = bt.BUY_REQUIRE_BELOW_MID
+    bt.BUY_REQUIRE_BELOW_MID = True
+    nifty = _load_nifty()
+    cells = {}
+    for hl, yr in HORIZONS:
+        hstart = (min(data[s].index.min() for s in symbols if s in data)
+                  if yr is None else end_dt - pd.DateOffset(years=yr))
+        win = {s: data[s][data[s].index >= hstart] for s in symbols if s in bb}
+        win = {s: df for s, df in win.items() if not df.empty}
+        syms = list(win.keys())
+        dates = bt.get_all_dates(win, syms)
+        if not dates:
+            continue
+        monthly = bt.build_monthly_investments(dates, fcfg)
+        # Timed HODL (gate per backtest default + V4 fallback defaults)
+        tsim, tcf, _bl, _idle = bt.simulate_timed_hodl(win, syms, monthly, bb, bb_mid, imp,
+                                                       slippage_bps=fcfg["slippage_bps"])
+        tm = bt.compute_metrics(tsim["portfolio"], "T", tcf)
+        tot = tsim["portfolio"].replace(0, np.nan)
+        cash = float((tsim["cash"] / tot * 100).fillna(100).mean())
+        cells[f"Timed HODL|{hl}"] = {"xirr": round(tm["xirr"], 1), "sharpe": round(tm["sharpe"], 2),
+                                     "maxdd": round(tm["max_drawdown"], 1), "cash": round(cash, 1)}
+        # SIP
+        ssim, scf = bt.simulate_sip(win, syms, monthly, fcfg["slippage_bps"])
+        sm = bt.compute_metrics(ssim["portfolio"], "S", scf)
+        cells[f"SIP|{hl}"] = {"xirr": round(sm["xirr"], 1), "sharpe": round(sm["sharpe"], 2),
+                              "maxdd": round(sm["max_drawdown"], 1), "cash": None}
+        # NIFTY 50
+        if nifty is not None:
+            nsim, ncf = _nifty_sip_window(nifty[nifty.index >= hstart], monthly)
+            nm = bt.compute_metrics(nsim, "N", ncf)
+            cells[f"NIFTY 50|{hl}"] = {"xirr": round(nm["xirr"], 1), "sharpe": round(nm["sharpe"], 2),
+                                       "maxdd": round(nm["max_drawdown"], 1), "cash": None}
+    gated = bool(bt.BUY_REQUIRE_BELOW_MID)
+    bt.BUY_REQUIRE_BELOW_MID = prev_gate
+    return {
+        "gated": gated,
+        "contribution": "flat ₹20k/month",
+        "horizons": [h for h, _ in HORIZONS],
+        "strategies": ["Timed HODL", "SIP", "NIFTY 50"],
+        "metrics": STRAT_METRICS,
+        "cells": cells,
+    }
+
+
 def build():
     # watchlists: current first, then each archive (matches Iterations tab ordering)
     watchlists = [{"key": "Current", "label": "Current", "is_current": True,
@@ -146,6 +233,10 @@ def build():
                     cells[f"{wl['key']}|{vkey}|{hl}"] = r
         print(f"  done: {wl['label']}")
 
+    # 3-strategy horizon table for the CURRENT watchlist, using the live backtest
+    # config (bb-60 signals + bt.BUY_REQUIRE_BELOW_MID gate + V4 fallback defaults).
+    strat_h = strategy_horizons(data, watchlists[0]["symbols"], sigs["bb60"], end_dt)
+
     out = {
         "end_date": str(end_dt.date()),
         "source": "price cache" if os.path.isfile(PRICE_CACHE) else "download",
@@ -156,6 +247,7 @@ def build():
         "watchlists": [{"key": w["key"], "label": w["label"], "is_current": w["is_current"]}
                        for w in watchlists],
         "cells": cells,
+        "strategy_horizons": strat_h,
     }
     os.makedirs(os.path.dirname(OUT), exist_ok=True)
     json.dump(out, open(OUT, "w"))

@@ -125,6 +125,54 @@ Timed HODL ₹188.1L, Sharpe 1.32, MaxDD −49.4%, cash drag 1.2%, longest idle 
 `fallback_force=True`, `idle_threshold=21`. Restore the old behavior with
 `("held", False, 42)`.
 
+## Horizon returns by strategy (Timed HODL / SIP / NIFTY 50)
+
+Gated backtest config (bb-60 + midline gate + V4 fallback), flat ₹20k/mo, trailing
+windows to 2026-04-17. Best per metric row in **bold**. Also rendered in the
+dashboard Backtest tab (best per row in red). Full uses flat contributions, so its
+XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
+
+**1 year**
+
+| Metric | Timed HODL | SIP | NIFTY 50 |
+|---|---|---|---|
+| XIRR | **16.1%** | 0.7% | −3.8% |
+| Sharpe | 2.48 | 2.47 | **2.49** |
+| Max DD | **−9.8%** | −10.8% | −10.2% |
+| Cash drag | 3.3% | — | — |
+
+**3 years**
+
+| Metric | Timed HODL | SIP | NIFTY 50 |
+|---|---|---|---|
+| XIRR | 10.7% | **24.4%** | 4.9% |
+| Sharpe | 1.88 | **2.05** | 1.91 |
+| Max DD | −16.8% | −22.3% | **−11.7%** |
+| Cash drag | 5.9% | — | — |
+
+**5 years**
+
+| Metric | Timed HODL | SIP | NIFTY 50 |
+|---|---|---|---|
+| XIRR | 37.0% | **38.5%** | 7.9% |
+| Sharpe | 1.94 | **1.95** | 1.65 |
+| Max DD | −26.9% | −26.3% | **−12.9%** |
+| Cash drag | 2.0% | — | — |
+
+**Full (~16y)**
+
+| Metric | Timed HODL | SIP | NIFTY 50 |
+|---|---|---|---|
+| XIRR | 25.2% | **25.9%** | 10.9% |
+| Sharpe | **1.23** | 1.22 | 1.03 |
+| Max DD | −56.5% | −54.6% | **−37.8%** |
+| Cash drag | 1.1% | — | — |
+
+**Reading:** Timing's edge is regime-dependent — Timed HODL dominates the last 1y
+(16.1% vs SIP 0.7%) but SIP wins 3y/5y on return; the two tie over Full. Timed
+almost always has the shallower drawdown of the two stock strategies. NIFTY 50
+trails on return at every horizon ≥3y but has the mildest drawdowns.
+
 ## Caveat
 
 All runs apply *today's* watchlist over full history — the same survivorship /
