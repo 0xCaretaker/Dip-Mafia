@@ -146,7 +146,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 
 ### Latest Results (73 stocks, 2010–2026)
 
-> Run as of 2026-06-02 (from the recalculated six7 almanac's live-watchlist run, `backtest_output/six7/stocks_current/`) against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), 60-bar Bollinger watch window, **midline buy gate** (matches the live bot), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`).
+> Run as of 2026-06-02 (from the recalculated six7 almanac's live-watchlist run, `backtest_output/six7/stocks_current/`) against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), 60-bar Bollinger watch window, **midline buy gate** (matches the live bot), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`).
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -159,7 +159,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
   Inflation (6%/yr):  ₹1 in 2010 = ₹2.6 today
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════
-  RESULTS — 73 stocks, ₹25.2L invested
+  RESULTS - 73 stocks, ₹25.2L invested
 ════════════════════════════════════════════════════════════════════════════════════════════════════
                             Your Strategy (Timed HODL)      Partial SIP+Timed     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -193,7 +193,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 | Volatility | 38.8% | 39.4% | 37.6% |
 
 - **Both strategies crush NIFTY 50 by ~4x**, stock picking matters more than timing
-- **Backtest is gated, the live bot is not** (by design) — `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest (better 1/3/5y returns, ~neutral over 16y); the Telegram bot stays ungated so all Buy/Watch alerts come through
+- **Backtest is gated, the live bot is not** (by design) - `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest (better 1/3/5y returns, ~neutral over 16y); the Telegram bot stays ungated so all Buy/Watch alerts come through
 - **Cash drag down to 1.2%** (from 5.7%) with the V4 fallback, longest idle stretch cut from 214 to 21 trading days
 - **Real returns beat inflation easily**, 20.8% real XIRR for Timed HODL vs 4.3% for NIFTY 50
 - **Entry+Exit is terrible**, selling on MACD Sell destroys compounding
@@ -223,7 +223,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 ├── bollinger_signals.py   # 200-period Bollinger Bands (standalone capable)
 ├── stocks.txt             # watchlist
 ├── analysis/              # research/backtest tooling (run from the repo root)
-│   ├── backtest.py        # portfolio backtest — Timed HODL (V4 fallback + midline + bb-60)
+│   ├── backtest.py        # portfolio backtest - Timed HODL (V4 fallback + midline + bb-60)
 │   ├── horizon_compare.py # 1y/3y/5y/Full horizon table for the strat dashboard
 │   ├── portfolio_view.py  # builds dashboard.html + docs/strat.html
 │   ├── backtest_six7.py   # six7 almanac: lists × horizons (same Timed HODL strategy)

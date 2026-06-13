@@ -1,6 +1,6 @@
 //@version=6
 // =============================================================================
-// Dip Mafia — STRATEGY backtest variant (long-only, HODL, NEVER sells)
+// Dip Mafia - STRATEGY backtest variant (long-only, HODL, NEVER sells)
 //
 // Same signal layer as dip_mafia.pine (BB(200) gate + MACD / Impulse MACD), but
 // wired into strategy() so TradingView produces an equity curve.
@@ -11,7 +11,7 @@
 //
 // This is a per-symbol approximation of "Timed HODL": it deploys a fixed cash
 // tranche on each gated buy. It does NOT model the portfolio-level fallback
-// averaging, 15%-per-stock cap, or SIP split — those need a shared cash pool
+// averaging, 15%-per-stock cap, or SIP split - those need a shared cash pool
 // across the whole watchlist and live in backtest.py.
 // =============================================================================
 strategy("Dip Mafia HODL (long-only, never sells)", overlay = true,
@@ -108,7 +108,7 @@ if dipBuy and warmedUp
 
 // ---------- Performance metrics (equity-curve based) ------------------------
 // A never-sell strategy has ZERO closed trades, so TradingView's Strategy Tester
-// leaves trade-based stats (win %, profit factor, avg trade — and often Sharpe)
+// leaves trade-based stats (win %, profit factor, avg trade - and often Sharpe)
 // blank or 0. We instead compute return/risk from the equity curve itself, using
 // the same conventions as backtest.py compute_metrics(): per-day excess return
 // over a 6% risk-free, sample stdev, sqrt(252) annualization, Sortino measured on
@@ -176,7 +176,7 @@ if showMetrics and barstate.islast
     calmar  = maxDD < 0 ? (cagr / 100.0) / math.abs(maxDD) : 0.0
 
     hd = color.new(color.teal, 0)
-    table.cell(perf, 0, 0, "Dip Mafia HODL — equity metrics", text_color = color.white,
+    table.cell(perf, 0, 0, "Dip Mafia HODL - equity metrics", text_color = color.white,
          text_size = size.small, bgcolor = hd)
     table.cell(perf, 1, 0, "", bgcolor = hd)
     metricRow(1,  "Total return",   str.tostring(tr * 100.0, "#.##") + "%")

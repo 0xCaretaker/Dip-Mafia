@@ -95,7 +95,7 @@ def comparison_row(r):
 def main():
     manifest = json.load(open(os.path.join("six7_stocks", "lists", "_manifest.json")))
     counts = {k: v["count"] for k, v in manifest["lists"].items()}
-    # the two watchlists aren't in the six7 manifest — count their files directly
+    # the two watchlists aren't in the six7 manifest - count their files directly
     for key, path in [("univest_old", os.path.join("six7_stocks", "lists", "univest_old.txt")),
                       ("stocks_current", "stocks.txt")]:
         if os.path.isfile(path):
@@ -141,7 +141,7 @@ def main():
         "meta": {k: {"label": v[0], "blurb": v[1], "count": counts.get(k)} for k, v in META.items()},
         "comparison": comparison,
         "curves": curves,
-        "caveat": ("Lists are a current (2026-06-01) fundamental screen run backward — "
+        "caveat": ("Lists are a current (2026-06-01) fundamental screen run backward - "
                    "survivorship / look-ahead biased hindsight, not a tradeable signal."),
     }
 

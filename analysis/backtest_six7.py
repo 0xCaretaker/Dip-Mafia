@@ -136,7 +136,7 @@ def nav_metrics(sim_df, cashflows, name):
     """Metrics where risk is measured on the cash-flow-adjusted NAV (unit value).
 
     Sharpe/Sortino/MaxDD/volatility/CAGR on the raw accumulating portfolio value
-    are meaningless — monthly contributions show up as always-positive daily
+    are meaningless - monthly contributions show up as always-positive daily
     "returns", so a money-losing SIP can post a high Sharpe. The NAV (unit value)
     strips contributions, giving the true time-weighted risk profile. Final value
     and XIRR stay money-weighted (computed on the value series + cashflows).
@@ -325,7 +325,7 @@ def write_comparison(horizon, period, results):
             for j in range(len(FIELDS)): table[(i, j)].set_facecolor("#FFF3E0")
     for j in range(len(FIELDS)):
         table[(best + 1, j)].set_facecolor("#E8F5E9")
-    ax0.set_title(f"six7 lists vs stocks.txt — {horizon.upper()} ({period})  ·  Timed HODL & SIP  "
+    ax0.set_title(f"six7 lists vs stocks.txt - {horizon.upper()} ({period})  ·  Timed HODL & SIP  "
                   f"(current-screen hindsight)", fontsize=13, fontweight="bold", pad=14)
 
     ax1 = fig.add_subplot(gs[1])
@@ -337,7 +337,7 @@ def write_comparison(horizon, period, results):
     ax1.bar(x + w/2, sv, w, color=C_SIP, label="SIP")
     ax1.set_xticks(x); ax1.set_xticklabels(labels, rotation=30, ha="right", fontsize=9)
     ax1.set_ylabel("Final value (₹L)"); ax1.grid(True, axis="y", alpha=0.3); ax1.legend(fontsize=10)
-    ax1.set_title(f"Final portfolio value by list — {horizon.upper()}", fontsize=12, fontweight="bold")
+    ax1.set_title(f"Final portfolio value by list - {horizon.upper()}", fontsize=12, fontweight="bold")
     for i, v in enumerate(tv):
         ax1.annotate(f"{v:.1f}" if v < 10 else f"{v:.0f}", (x[i] - w/2, v),
                      ha="center", va="bottom", fontsize=7.5)

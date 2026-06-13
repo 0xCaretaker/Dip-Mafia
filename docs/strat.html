@@ -170,7 +170,7 @@ tr.total-row td { border-top: 2px solid var(--border); }
 
 <div class="header">
   <h1>Dip Mafia Dashboard</h1>
-  <div class="sub">Updated 14 Jun 2026, 12:12 AM &bull; <a href="index.html" style="color:var(--accent);text-decoration:none">six7 Almanac →</a></div>
+  <div class="sub">Updated 14 Jun 2026, 01:12 AM &bull; <a href="index.html" style="color:var(--accent);text-decoration:none">six7 Almanac →</a></div>
 </div>
 
 <div class="tabs">
@@ -385,7 +385,7 @@ window._btRendered = false;
 window._btTileCharts = {};
 window._chartModalInstance = null;
 
-// Chart config factories — each returns a fresh {type, data, options} for Chart.js.
+// Chart config factories - each returns a fresh {type, data, options} for Chart.js.
 // Used for both compact tile view and the zoom modal.
 function buildChartConfigs() {
   if (!BT) return {};
@@ -526,12 +526,12 @@ function buildChartConfigs() {
 
 const TILES = [
   {key:'equity',    title:'Equity Curves',        sub:"Portfolio value over time for each strategy", tall:true, full:true},
-  {key:'drawdowns', title:'Drawdowns',            sub:"% fall from each strategy's peak — measures pain during downturns", full:true},
+  {key:'drawdowns', title:'Drawdowns',            sub:"% fall from each strategy's peak - measures pain during downturns", full:true},
   {key:'regime',    title:'Regime Returns',       sub:"How each strategy performed in different market conditions (NAV-based)"},
-  {key:'cash',      title:'Cash Utilization',     sub:"% of portfolio actually deployed — lower = cash sitting idle"},
-  {key:'alpha',     title:'Rolling Alpha vs SIP', sub:"How much Timed HODL beats SIP over rolling windows — positive = outperforming"},
+  {key:'cash',      title:'Cash Utilization',     sub:"% of portfolio actually deployed - lower = cash sitting idle"},
+  {key:'alpha',     title:'Rolling Alpha vs SIP', sub:"How much Timed HODL beats SIP over rolling windows - positive = outperforming"},
   {key:'buydist',   title:'Buy Distribution',     sub:"Which stocks got the most buy signals (top 30)", tall:true},
-  {key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month. With the 21-day fallback, cash is rarely idle >1 month — a blank month just means its cash deployed ~3 weeks later (the next bar), not a long idle stretch", full:true},
+  {key:'timeline',  title:'Monthly Deployment',   sub:"Amount deployed each month. With the 21-day fallback, cash is rarely idle >1 month - a blank month just means its cash deployed ~3 weeks later (the next bar), not a long idle stretch", full:true},
 ];
 
 function openChartModal(key, title, sub) {
@@ -594,7 +594,7 @@ function renderBacktest() {
       <div class="value" style="color:#fff">${s.n_signals} / ${s.n_stocks_bought}</div></div>
   </div>`;
 
-  // Chart tiles grid — click any to zoom
+  // Chart tiles grid - click any to zoom
   html += `<div style="color:var(--muted);font-size:0.78rem;margin-bottom:8px;text-align:right">
     Click any chart to zoom in</div>`;
   html += `<div class="bt-grid">`;
@@ -623,8 +623,8 @@ function renderBacktest() {
     ['Final Value', m => fmtInr(m.final_value), 'max'],
     ['Inflation-Adj Value', m => fmtInr(m.final_value / infl), 'max'],
     ['Wealth Multiple', m => (m.final_value/BT.total_invested).toFixed(1)+'x', 'max'],
-    ['XIRR', m => isNaN(m.xirr) ? '—' : m.xirr.toFixed(1)+'%', 'max'],
-    ['Real XIRR (−6% infl)', m => isNaN(m.xirr) ? '—' : (m.xirr-a.inflation_rate).toFixed(1)+'%', 'max'],
+    ['XIRR', m => isNaN(m.xirr) ? '-' : m.xirr.toFixed(1)+'%', 'max'],
+    ['Real XIRR (−6% infl)', m => isNaN(m.xirr) ? '-' : (m.xirr-a.inflation_rate).toFixed(1)+'%', 'max'],
     ['Sharpe Ratio', m => m.sharpe.toFixed(2), 'max'],
     ['Sortino Ratio', m => m.sortino.toFixed(2), 'max'],
     ['Max Drawdown', m => m.max_drawdown.toFixed(1)+'%', 'max'],
@@ -670,7 +670,7 @@ function renderBacktest() {
   });
 }
 
-// ─── Iterations Tab — old vs new watchlist (Timed HODL) ───
+// ─── Iterations Tab - old vs new watchlist (Timed HODL) ───
 window._iterRendered = false;
 function renderIterations() {
   if (!ITER || ITER.length < 2) return;
@@ -680,12 +680,12 @@ function renderIterations() {
   let html = `<div class="assumptions">
     Comparing the <strong>Timed HODL</strong> strategy across watchlist iterations.
     Each run is a dated snapshot kept in its own subfolder under
-    <code>backtest_output/</code> — new iterations appear here automatically.
+    <code>backtest_output/</code> - new iterations appear here automatically.
     Same salary-SIP basis across runs; <strong>Current</strong> is highlighted.
   </div>`;
 
   // Comparison table
-  html += `<div class="chart-card" style="margin-top:0"><h3>Across Iterations — Timed HODL</h3>
+  html += `<div class="chart-card" style="margin-top:0"><h3>Across Iterations - Timed HODL</h3>
     <div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th class="row-label"></th>`;
   ITER.forEach(it => {
     const c = it.is_current ? ' style="color:var(--green)"' : '';
@@ -693,18 +693,18 @@ function renderIterations() {
   });
   html += `</tr></thead><tbody>`;
 
-  const pct = v => (v==null ? '—' : v.toFixed(1)+'%');
-  const num = v => (v==null ? '—' : v.toFixed(2));
+  const pct = v => (v==null ? '-' : v.toFixed(1)+'%');
+  const num = v => (v==null ? '-' : v.toFixed(2));
   const rows = [
-    ['Watchlist size',    it => it.watchlist!=null ? it.watchlist : '—', 'max'],
-    ['Stocks with data',  it => it.n_stocks!=null ? it.n_stocks : '—', null],
-    ['Final Value',       it => it.final_value!=null ? fmtInr(it.final_value) : '—', 'max'],
+    ['Watchlist size',    it => it.watchlist!=null ? it.watchlist : '-', 'max'],
+    ['Stocks with data',  it => it.n_stocks!=null ? it.n_stocks : '-', null],
+    ['Final Value',       it => it.final_value!=null ? fmtInr(it.final_value) : '-', 'max'],
     ['XIRR',              it => pct(it.xirr), 'max'],
     ['Sharpe',            it => num(it.sharpe), 'max'],
     ['Sortino',           it => num(it.sortino), 'max'],
     ['Max Drawdown',      it => pct(it.max_drawdown), 'max'],
     ['Cash Drag',         it => pct(it.cash_pct), 'min'],
-    ['Period',            it => it.period || '—', null],
+    ['Period',            it => it.period || '-', null],
   ];
   rows.forEach(([label, fn, bestFn]) => {
     html += `<tr><td class="row-label">${label}</td>`;
@@ -736,7 +736,7 @@ function renderIterations() {
   html += `</tbody></table></div></div>`;
 
   // Overlaid equity curve (Timed HODL) anchored to the current run's dates
-  html += `<div class="chart-card" style="margin-top:16px"><h3>Equity Curve — Timed HODL across iterations</h3>
+  html += `<div class="chart-card" style="margin-top:16px"><h3>Equity Curve - Timed HODL across iterations</h3>
     <div class="chart-wrap" style="height:440px"><canvas id="iter_eq"></canvas></div></div>`;
 
   if (HZ && HZ.cells) html += renderHorizons();
@@ -769,14 +769,14 @@ function renderIterations() {
   });
 }
 
-// 3-strategy horizon tables (Backtest tab): ONE TABLE PER METRIC — horizons as
+// 3-strategy horizon tables (Backtest tab): ONE TABLE PER METRIC - horizons as
 // rows, strategies as columns, best strategy per row (per horizon) in red.
 function renderStrategyHorizons() {
   const sh = HZ.strategy_horizons;
   const strategies = sh.strategies, metrics = sh.metrics, cells = sh.cells, horizons = sh.horizons;
   const short = {'Timed HODL':'Timed', 'SIP':'SIP', 'NIFTY 50':'NIFTY 50'};
-  const fmt = (v, f) => (v==null ? '—' : (f==='pct' ? v.toFixed(1)+'%' : v.toFixed(2)));
-  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns — by Strategy</h3>
+  const fmt = (v, f) => (v==null ? '-' : (f==='pct' ? v.toFixed(1)+'%' : v.toFixed(2)));
+  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns - by Strategy</h3>
     <div style="color:var(--muted);font-size:0.76rem;margin-bottom:8px">
       Trailing windows to ${sh.end_date || HZ.end_date} &bull; ${sh.contribution} &bull;
       gate ${sh.gated ? 'on' : 'off'} (matches backtest) &bull; best strategy per row in
@@ -795,7 +795,7 @@ function renderStrategyHorizons() {
       const best = nums.length > 1 ? (lower ? Math.min(...nums) : Math.max(...nums)) : null;
       h += `<tr><td class="row-label">${hl}</td>`;
       vals.forEach(v => {
-        if (v==null) { h += `<td>—</td>`; return; }
+        if (v==null) { h += `<td>-</td>`; return; }
         h += `<td${v===best ? ' class="hz-best"' : ''}>${fmt(v, m.fmt)}</td>`;
       });
       h += `</tr>`;
@@ -806,7 +806,7 @@ function renderStrategyHorizons() {
   return h;
 }
 
-// Horizon comparison tables — 1y/3y/5y/Full × (watchlist × bb-variant), best per row in red.
+// Horizon comparison tables - 1y/3y/5y/Full × (watchlist × bb-variant), best per row in red.
 function renderHorizons() {
   const wls = HZ.watchlists, vars = HZ.variants, hz = HZ.horizons, cells = HZ.cells;
   const cols = [];
@@ -816,7 +816,7 @@ function renderHorizons() {
     {key:'mult',  title:'Wealth multiple (final ÷ invested)', fmt:v=>v.toFixed(2)+'x'},
     {key:'maxdd', title:'Max drawdown (%)',               fmt:v=>v.toFixed(1)},
   ];
-  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns — Timed HODL</h3>
+  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns - Timed HODL</h3>
     <div style="color:var(--muted);font-size:0.76rem;margin-bottom:6px">
       Trailing windows to ${HZ.end_date} &bull; ${HZ.contribution} &bull; signals on full history (200-bar warmup) &bull;
       <strong>bb-60 is the default</strong> &bull; best per row in <span style="color:#ff3b3b;font-weight:800">red</span>
@@ -835,7 +835,7 @@ function renderHorizons() {
       const best = nums.length ? Math.max(...nums) : null;   // higher is better for all three (maxdd closer to 0)
       h += `<tr><td class="row-label">${hl}</td>`;
       vals.forEach(v => {
-        if (v == null) { h += `<td>—</td>`; return; }
+        if (v == null) { h += `<td>-</td>`; return; }
         h += `<td${v === best ? ' class="hz-best"' : ''}>${m.fmt(v)}</td>`;
       });
       h += `</tr>`;

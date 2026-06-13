@@ -1,6 +1,6 @@
 # Pine Script ports (TradingView)
 
-TradingView ports of the Dip Mafia signal layer. These are **standalone** — no
+TradingView ports of the Dip Mafia signal layer. These are **standalone** - no
 Python imports them; paste them into the TradingView Pine Editor on a **daily**
 NSE chart (needs ~230+ daily bars for the 200-bar Bollinger warmup).
 
@@ -16,7 +16,7 @@ NSE chart (needs ~230+ daily bars for the 200-bar Bollinger warmup).
 
 ## Not ported
 
-Portfolio-level mechanics — fallback averaging, the 15%-per-stock cap, the SIP
-split — need a shared cash pool across the watchlist. Pine runs per-symbol, so
+Portfolio-level mechanics - fallback averaging, the 15%-per-stock cap, the SIP
+split - need a shared cash pool across the watchlist. Pine runs per-symbol, so
 those stay in `backtest.py`. The strategy file is a per-symbol approximation of
 Timed HODL, not a replacement for the portfolio sim.
