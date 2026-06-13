@@ -167,7 +167,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     # A monospace rule sized to the data columns: long enough to feel like a
     # real divider, but never wider than the rows (so it can't wrap on mobile).
     content_width = max_len + 2 + price_width  # "{ticker} ₹{price}"
-    divider = "`" + "─" * max(content_width + 5, 14) + "`"
+    divider = "`" + "─" * max(content_width + 9, 18) + "`"
     rendered = [False]
 
     # MACD section builder. filter_set=None renders the full universe;
@@ -227,13 +227,13 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     # 2) Impulse MACD, full universe, no Bollinger gate (stronger confirmation)
     append_macd_section("⚡ *Strong Signal* _\\(iMACD\\)_", impulse_signals, None)
     # 3) Bollinger + Impulse MACD, impulse gated by the Bollinger filter (the verdict)
-    append_macd_section("🎯 *THE VERDICT* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
+    append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
-        combined_lines.append("_ℹ️ legend_")
+        combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
