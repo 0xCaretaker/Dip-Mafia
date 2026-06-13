@@ -120,14 +120,14 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
 
     all_stock_names = []
 
-    # Collect stock names from MACD signals (only those in Bollinger filter)
+    # Collect stock names across the full universe (unfiltered sections render
+    # every Buy/Sell, so padding must account for all symbols, not just BB ones)
     for all_signals in all_interval_signals.values():
         for stock, info in all_signals.items():
-            if stock in bollinger_filter:
-                action, time, price = info["action"], info["time"], info["price"]
-                if action and time and price:
-                    stock_clean = stock.replace(".NS", "").replace(".BO", "")
-                    all_stock_names.append(stock_clean)
+            action, time, price = info["action"], info["time"], info["price"]
+            if action and time and price:
+                stock_clean = stock.replace(".NS", "").replace(".BO", "")
+                all_stock_names.append(stock_clean)
 
     max_len = max((len(stock) for stock in all_stock_names), default=0)
 
@@ -181,13 +181,14 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         combined_lines.append(f"{icon} *Sentiment: {mood}*")
         combined_lines.append("")
 
-    # MACD Signals (filtered by Bollinger Bands)
-    for interval, all_signals in all_interval_signals.items():
+    # MACD section builder. filter_set=None renders the full universe;
+    # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
+    def append_macd_section(title, all_signals, filter_set):
         entries = []
         total = hold_count = wait_count = 0
 
         for stock, info in all_signals.items():
-            if stock not in bollinger_filter:
+            if filter_set is not None and stock not in filter_set:
                 continue
             action, time, price = info["action"], info["time"], info["price"]
             if action and time and price:
@@ -201,14 +202,10 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
                 entries.append((stock_clean, action, price))
 
         if not entries and total == 0:
-            continue
+            return
 
-        if "Impulse" in interval:
-            combined_lines.append("\n🟠 *IMPULSE MACD \\(LazyBear\\):*")
-        else:
-            combined_lines.append("\n🔵 *STANDARD MACD:*")
-
-        combined_lines.append(f"⏱️ `{escape_md(interval)}`")
+        combined_lines.append(f"\n{title}")
+        combined_lines.append("⏱️ `1d`")
 
         for stock, action, price in entries:
             padded_stock = stock.ljust(max_len)
@@ -228,6 +225,16 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
                 f"`{hold_count}/{total} \\({hold_pct:.1f}%\\)`\n"
             )
             combined_lines.append(summary)
+
+    std_signals = all_interval_signals.get("1d", {})
+    impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
+
+    # 1) Standard MACD — full universe, no Bollinger gate
+    append_macd_section("🔵 *STANDARD MACD:*", std_signals, None)
+    # 2) Impulse MACD — full universe, no Bollinger gate
+    append_macd_section("🟠 *IMPULSE MACD \\(LazyBear\\):*", impulse_signals, None)
+    # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter
+    append_macd_section("🔵🟣 *BOLLINGER \\+ IMPULSE MACD:*", impulse_signals, bollinger_filter)
 
     if len(combined_lines) <= 1:
         return

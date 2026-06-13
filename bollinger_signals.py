@@ -52,12 +52,15 @@ def calculate_bollinger_bands(df, length=200, std_dev=2):
         return "Hold"
 
 
-def calculate_bb_past_lower_touch(df, length=200, std_dev=2, lookback=30):
+def calculate_bb_past_lower_touch(df, length=200, std_dev=2, lookback=60):
     """
-    Detect if price touched or went below lower Bollinger Band
-    at any time in the past `lookback` bars (excluding current bar)
+    Detect if price touched or went below lower Bollinger Band at any time in
+    the past `lookback` bars (excluding current bar). Only bars where the
+    rolling band is defined count, so with ~1y of data the effective window is
+    capped at however many bars follow the `length`-bar warmup (~50 for 250
+    bars / length=200), even if `lookback` is larger.
     """
-    if df.empty or len(df) < length + lookback:
+    if df.empty or len(df) < length + 30:
         return False
 
     close = to_1d(df["Close"])
@@ -112,7 +115,7 @@ def process_bollinger_signals(data, stocks, length=200):
             past_touch = calculate_bb_past_lower_touch(
                 df,
                 length=length,
-                lookback=30
+                lookback=60
             )
 
             if action != "Buy" and past_touch:

@@ -16,7 +16,7 @@ python bot.py
 
 Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` suffix; `bot.py` appends it). The pipeline is:
 
-1. **Bollinger Bands as a universe filter** (`bollinger_signals.py`). 200-period, 2σ. A stock is `Buy` if today's low/close touches or breaks the lower band, `Watch` if it did so within the last 30 bars, else `Hold`. This is the *gate* — MACD output for stocks outside Buy+Watch is discarded from the Telegram message.
+1. **Bollinger Bands as a universe filter** (`bollinger_signals.py`). 200-period, 2σ. A stock is `Buy` if today's low/close touches or breaks the lower band, `Watch` if it did so within the last 60 bars (capped by available history — ~50 bars with 1y data, since the band needs a 200-bar warmup), else `Hold`. This is the *gate* — MACD output for stocks outside Buy+Watch is discarded from the Telegram message.
 
 2. **MACD crossovers as the long signal** (`macd_signals.py`). Two indicators run in parallel on the same data:
    - Standard MACD (12/26/9 EMA)
