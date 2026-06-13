@@ -198,6 +198,19 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 - **Real returns beat inflation easily**, 20.8% real XIRR for Timed HODL vs 4.3% for NIFTY 50
 - **Entry+Exit is terrible**, selling on MACD Sell destroys compounding
 
+### Returns by horizon (live watchlist)
+
+The summary table above is the full ~16-year run. Recent trailing-window XIRR for the same `stocks.txt`:
+
+| Horizon | Timed HODL | SIP (same stocks) | NIFTY 50 |
+|---|---|---|---|
+| 1 year | **-0.1%** | 12.8% | -10.2% |
+| 3 years | 11.4% | 23.6% | 1.4% |
+| 5 years | 31.9% | 38.4% | 5.9% |
+| Full (~16y) | 26.8% | 27.6% | 10.3% |
+
+> 1y/3y/5y use a flat ₹20k/mo SIP; Full uses the salary model (so it matches the headline above). Timing trails plain SIP on return at 1/3/5y, but over the last year it held roughly flat (-0.1%) while NIFTY fell ~10%, the drawdown protection is where the edge shows.
+
 ### Charts
 
 | Chart | What it shows |
