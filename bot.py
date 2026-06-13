@@ -19,7 +19,7 @@ from bollinger_signals import process_bollinger_signals
 # (backtest.py BUY_REQUIRE_BELOW_MID=True), which models a tighter strategy; the
 # bot deliberately stays looser for awareness. If set True here, the Verdict and
 # sentiment would also require close < BB midline (band position ⏬/🔽), dropping
-# Watch names that recovered above their 200-SMA. See STRATEGY_COMPARISON.md.
+# Watch names that recovered above their 200-SMA. See notes/STRATEGY_COMPARISON.md.
 REQUIRE_CLOSE_BELOW_MIDLINE = False
 _BELOW_MID_POSITIONS = {"⏬", "🔽"}
 
