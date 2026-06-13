@@ -4,12 +4,11 @@ on:
   schedule:
     # GitHub runs `schedule` best-effort — runs are often delayed (commonly 1–2h)
     # or dropped under load, so these times are targets, not guarantees. Four
-    # weekday runs ~2h apart (08:33–14:33 IST) anchor EARLY so that even a
-    # delayed run still lands inside bot.py's within_market_hours() window
-    # (09:15–16:00 IST); a run that fires outside that window computes signals
-    # but skips the send. Spreading 4 runs (vs. a single pair) means a dropped
-    # trigger still leaves same-day coverage. The dedup hash suppresses a
-    # duplicate message when signals are unchanged between runs.
+    # weekday runs ~2h apart (08:33–14:33 IST) keep alerts flowing through the
+    # trading day. bot.py no longer gates on market hours, so a delayed run still
+    # delivers; spreading 4 runs (vs. a single pair) means a dropped trigger
+    # still leaves same-day coverage. The dedup hash suppresses a duplicate
+    # message when signals are unchanged between runs.
     # Minute :03 (not :00/:30) dodges the top-of-hour scheduling stampede.
     - cron: '3 3,5,7,9 * * 1-5'  # Target: 08:33/10:33/12:33/14:33 IST, weekdays
     - cron: '3 5 * * 0,6'        # Target: 10:33 IST weekend summary
