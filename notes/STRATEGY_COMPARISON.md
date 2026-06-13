@@ -173,6 +173,94 @@ XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
 almost always has the shallower drawdown of the two stock strategies. NIFTY 50
 trails on return at every horizon ≥3y but has the mildest drawdowns.
 
+## six7 almanac — pure strategy effect (OLD vs NEW, frozen prices)
+
+Isolates the strategy change on the six7 almanac lists by holding **prices
+constant** (the six7 price cache) and running two configs back-to-back:
+
+- **OLD** = bb-30 watch window, **no** midline gate
+- **NEW** = bb-60 watch window, **close < midline gate ON**
+
+V4 idle-cash fallback is identical in both, so the only variables are the
+Bollinger lookback and the midline gate. Each cell is `old→new (Δ)`. This is the
+clean A/B; the "recalculated almanac" headline numbers also moved because the
+price cache was re-downloaded — that data effect is *excluded* here.
+
+**Full (~16y)** — Timed ₹L · XIRR% · Sharpe · MaxDD%
+
+| List | Timed ₹L | XIRR% | Sharpe | MaxDD% |
+|---|---|---|---|---|
+| top10 | 260.9→263.5 (+2.7) | 29.8→29.9 (+0.1) | 0.99→1.00 | −47.0→−47.4 |
+| top30 | 252.4→261.9 (+9.4) | 29.4→29.9 (+0.4) | 0.93→0.93 | −43.5→−43.4 |
+| top50 | 258.2→268.7 (+10.6) | 29.7→30.1 (+0.5) | 1.03→1.03 | −44.6→−45.8 |
+| top100 | 317.7→318.4 (+0.7) | 32.0→32.0 (0.0) | 1.17→1.16 | −49.5→−53.4 |
+| strong_buy | 302.8→315.0 (+12.2) | 31.5→31.9 (+0.4) | 1.08→1.08 | −53.8→−56.6 |
+| buy_plus | 399.0→454.5 (+55.6) | 34.6→36.0 (+1.4) | 1.07→1.06 | −53.4→−58.2 |
+| six_plus | 399.0→454.5 (+55.6) | 34.6→36.0 (+1.4) | 1.07→1.06 | −53.4→−58.2 |
+| perfect7 | 254.9→254.5 (−0.4) | 29.6→29.5 (0.0) | 1.03→1.02 | −45.4→−45.6 |
+| univest_old | 234.6→253.8 (+19.2) | 28.6→29.5 (+0.9) | 0.69→0.72 | −65.6→−68.9 |
+| **stocks_current** | **210.4→199.0 (−11.4)** | **27.4→26.8 (−0.6)** | 0.78→0.78 | −58.6→−58.6 |
+
+**5y**
+
+| List | Timed ₹L | XIRR% | Sharpe | MaxDD% |
+|---|---|---|---|---|
+| top10 | 18.4→18.5 (+0.1) | 16.8→16.9 (+0.1) | 0.99→0.98 | −26.9→−26.6 |
+| top30 | 44.0→44.1 (+0.1) | 54.4→54.5 (+0.1) | 1.59→1.56 | −21.7→−25.4 |
+| top50 | 35.5→34.9 (−0.6) | 44.8→44.0 (−0.8) | 1.52→1.49 | −21.5→−21.7 |
+| top100 | 33.6→33.9 (+0.3) | 42.3→42.7 (+0.4) | 1.47→1.47 | −24.5→−26.4 |
+| strong_buy | 32.0→32.4 (+0.4) | 40.2→40.7 (+0.5) | 1.47→1.47 | −19.2→−21.0 |
+| buy_plus | 31.7→34.7 (+3.0) | 39.7→43.7 (+4.0) | 1.77→1.83 | −25.8→−27.2 |
+| six_plus | 31.7→34.7 (+3.0) | 39.7→43.7 (+4.0) | 1.77→1.83 | −25.8→−27.2 |
+| perfect7 | 40.6→41.8 (+1.2) | 50.8→52.1 (+1.4) | 1.52→1.48 | −21.2→−22.3 |
+| univest_old | 31.4→27.7 (−3.6) | 39.3→34.0 (−5.3) | 1.31→1.17 | −32.6→−32.3 |
+| **stocks_current** | **29.7→26.5 (−3.2)** | **36.9→31.9 (−5.0)** | 1.32→1.12 | −25.7→−29.1 |
+
+**3y**
+
+| List | Timed ₹L | XIRR% | Sharpe | MaxDD% |
+|---|---|---|---|---|
+| top10 | 7.9→8.0 (+0.1) | 4.6→5.3 (+0.7) | 0.34→0.36 | −27.7→−25.8 |
+| top30 | 11.6→11.7 (+0.1) | 32.2→32.6 (+0.5) | 1.49→1.53 | −19.2→−18.4 |
+| top50 | 11.5→11.9 (+0.5) | 31.3→34.3 (+3.0) | 1.57→1.67 | −23.4→−20.1 |
+| top100 | 9.7→10.1 (+0.4) | 18.7→22.0 (+3.2) | 1.20→1.33 | −18.9→−16.3 |
+| strong_buy | 10.0→10.4 (+0.4) | 21.1→24.2 (+3.1) | 1.29→1.40 | −17.1→−16.7 |
+| buy_plus | 9.7→9.5 (−0.1) | 18.8→17.7 (−1.1) | 1.20→0.91 | −23.0→−21.9 |
+| six_plus | 9.7→9.5 (−0.1) | 18.8→17.7 (−1.1) | 1.20→0.91 | −23.0→−21.9 |
+| perfect7 | 10.8→11.1 (+0.3) | 26.7→28.7 (+2.0) | 1.33→1.38 | −19.9→−17.9 |
+| univest_old | 9.2→8.8 (−0.4) | 15.0→11.5 (−3.5) | 0.87→0.75 | −22.7→−27.7 |
+| **stocks_current** | 8.7→8.7 (0.0) | 11.0→11.4 (+0.4) | 0.66→0.67 | −22.2→−21.7 |
+
+**1y**
+
+| List | Timed ₹L | XIRR% | Sharpe | MaxDD% |
+|---|---|---|---|---|
+| top10 | 2.5→2.5 (0.0) | −9.1→−10.0 (−0.9) | −0.61→−0.63 | −26.9→−26.9 |
+| top30 | 2.8→2.8 (−0.1) | 17.2→12.7 (−4.5) | 0.39→0.32 | −18.3→−20.6 |
+| top50 | 2.9→3.1 (+0.2) | 22.5→40.2 (+17.7) | 0.69→1.42 | −16.8→−21.9 |
+| top100 | 2.7→3.0 (+0.2) | 9.3→28.4 (+19.2) | 0.11→1.16 | −20.0→−22.7 |
+| strong_buy | 2.7→3.0 (+0.3) | 9.8→30.9 (+21.0) | 0.23→1.26 | −20.1→−21.6 |
+| buy_plus | 2.7→2.9 (+0.2) | 9.5→25.7 (+16.2) | 0.55→1.10 | −23.1→−21.7 |
+| six_plus | 2.7→2.9 (+0.2) | 9.5→25.7 (+16.2) | 0.55→1.10 | −23.1→−21.7 |
+| perfect7 | 2.7→2.7 (0.0) | 6.8→4.2 (−2.6) | −0.27→−0.12 | −24.3→−27.5 |
+| univest_old | 2.6→2.6 (0.0) | −3.3→−0.2 (+3.1) | −0.79→−0.56 | −23.6→−21.4 |
+| **stocks_current** | 2.5→2.6 (+0.1) | −4.6→−0.1 (+4.5) | −0.80→−0.56 | −24.8→−21.2 |
+
+**Reading:**
+- **1y is the clear win** (the design intent): broad screens jump +16 to +21 XIRR
+  points and Sharpe goes ~0 → ~1.2 (strong_buy, top100, top50). The midline gate
+  kept entries out of premature buys through the recent drawdown.
+- **Full ~16y is ~neutral, mildly positive for most screens** — `buy_plus`/`six_plus`
+  the standout (+₹55.6L); most others +0 to +1 XIRR. Matches the "≈neutral over full
+  history" claim.
+- **The live watchlist (`stocks_current`) is the consistent laggard** from the
+  change: worse on Full (−0.6 XIRR) and 5y (−5.0 XIRR, Sharpe 1.32→1.12), flat 3y,
+  better only 1y. `univest_old` behaves the same. The stricter gate trades
+  medium-term return for better recent-period behavior on the actual portfolio.
+- **Drawdowns run slightly deeper** on long horizons for several lists (the gate
+  concentrates buying into deeper dips → more exposure when it commits), but
+  shallower on 1y/3y.
+
 ## Caveat
 
 All runs apply *today's* watchlist over full history — the same survivorship /
