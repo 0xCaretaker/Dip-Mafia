@@ -6,9 +6,9 @@ For the current watchlist and every archived watchlist (each run's
 <run>/stocks.txt under backtest_output/), computes Timed HODL returns over
 1y / 3y / 5y / Full trailing windows, for three signal variants:
 
-  bb60      — Bollinger watch lookback 60 (the default / live config)
-  bb30      — lookback 30
-  bb60mid   — lookback 60 + extra "close below BB midline" buy gate
+  bb60      - Bollinger watch lookback 60 (the default / live config)
+  bb30      - lookback 30
+  bb60mid   - lookback 60 + extra "close below BB midline" buy gate
 
 Signals are computed over full history (so the 200-bar Bollinger warmup is always
 satisfied); only the investing/measurement window is the trailing horizon. A flat

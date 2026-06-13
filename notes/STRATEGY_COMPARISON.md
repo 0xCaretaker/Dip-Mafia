@@ -1,9 +1,9 @@
-# Strategy comparison — watchlist & Bollinger experiments
+# Strategy comparison - watchlist & Bollinger experiments
 
 Timed HODL strategy, period 2010-01-04 → 2026-04-17 (16.3y), ₹24.7L invested.
 "OLD list" = 62-symbol `stocks.txt` (commit `88bb51a`); "NEW list" = current 75-symbol `stocks.txt`.
 
-> **ADOPTED (current default):** the **V4 idle-cash fallback** — see "Cash-deployment
+> **ADOPTED (current default):** the **V4 idle-cash fallback** - see "Cash-deployment
 > fallback" near the end. It is now the default in `simulate_timed_hodl` and is
 > reflected in `backtest_output/`, the dashboard, and the README. The bb-variant /
 > horizon tables below were computed with the *prior* held-only/42-day fallback (held
@@ -13,7 +13,7 @@ Timed HODL strategy, period 2010-01-04 → 2026-04-17 (16.3y), ₹24.7L invested
 | Run | Final (Timed) | XIRR | Sharpe | Max DD | Stocks | Signals / Bought |
 |---|---|---|---|---|---|---|
 | OLD list / bb-30 (archived baseline) | ₹207.1L | 27.6% | 1.27 | −55.5% | 61 | 152 / 46 |
-| OLD list / bb-60 (isolate) | ₹241.8L | 29.3% | 1.29 | −62.6% | 62 | — |
+| OLD list / bb-60 (isolate) | ₹241.8L | 29.3% | 1.29 | −62.6% | 62 | - |
 | NEW list / bb-30 | ₹190.5L | 26.6% | 1.27 | −53.2% | 73 | 156 / 56 |
 | NEW list / bb-60 (**current / live**) | ₹182.6L | 26.2% | 1.27 | −52.4% | 73 | 165 / 58 |
 | NEW list / bb-60 + close<midline gate | ₹182.2L | 26.1% | 1.27 | −54.2% | 73 | 162 / 55 |
@@ -28,18 +28,18 @@ Timed HODL strategy, period 2010-01-04 → 2026-04-17 (16.3y), ₹24.7L invested
   helped a lot (+₹34.7L). On the NEW list it slightly *hurt* (bb-30 ₹190.5L >
   bb-60 ₹182.6L). The current live config is bb-60.
 - **The "close below BB midline" buy gate does not help.** Adding it to the
-  signal-buy condition (NEW list / bb-60) gives ₹182.2L vs ₹182.6L — essentially
+  signal-buy condition (NEW list / bb-60) gives ₹182.2L vs ₹182.6L - essentially
   identical, marginally worse on return and drawdown. Reason: when BB fires Buy
   (price touched the lower band) the close is almost always already below the
   midline, so the extra filter rarely changes the trade and only delays a few
   Watch-state entries. Flag retained as `BUY_REQUIRE_BELOW_MID` in `backtest.py`
   (default False).
 
-## Horizon returns — old vs new watchlist
+## Horizon returns - old vs new watchlist
 
 Timed HODL, bb-60, **flat ₹20k/month**, trailing windows ending 2026-04-17.
 Signals are computed over full history (so the 200-bar Bollinger warmup is always
-satisfied); only the investing/measurement window is the trailing horizon — that's
+satisfied); only the investing/measurement window is the trailing horizon - that's
 why a 1y horizon is valid even though it's shorter than the 200-day warmup.
 Source: full-history price cache (`backtest_output/six7/_price_cache.pkl`).
 
@@ -85,11 +85,11 @@ early-period exposure.)
   beats bb-30 at 1y on the OLD list (15.0 vs 7.9); on the NEW list it flips
   (bb-30 9.5 vs bb-60 4.9). From 3y out the gaps are within noise.
 - **The midline gate is the standout in the recent year on the NEW list:**
-  NEW bb-60+mid is the best 1y cell (16.1% vs 4.9% for plain NEW bb-60) — requiring
+  NEW bb-60+mid is the best 1y cell (16.1% vs 4.9% for plain NEW bb-60) - requiring
   close < midline avoided buying the recently-added names while they were still
   extended. But the edge **fades with horizon** and is neutral over Full (24.9 vs
   25.0). Over the full period it remains a wash, matching the salary-model run
-  (₹182.2L vs ₹182.6L) — a recent-window improver, not a long-run one.
+  (₹182.2L vs ₹182.6L) - a recent-window improver, not a long-run one.
 
 ## Cash-deployment fallback (V4, adopted)
 
@@ -109,16 +109,16 @@ Current list, full period, salary model, bb-60, no buy-gate:
 Timed HODL ₹188.1L, Sharpe 1.32, MaxDD −49.4%, cash drag 1.2%, longest idle 21d.)
 
 **Findings:**
-- Widening the universe alone (V1/V2) barely dents the idle streak (214→201d) — in
+- Widening the universe alone (V1/V2) barely dents the idle streak (214→201d) - in
   bull markets almost everything is above its 200-SMA, so "below midline" candidates
   are scarce regardless of universe. V1 also *hurt* returns (spread into laggards).
-- The **force last-resort** (V3/V4) is what actually kills the idle streak — it caps
+- The **force last-resort** (V3/V4) is what actually kills the idle streak - it caps
   idle at the threshold and crushes cash drag to ~1–2%.
 - **V4** (force + 21-day threshold) wins outright: solves cash sitting (idle 214→21d,
   drag 5.7%→1.2%) **and** improves returns (₹184→190L), Sharpe (1.27→1.31), and
   drawdown. Deploying sooner and never letting cash rot lands better average entries
   than waiting 42 days for a dip that, in bull runs, never arrives.
-- Tradeoff: force sometimes buys *above* midline when no dip exists — a mild
+- Tradeoff: force sometimes buys *above* midline when no dip exists - a mild
   departure from strict "buy dips," but still long-only within the curated watchlist.
 
 `simulate_timed_hodl` defaults are now `fallback_universe="watchlist"`,
@@ -139,7 +139,7 @@ XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
 | XIRR | **16.1%** | 0.7% | −3.8% |
 | Sharpe | 2.48 | 2.47 | **2.49** |
 | Max DD | **−9.8%** | −10.8% | −10.2% |
-| Cash drag | 3.3% | — | — |
+| Cash drag | 3.3% | - | - |
 
 **3 years**
 
@@ -148,7 +148,7 @@ XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
 | XIRR | 10.7% | **24.4%** | 4.9% |
 | Sharpe | 1.88 | **2.05** | 1.91 |
 | Max DD | −16.8% | −22.3% | **−11.7%** |
-| Cash drag | 5.9% | — | — |
+| Cash drag | 5.9% | - | - |
 
 **5 years**
 
@@ -157,7 +157,7 @@ XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
 | XIRR | 37.0% | **38.5%** | 7.9% |
 | Sharpe | 1.94 | **1.95** | 1.65 |
 | Max DD | −26.9% | −26.3% | **−12.9%** |
-| Cash drag | 2.0% | — | — |
+| Cash drag | 2.0% | - | - |
 
 **Full (~16y)**
 
@@ -166,14 +166,14 @@ XIRR ≈ the salary-model headline (Timed 26.4% / SIP 27.0% / NIFTY 10.9%).
 | XIRR | 25.2% | **25.9%** | 10.9% |
 | Sharpe | **1.23** | 1.22 | 1.03 |
 | Max DD | −56.5% | −54.6% | **−37.8%** |
-| Cash drag | 1.1% | — | — |
+| Cash drag | 1.1% | - | - |
 
-**Reading:** Timing's edge is regime-dependent — Timed HODL dominates the last 1y
+**Reading:** Timing's edge is regime-dependent - Timed HODL dominates the last 1y
 (16.1% vs SIP 0.7%) but SIP wins 3y/5y on return; the two tie over Full. Timed
 almost always has the shallower drawdown of the two stock strategies. NIFTY 50
 trails on return at every horizon ≥3y but has the mildest drawdowns.
 
-## six7 almanac — pure strategy effect (OLD vs NEW, frozen prices)
+## six7 almanac - pure strategy effect (OLD vs NEW, frozen prices)
 
 Isolates the strategy change on the six7 almanac lists by holding **prices
 constant** (the six7 price cache) and running two configs back-to-back:
@@ -184,9 +184,9 @@ constant** (the six7 price cache) and running two configs back-to-back:
 V4 idle-cash fallback is identical in both, so the only variables are the
 Bollinger lookback and the midline gate. Each cell is `old→new (Δ)`. This is the
 clean A/B; the "recalculated almanac" headline numbers also moved because the
-price cache was re-downloaded — that data effect is *excluded* here.
+price cache was re-downloaded - that data effect is *excluded* here.
 
-**Full (~16y)** — Timed ₹L · XIRR% · Sharpe · MaxDD%
+**Full (~16y)** - Timed ₹L · XIRR% · Sharpe · MaxDD%
 
 | List | Timed ₹L | XIRR% | Sharpe | MaxDD% |
 |---|---|---|---|---|
@@ -250,7 +250,7 @@ price cache was re-downloaded — that data effect is *excluded* here.
 - **1y is the clear win** (the design intent): broad screens jump +16 to +21 XIRR
   points and Sharpe goes ~0 → ~1.2 (strong_buy, top100, top50). The midline gate
   kept entries out of premature buys through the recent drawdown.
-- **Full ~16y is ~neutral, mildly positive for most screens** — `buy_plus`/`six_plus`
+- **Full ~16y is ~neutral, mildly positive for most screens** - `buy_plus`/`six_plus`
   the standout (+₹55.6L); most others +0 to +1 XIRR. Matches the "≈neutral over full
   history" claim.
 - **The live watchlist (`stocks_current`) is the consistent laggard** from the
@@ -263,6 +263,6 @@ price cache was re-downloaded — that data effect is *excluded* here.
 
 ## Caveat
 
-All runs apply *today's* watchlist over full history — the same survivorship /
+All runs apply *today's* watchlist over full history - the same survivorship /
 look-ahead the whole backtest carries. Treat as relative comparison, not a
 tradeable result.

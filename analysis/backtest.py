@@ -70,7 +70,7 @@ CONFIG = {
 # Signal-buy gate (Timed HODL): when True, a signal buy also requires the close to
 # be below the BB midline (200-SMA), not just a band touch within lookback. Set True
 # to match the live bot (bot.py REQUIRE_CLOSE_BELOW_MIDLINE). Improves recent-horizon
-# (1/3/5y) returns, neutral over full history — see notes/STRATEGY_COMPARISON.md.
+# (1/3/5y) returns, neutral over full history - see notes/STRATEGY_COMPARISON.md.
 BUY_REQUIRE_BELOW_MID = True
 
 REGIMES = {
@@ -543,7 +543,7 @@ def chart_2_drawdowns(portfolios, nifty_series, filename):
         ax.annotate(f'Max: {dd.min():.1f}%', xy=(dd.idxmin(), dd.min()), fontsize=9, fontweight="bold",
                     color=color, ha="center", va="top")
 
-    fig.suptitle("Drawdowns — How Much Did Each Strategy Fall From Peak?", fontsize=14, fontweight="bold", y=1.01)
+    fig.suptitle("Drawdowns - How Much Did Each Strategy Fall From Peak?", fontsize=14, fontweight="bold", y=1.01)
     fig.tight_layout()
     fig.savefig(os.path.join(OUTPUT_DIR, filename), dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -565,7 +565,7 @@ def chart_3_cash(timed_sim, exit_sim, filename):
                     fontsize=9, color=color, fontweight="bold")
         ax.legend(loc="lower right", fontsize=9)
 
-    fig.suptitle("Cash Utilization — How Much of Your Money Is Actually Working?", fontsize=14, fontweight="bold", y=1.01)
+    fig.suptitle("Cash Utilization - How Much of Your Money Is Actually Working?", fontsize=14, fontweight="bold", y=1.01)
     fig.tight_layout()
     fig.savefig(os.path.join(OUTPUT_DIR, filename), dpi=150, bbox_inches="tight")
     plt.close(fig)
@@ -637,7 +637,7 @@ def chart_5_rolling_alpha(portfolios, filename):
         ax.fill_between(neg.index, neg.values, 0, color=C_RED, alpha=0.5, label="SIP wins")
         ax.axhline(0, color="black", linewidth=0.5)
         pct_win = (alpha > 0).mean() * 100
-        _style_ax(ax, "Alpha %", f"{label} — Your Strategy outperforms {pct_win:.0f}% of the time")
+        _style_ax(ax, "Alpha %", f"{label} - Your Strategy outperforms {pct_win:.0f}% of the time")
         ax.legend(loc="upper left", fontsize=9)
 
     fig.suptitle("Rolling Outperformance: Your Strategy vs SIP on Same Stocks", fontsize=14, fontweight="bold", y=1.01)
@@ -726,8 +726,8 @@ def chart_8_summary_table(metrics_list, total_invested, n_stocks, n_signals, n_s
         ("Total Invested", [f'₹{total_invested/100000:.1f}L'] * len(metrics_list)),
         ("Wealth Multiple", [f'{m["final_value"]/total_invested:.1f}x' for m in metrics_list]),
         ("Real Multiple (infl-adj)", [f'{m["final_value"]/infl/total_invested:.1f}x' for m in metrics_list]),
-        ("XIRR (True Return)", [f'{m["xirr"]:.1f}%' if not np.isnan(m["xirr"]) else "—" for m in metrics_list]),
-        ("Real XIRR (−6% inflation)", [f'{m["xirr"]-a["inflation_rate"]:.1f}%' if not np.isnan(m["xirr"]) else "—" for m in metrics_list]),
+        ("XIRR (True Return)", [f'{m["xirr"]:.1f}%' if not np.isnan(m["xirr"]) else "-" for m in metrics_list]),
+        ("Real XIRR (−6% inflation)", [f'{m["xirr"]-a["inflation_rate"]:.1f}%' if not np.isnan(m["xirr"]) else "-" for m in metrics_list]),
         ("Sharpe Ratio", [f'{m["sharpe"]:.2f}' for m in metrics_list]),
         ("Sortino Ratio", [f'{m["sortino"]:.2f}' for m in metrics_list]),
         ("Max Drawdown", [f'{m["max_drawdown"]:.1f}%' for m in metrics_list]),
@@ -764,14 +764,14 @@ def chart_8_summary_table(metrics_list, total_invested, n_stocks, n_signals, n_s
             fn = best_vals[rname]
             numeric = []
             for v in vals:
-                try: numeric.append(float(v.replace("₹","").replace("L","").replace("x","").replace("%","").replace("days","").replace(",","").replace("—","nan")))
+                try: numeric.append(float(v.replace("₹","").replace("L","").replace("x","").replace("%","").replace("days","").replace(",","").replace("-","nan")))
                 except: numeric.append(np.nan)
             valid = [n for n in numeric if not np.isnan(n)]
             if valid:
                 best_j = numeric.index(fn(valid))
                 table[i+1, best_j].set_text_props(fontweight="bold", color=colors_header[best_j])
 
-    ax.set_title(f"Performance Summary — {n_stocks} Stocks, {n_signals} Buy Signals, {n_stocks_bought} Stocks Bought\n"
+    ax.set_title(f"Performance Summary - {n_stocks} Stocks, {n_signals} Buy Signals, {n_stocks_bought} Stocks Bought\n"
                  f"Cash idle: longest {max_idle} days (~{max_idle/21:.1f}mo), avg {avg_idle:.0f} days (~{avg_idle/21:.1f}mo)",
                  fontsize=14, fontweight="bold", pad=10)
     fig.savefig(os.path.join(OUTPUT_DIR, filename), dpi=150, bbox_inches="tight")
@@ -813,7 +813,7 @@ def print_summary(metrics_list, total_invested, n_stocks, n_signals, n_bought, c
     print(f"  Inflation (6%/yr):  ₹1 in {int(a['start_date'].year)} = ₹{a['inflation_factor']:.1f} today")
 
     print(f"\n{'═'*100}")
-    print(f"  RESULTS — {n_stocks} stocks, ₹{total_invested/100000:.1f}L invested")
+    print(f"  RESULTS - {n_stocks} stocks, ₹{total_invested/100000:.1f}L invested")
     print(f"{'═'*100}")
     hdr = f"  {'':25s}" + "".join(f" {m['name']:>22s}" for m in metrics_list)
     print(hdr)
@@ -823,8 +823,8 @@ def print_summary(metrics_list, total_invested, n_stocks, n_signals, n_bought, c
         ("Inflation-Adj Value", [f"₹{m['final_value']/a['inflation_factor']/100000:.1f}L" for m in metrics_list]),
         ("Wealth Multiple", [f"{m['final_value']/total_invested:.1f}x" for m in metrics_list]),
         ("Real Multiple (infl-adj)", [f"{m['final_value']/a['inflation_factor']/total_invested:.1f}x" for m in metrics_list]),
-        ("XIRR", [f"{m['xirr']:.1f}%" if not np.isnan(m['xirr']) else "—" for m in metrics_list]),
-        ("Real XIRR (minus 6% infl)", [f"{m['xirr']-a['inflation_rate']:.1f}%" if not np.isnan(m['xirr']) else "—" for m in metrics_list]),
+        ("XIRR", [f"{m['xirr']:.1f}%" if not np.isnan(m['xirr']) else "-" for m in metrics_list]),
+        ("Real XIRR (minus 6% infl)", [f"{m['xirr']-a['inflation_rate']:.1f}%" if not np.isnan(m['xirr']) else "-" for m in metrics_list]),
         ("Sharpe", [f"{m['sharpe']:.2f}" for m in metrics_list]),
         ("Sortino", [f"{m['sortino']:.2f}" for m in metrics_list]),
         ("Max Drawdown", [f"{m['max_drawdown']:.1f}%" for m in metrics_list]),
@@ -836,11 +836,11 @@ def print_summary(metrics_list, total_invested, n_stocks, n_signals, n_bought, c
 
     print(f"\n  Buy signals fired on {n_signals} days across {n_bought}/{n_stocks} stocks")
     print(f"  Cash drag (Your Strategy): {cash_pct:.1f}%")
-    print(f"  Cash idle — longest: {max_idle} trading days (~{max_idle/21:.1f} months), average: {avg_idle:.0f} trading days (~{avg_idle/21:.1f} months)")
+    print(f"  Cash idle - longest: {max_idle} trading days (~{max_idle/21:.1f} months), average: {avg_idle:.0f} trading days (~{avg_idle/21:.1f} months)")
     if n_fallback > 0:
         print(f"  Fallback buys: {n_fallback} (averaging into held stocks below BB midline after {idle_threshold} idle days)")
     if max_idle > idle_threshold:
-        print(f"  ⚠ Longest idle ({max_idle}d) exceeded threshold — no held stocks were below BB midline to deploy into")
+        print(f"  ⚠ Longest idle ({max_idle}d) exceeded threshold - no held stocks were below BB midline to deploy into")
 
 
 # ─── Trade log ─────────────────────────────────────────────────────────────
