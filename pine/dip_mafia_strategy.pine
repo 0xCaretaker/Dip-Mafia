@@ -40,6 +40,10 @@ signalSrc = input.string("Either", "MACD trigger",
 oncePerBar = input.bool(true, "Max one buy per bar", group = "Sizing",
      tooltip = "Standard and Impulse can both cross up on the same bar; this avoids double-tranche entries.")
 
+rfAnnual = input.float(6.0, "Risk-free rate % (annual)", group = "Metrics",
+     tooltip = "Used for Sharpe/Sortino. 6% matches the India risk-free rate in backtest.py.")
+showMetrics = input.bool(true, "Show performance table", group = "Metrics")
+
 // ---------- Bollinger Bands (length=200, 2σ; sample stdev) ------------------
 basis = ta.sma(close, bbLength)
 dev   = ta.stdev(close, bbLength, false)
@@ -92,13 +96,99 @@ dipBuy = macdBuy and inUniverse and midOk
 
 // ---------- Execution: enter only, NEVER exit -------------------------------
 // Need enough history for the 200-bar band to be defined before trading.
+var int nBuys = 0
 warmedUp = not na(lower)
 if dipBuy and warmedUp
     // unique id per entry so each tranche shows separately under pyramiding
     eid = oncePerBar ? "Dip" : "Dip-" + str.tostring(bar_index)
     strategy.entry(eid, strategy.long)
+    nBuys += 1
 
 // There is intentionally NO strategy.close / strategy.exit anywhere. HODL.
+
+// ---------- Performance metrics (equity-curve based) ------------------------
+// A never-sell strategy has ZERO closed trades, so TradingView's Strategy Tester
+// leaves trade-based stats (win %, profit factor, avg trade — and often Sharpe)
+// blank or 0. We instead compute return/risk from the equity curve itself, using
+// the same conventions as backtest.py compute_metrics(): per-day excess return
+// over a 6% risk-free, sample stdev, sqrt(252) annualization, Sortino measured on
+// the negative-excess subset. These are time-weighted (not the dashboard's
+// money-weighted XIRR), so treat them as comparable-in-spirit, not identical.
+var float startEq   = na     // equity at first entry
+var int   startTime = na
+var float prevEq    = na
+var int   nObs      = 0
+var float sumEx     = 0.0
+var float sumEx2    = 0.0
+var int   nNeg      = 0
+var float sumNeg    = 0.0
+var float sumNeg2   = 0.0
+var float peakEq    = na
+var float maxDD     = 0.0     // most negative (equity - peak)/peak
+
+rfDaily = math.pow(1.0 + rfAnnual / 100.0, 1.0 / 252.0) - 1.0
+inMarket = strategy.position_size > 0
+if inMarket
+    if na(startEq)
+        startEq   := strategy.equity
+        startTime := time
+        peakEq    := strategy.equity
+    else if prevEq > 0
+        ret = strategy.equity / prevEq - 1.0
+        ex  = ret - rfDaily
+        nObs   += 1
+        sumEx  += ex
+        sumEx2 += ex * ex
+        if ex < 0
+            nNeg    += 1
+            sumNeg  += ex
+            sumNeg2 += ex * ex
+        peakEq := math.max(peakEq, strategy.equity)
+        maxDD  := math.min(maxDD, (strategy.equity - peakEq) / peakEq)
+    prevEq := strategy.equity
+
+// ---------- Performance table (drawn on the last bar) -----------------------
+var table perf = table.new(position.top_right, 2, 11, border_width = 1,
+     frame_color = color.gray, frame_width = 1)
+
+// helper must live in global scope (Pine forbids function defs inside if-blocks)
+metricRow(r, k, v) =>
+    bg = color.new(color.black, 15)
+    table.cell(perf, 0, r, k, text_color = color.white, text_size = size.small,
+         text_halign = text.align_left,  bgcolor = bg)
+    table.cell(perf, 1, r, v, text_color = color.white, text_size = size.small,
+         text_halign = text.align_right, bgcolor = bg)
+
+if showMetrics and barstate.islast
+    meanEx  = nObs > 0 ? sumEx / nObs : 0.0
+    varEx   = nObs > 1 ? (sumEx2 - nObs * meanEx * meanEx) / (nObs - 1) : 0.0
+    stdEx   = varEx > 0 ? math.sqrt(varEx) : 0.0
+    meanNeg = nNeg > 0 ? sumNeg / nNeg : 0.0
+    varNeg  = nNeg > 1 ? (sumNeg2 - nNeg * meanNeg * meanNeg) / (nNeg - 1) : 0.0
+    stdNeg  = varNeg > 0 ? math.sqrt(varNeg) : 0.0
+    ann     = math.sqrt(252)
+    sharpe  = stdEx  > 0 ? ann * meanEx / stdEx  : 0.0
+    sortino = stdNeg > 0 ? ann * meanEx / stdNeg : 0.0
+    vol     = stdEx * ann * 100.0
+    yrs     = na(startTime) ? 0.0 : (time - startTime) / (1000.0 * 60 * 60 * 24 * 365.25)
+    tr      = na(startEq) or startEq == 0 ? 0.0 : strategy.equity / startEq - 1.0
+    cagr    = yrs > 0 ? (math.pow(1.0 + tr, 1.0 / yrs) - 1.0) * 100.0 : 0.0
+    calmar  = maxDD < 0 ? (cagr / 100.0) / math.abs(maxDD) : 0.0
+
+    hd = color.new(color.teal, 0)
+    table.cell(perf, 0, 0, "Dip Mafia HODL — equity metrics", text_color = color.white,
+         text_size = size.small, bgcolor = hd)
+    table.cell(perf, 1, 0, "", bgcolor = hd)
+    metricRow(1,  "Total return",   str.tostring(tr * 100.0, "#.##") + "%")
+    metricRow(2,  "CAGR",           str.tostring(cagr, "#.##") + "%")
+    metricRow(3,  "Sharpe",         str.tostring(sharpe, "#.##"))
+    metricRow(4,  "Sortino",        str.tostring(sortino, "#.##"))
+    metricRow(5,  "Max drawdown",   str.tostring(maxDD * 100.0, "#.##") + "%")
+    metricRow(6,  "Volatility",     str.tostring(vol, "#.##") + "% / yr")
+    metricRow(7,  "Calmar",         str.tostring(calmar, "#.##"))
+    metricRow(8,  "Open P&L",       str.tostring(strategy.openprofit, "#"))
+    metricRow(9,  "Equity",         str.tostring(strategy.equity, "#"))
+    metricRow(10, "Buys / open lots", str.tostring(nBuys) + " / " + str.tostring(strategy.opentrades))
 
 // ---------- Markers ---------------------------------------------------------
 plotshape(dipBuy and warmedUp, "Dip BUY", shape.triangleup, location.belowbar,
