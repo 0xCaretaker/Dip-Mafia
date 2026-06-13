@@ -4,16 +4,17 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 # Current Status
 - **Bot**: Production-ready, runs via GitHub Actions cron (`dip-mafia.yml`)
 - **Backtest**: Focused portfolio-level simulation. stocks.txt stocks share a single monthly budget. Compares 3 strategies + NIFTY 50 benchmark. Generates 8 clean PNG charts + console summary.
-- **Latest results** (data as of 2026-04-17, 73 stocks from 75-symbol stocks.txt, bb_lookback=60, ₹24.7L invested over 16.3 years):
-  - Your Strategy (Timed HODL): ₹182.6L, XIRR 26.2%, Sharpe 1.27, MaxDD -52.4%
+- **Latest results** (data as of 2026-04-17, 73 stocks from 75-symbol stocks.txt, bb_lookback=60, V4 idle-cash fallback, ₹24.7L invested over 16.3 years):
+  - Your Strategy (Timed HODL): ₹188.1L, XIRR 26.5%, Sharpe 1.32, MaxDD -49.4%
   - SIP on Your Stocks: ₹197.2L, XIRR 27.0%, Sharpe 1.31, MaxDD -51.4%
   - SIP on NIFTY 50: ₹52.3L, XIRR 10.9%, Sharpe 1.13, MaxDD -37.3%
-  - Timed Entry+Exit: ₹25.6L — destroys returns, don't use
-  - Cash drag only 5.7% (58/73 stocks got signals across 165 buy days)
-  - Timed HODL and SIP near-identical on MaxDD now (-52% vs -51%)
+  - Timed Entry+Exit: ₹34.4L — destroys returns, don't use
+  - V4 fallback (deploy idle cash after 21d into any watchlist stock below midline, force if none):
+    cash drag 5.7%→1.2%, longest idle 214d→21d; Timed HODL now best on Sharpe/Sortino/MaxDD
   - SIP nearly matches on absolute returns (neck and neck)
-  - Both crush NIFTY 50 by ~3.5x
+  - Both crush NIFTY 50 by ~3.6x
   - Prior 62-symbol / 30-bar run archived in backtest_output_archive_20260417/
+  - Live bot: REQUIRE_CLOSE_BELOW_MIDLINE=True buy gate (separate from backtest fallback)
 
 # Architecture
 - `bot.py` — single entry point. Downloads all tickers once via `yf.download`, passes shared DataFrame to signal modules. Sends MarkdownV2 Telegram messages.

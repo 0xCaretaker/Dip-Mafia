@@ -146,7 +146,7 @@ Generates 8 charts in `backtest_output/` + console summary.
 
 ### Latest Results (73 stocks, 2010–2026)
 
-> Run as of 2026-04-17 against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), with the expanded 60-bar Bollinger watch window. The previous 62-symbol / 30-bar run is archived under `backtest_output_archive_20260417/`.
+> Run as of 2026-04-17 against the 75-symbol `stocks.txt` (73 had enough history for the 200-bar Bollinger warmup), 60-bar Bollinger watch window, with the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `STRATEGY_COMPARISON.md`). The previous 62-symbol / 30-bar run is archived under `backtest_output_archive_20260417/`.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -163,39 +163,39 @@ Generates 8 charts in `backtest_output/` + console summary.
 ════════════════════════════════════════════════════════════════════════════════════════════════════
                             Your Strategy (Timed HODL)      Partial SIP+Timed     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
-  Final Value                              ₹182.6L                ₹184.1L                ₹197.2L                 ₹25.6L                 ₹52.3L
-  Inflation-Adj Value                       ₹70.7L                 ₹71.3L                 ₹76.4L                  ₹9.9L                 ₹20.2L
-  Wealth Multiple                             7.4x                   7.4x                   8.0x                   1.0x                   2.1x
-  Real Multiple (infl-adj)                    2.9x                   2.9x                   3.1x                   0.4x                   0.8x
-  XIRR                                       26.2%                  26.2%                  27.0%                   0.5%                  10.9%
-  Real XIRR (minus 6% infl)                  20.2%                  20.2%                  21.0%                  -5.5%                   4.9%
-  Sharpe                                      1.27                   1.30                   1.31                   0.90                   1.13
-  Sortino                                     2.97                   3.10                   3.06                   1.96                   3.40
-  Max Drawdown                              -52.4%                 -50.0%                 -51.4%                 -59.6%                 -37.3%
-  Max DD Duration                         718 days               709 days               709 days               662 days               183 days
-  Volatility                                 40.8%                  39.3%                  39.5%                  47.0%                  37.7%
+  Final Value                              ₹188.1L                ₹184.8L                ₹197.2L                 ₹34.4L                 ₹52.3L
+  Inflation-Adj Value                       ₹72.8L                 ₹71.6L                 ₹76.4L                 ₹13.3L                 ₹20.2L
+  Wealth Multiple                             7.6x                   7.5x                   8.0x                   1.4x                   2.1x
+  Real Multiple (infl-adj)                    2.9x                   2.9x                   3.1x                   0.5x                   0.8x
+  XIRR                                       26.5%                  26.3%                  27.0%                   5.1%                  10.9%
+  Real XIRR (minus 6% infl)                  20.5%                  20.3%                  21.0%                  -0.9%                   4.9%
+  Sharpe                                      1.32                   1.30                   1.31                   0.94                   1.13
+  Sortino                                     3.17                   3.11                   3.06                   2.03                   3.40
+  Max Drawdown                              -49.4%                 -50.0%                 -51.4%                 -68.2%                 -37.3%
+  Max DD Duration                         709 days               709 days               709 days               851 days               183 days
+  Volatility                                 38.9%                  39.3%                  39.5%                  46.9%                  37.7%
 
-  Buy signals fired on 165 days across 58/73 stocks
-  Cash drag (Your Strategy): 5.7%
+  Buy signals fired on 184 days across 67/73 stocks
+  Cash drag (Your Strategy): 1.2%   ·   longest idle: 21 trading days (~1 month)
 ```
 
 ### Key Findings
 
 | Metric | Your Strategy | SIP (same stocks) | NIFTY 50 SIP |
 |---|---|---|---|
-| Final Value | ₹183L | ₹197L | ₹52L |
-| Inflation-Adjusted | ₹71L | ₹76L | ₹20L |
-| XIRR | 26.2% | 27.0% | 10.9% |
-| Real XIRR (−6% inflation) | **20.2%** | 21.0% | 4.9% |
-| Sharpe | 1.27 | **1.31** | 1.13 |
-| Sortino | 2.97 | 3.06 | 3.40 |
-| Max Drawdown | **-52%** | -51% | -37% |
-| Volatility | 40.8% | **39.5%** | 37.7% |
+| Final Value | ₹188L | ₹197L | ₹52L |
+| Inflation-Adjusted | ₹73L | ₹76L | ₹20L |
+| XIRR | 26.5% | 27.0% | 10.9% |
+| Real XIRR (−6% inflation) | **20.5%** | 21.0% | 4.9% |
+| Sharpe | **1.32** | 1.31 | 1.13 |
+| Sortino | **3.17** | 3.06 | 3.40 |
+| Max Drawdown | **-49%** | -51% | -37% |
+| Volatility | 38.9% | 39.5% | 37.7% |
 
-- **Both strategies crush NIFTY 50 by ~3.5x**, stock picking matters more than timing
-- **Timed HODL and SIP are neck-and-neck on returns**, with similar max drawdown (-52% vs -51%) at this wider universe
-- **Real returns beat inflation easily**, 20.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50
-- **Cash drag is only 5.7%**, 70+ stocks keep money deployed
+- **Both strategies crush NIFTY 50 by ~3.6x**, stock picking matters more than timing
+- **Timed HODL edges SIP on risk-adjusted return** (Sharpe 1.32 vs 1.31, Sortino 3.17 vs 3.06, MaxDD -49% vs -51%) at near-identical absolute return
+- **Cash drag down to 1.2%** (from 5.7%) with the V4 fallback, longest idle stretch cut from 214 to 21 trading days
+- **Real returns beat inflation easily**, 20.5% real XIRR for Timed HODL vs 4.9% for NIFTY 50
 - **Entry+Exit is terrible**, selling on MACD Sell destroys compounding
 
 ### Charts

@@ -216,7 +216,18 @@ def simulate_sip(stock_dfs, symbols, monthly_inv, slippage_bps=5):
     return pd.DataFrame(records).set_index("date"), cashflows
 
 def simulate_timed_hodl(stock_dfs, symbols, monthly_inv, bb_sig, bb_mid, imp_sig, slippage_bps=5,
-                        idle_threshold=42, max_stock_pct=0.15):
+                        idle_threshold=21, max_stock_pct=0.15,
+                        fallback_universe="watchlist", fallback_force=True):
+    """Idle-cash deployment fallback (default = the "V4" config adopted after the
+    cash-drag study in STRATEGY_COMPARISON.md):
+      idle_threshold=21    deploy after ~1 month of idle cash (was 42)
+      fallback_universe    "watchlist" = any watchlist stock below midline
+                           (was "held" = only existing holdings below midline)
+      fallback_force=True  if nothing is below midline (e.g. raging bull), deploy
+                           across all priced stocks anyway so cash never rots.
+    This cut the longest idle streak 214d->21d and cash drag 5.7%->1.2% while
+    improving returns and Sharpe. Pass ("held", False, 42) to restore the old
+    conservative fallback."""
     dates = get_all_dates(stock_dfs, symbols)
     holdings = {s: 0.0 for s in symbols}
     last_price = {s: 0.0 for s in symbols}
@@ -253,11 +264,14 @@ def simulate_timed_hodl(stock_dfs, symbols, monthly_inv, bb_sig, bb_mid, imp_sig
             idle_days += 1
             if idle_days >= idle_threshold:
                 port_val = _portfolio_value(holdings, last_price, symbols, cash)
-                candidates = [s for s in symbols
-                              if holdings[s] > 0 and last_price[s] > 0
+                pool = symbols if fallback_universe == "watchlist" else [s for s in symbols if holdings[s] > 0]
+                candidates = [s for s in pool
+                              if last_price[s] > 0
                               and s in bb_mid and dt in bb_mid[s].index
                               and not np.isnan(bb_mid[s].loc[dt])
                               and last_price[s] < bb_mid[s].loc[dt]]
+                if not candidates and fallback_force:
+                    candidates = [s for s in symbols if last_price[s] > 0]
                 if candidates:
                     remaining = cash
                     per = remaining / len(candidates)
@@ -776,7 +790,7 @@ def compute_investment_assumptions(cfg, dates):
         "end_date": end.date(),
     }
 
-def print_summary(metrics_list, total_invested, n_stocks, n_signals, n_bought, cash_pct, assumptions, max_idle=0, avg_idle=0, n_fallback=0, idle_threshold=42):
+def print_summary(metrics_list, total_invested, n_stocks, n_signals, n_bought, cash_pct, assumptions, max_idle=0, avg_idle=0, n_fallback=0, idle_threshold=21):
     a = assumptions
     print(f"\n{'═'*100}")
     print(f"  INVESTMENT ASSUMPTIONS")

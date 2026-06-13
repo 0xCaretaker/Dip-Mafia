@@ -3,6 +3,13 @@
 Timed HODL strategy, period 2010-01-04 → 2026-04-17 (16.3y), ₹24.7L invested.
 "OLD list" = 62-symbol `stocks.txt` (commit `88bb51a`); "NEW list" = current 75-symbol `stocks.txt`.
 
+> **ADOPTED (current default):** the **V4 idle-cash fallback** — see "Cash-deployment
+> fallback" near the end. It is now the default in `simulate_timed_hodl` and is
+> reflected in `backtest_output/`, the dashboard, and the README. The bb-variant /
+> horizon tables below were computed with the *prior* held-only/42-day fallback (held
+> constant across those comparisons, so their relative conclusions still hold); the
+> dashboard's Horizon Returns now use V4.
+
 | Run | Final (Timed) | XIRR | Sharpe | Max DD | Stocks | Signals / Bought |
 |---|---|---|---|---|---|---|
 | OLD list / bb-30 (archived baseline) | ₹207.1L | 27.6% | 1.27 | −55.5% | 61 | 152 / 46 |
@@ -83,6 +90,40 @@ early-period exposure.)
   extended. But the edge **fades with horizon** and is neutral over Full (24.9 vs
   25.0). Over the full period it remains a wash, matching the salary-model run
   (₹182.2L vs ₹182.6L) — a recent-window improver, not a long-run one.
+
+## Cash-deployment fallback (V4, adopted)
+
+The headline cash-sitting problem (a **214-trading-day** idle stretch where no held
+stock was below its midline) was attacked by widening the idle-cash fallback.
+Current list, full period, salary model, bb-60, no buy-gate:
+
+| Fallback variant | Final | XIRR | Sharpe | MaxDD | Cash drag | Longest idle | Fallback buys |
+|---|---|---|---|---|---|---|---|
+| Baseline: held, thr 42 (old default) | ₹184.3L | 26.2% | 1.27 | −53.6% | 5.7% | 214d | 41 |
+| V1: watchlist, thr 42 | ₹172.8L | 25.5% | 1.28 | −49.6% | 5.4% | 201d | 57 |
+| V2: watchlist, thr 21 | ₹184.3L | 26.2% | 1.29 | −52.0% | 5.3% | 201d | 209 |
+| V3: watchlist+force, thr 42 | ₹178.0L | 25.8% | 1.31 | −47.3% | 1.9% | 42d | 229 |
+| **V4: watchlist+force, thr 21 (ADOPTED)** | **₹190.4L** | **26.6%** | **1.31** | −51.1% | **1.2%** | **21d** | 590 |
+
+(prototype figures, 71-stock cache universe; the committed full run on 73 stocks gives
+Timed HODL ₹188.1L, Sharpe 1.32, MaxDD −49.4%, cash drag 1.2%, longest idle 21d.)
+
+**Findings:**
+- Widening the universe alone (V1/V2) barely dents the idle streak (214→201d) — in
+  bull markets almost everything is above its 200-SMA, so "below midline" candidates
+  are scarce regardless of universe. V1 also *hurt* returns (spread into laggards).
+- The **force last-resort** (V3/V4) is what actually kills the idle streak — it caps
+  idle at the threshold and crushes cash drag to ~1–2%.
+- **V4** (force + 21-day threshold) wins outright: solves cash sitting (idle 214→21d,
+  drag 5.7%→1.2%) **and** improves returns (₹184→190L), Sharpe (1.27→1.31), and
+  drawdown. Deploying sooner and never letting cash rot lands better average entries
+  than waiting 42 days for a dip that, in bull runs, never arrives.
+- Tradeoff: force sometimes buys *above* midline when no dip exists — a mild
+  departure from strict "buy dips," but still long-only within the curated watchlist.
+
+`simulate_timed_hodl` defaults are now `fallback_universe="watchlist"`,
+`fallback_force=True`, `idle_threshold=21`. Restore the old behavior with
+`("held", False, 42)`.
 
 ## Caveat
 
