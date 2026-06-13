@@ -11,6 +11,28 @@ from bollinger_signals import process_bollinger_signals
 
 
 # =========================
+# Bollinger buy gate
+# =========================
+# When True, the Bollinger gate (the Buy/Watch universe that feeds the Verdict and
+# the sentiment counts) additionally requires the latest close to sit below the BB
+# midline (200-SMA) — i.e. band position ⏬ (below lower) or 🔽 (below mid). Buy
+# stocks always qualify (a lower-band touch is below the mid); this only drops
+# "Watch" names that have already recovered above their 200-SMA. Mirrors the
+# backtest's BUY_REQUIRE_BELOW_MID experiment — see STRATEGY_COMPARISON.md.
+REQUIRE_CLOSE_BELOW_MIDLINE = True
+_BELOW_MID_POSITIONS = {"⏬", "🔽"}
+
+
+def passes_bollinger_gate(info):
+    """Buy/Watch and, when the midline gate is on, currently below the BB mid."""
+    if info.get("action") not in ("Buy", "Watch"):
+        return False
+    if REQUIRE_CLOSE_BELOW_MIDLINE and info.get("position") not in _BELOW_MID_POSITIONS:
+        return False
+    return True
+
+
+# =========================
 # Escape for Telegram MarkdownV2
 # =========================
 def escape_md(text):
@@ -92,10 +114,10 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         "Watch": "🟣"
     }
 
-    # Create filter set: only stocks with Bollinger Buy or Watch signals
+    # Bollinger gate: Buy/Watch (and, if enabled, currently below the BB midline)
     bollinger_filter = {
         stock for stock, info in bollinger_signals.items()
-        if info["action"] in ["Buy", "Watch"]
+        if passes_bollinger_gate(info)
     }
 
     # Column widths over the lines that actually render (Buy/Sell across all
@@ -356,7 +378,7 @@ def main():
 
     bollinger_filter = {
         s for s, i in bollinger_results.items()
-        if i["action"] in ["Buy", "Watch"]
+        if passes_bollinger_gate(i)
     }
 
     # Console: Bollinger Bands
