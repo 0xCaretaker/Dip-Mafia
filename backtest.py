@@ -51,11 +51,16 @@ CONFIG = {
     "salary_growth": 0.10,
     "bb_length": 200,
     "bb_std": 2,
-    "bb_lookback": 30,
+    "bb_lookback": 60,
     "impulse_length_ma": 34,
     "impulse_length_signal": 9,
     "slippage_bps": 5,
 }
+
+# Signal-buy gate experiment (Timed HODL): when True, a signal buy also requires
+# the close to be below the BB midline (200-SMA), not just a band touch within
+# lookback. Default False preserves the standard BB(touch)+MACD gate.
+BUY_REQUIRE_BELOW_MID = False
 
 REGIMES = {
     "Dot-com crash\n(2000-03)":     ("2000-01-01", "2003-05-01", "Bear/Crash"),
@@ -231,7 +236,11 @@ def simulate_timed_hodl(stock_dfs, symbols, monthly_inv, bb_sig, bb_mid, imp_sig
             buying = [s for s in symbols
                       if s in bb_sig and s in imp_sig
                       and dt in bb_sig[s].index and dt in imp_sig[s].index
-                      and bb_sig[s].loc[dt] in ("Buy", "Watch") and imp_sig[s].loc[dt] == "Buy"]
+                      and bb_sig[s].loc[dt] in ("Buy", "Watch") and imp_sig[s].loc[dt] == "Buy"
+                      and (not BUY_REQUIRE_BELOW_MID
+                           or (s in bb_mid and dt in bb_mid[s].index
+                               and not np.isnan(bb_mid[s].loc[dt])
+                               and last_price[s] < bb_mid[s].loc[dt]))]
             if buying:
                 per = cash / len(buying)
                 for s in buying:

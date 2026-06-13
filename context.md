@@ -4,15 +4,16 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 # Current Status
 - **Bot**: Production-ready, runs via GitHub Actions cron (`dip-mafia.yml`)
 - **Backtest**: Focused portfolio-level simulation. stocks.txt stocks share a single monthly budget. Compares 3 strategies + NIFTY 50 benchmark. Generates 8 clean PNG charts + console summary.
-- **Latest results** (2026-04-20, 61 stocks, ₹24.7L invested over 16.3 years):
-  - Your Strategy (Timed HODL): ₹194.2L, XIRR 26.9%, Sharpe 1.24, MaxDD -54.1%
-  - SIP on Your Stocks: ₹197.3L, XIRR 27.0%, Sharpe 1.28, MaxDD -63.6%
+- **Latest results** (data as of 2026-04-17, 73 stocks from 75-symbol stocks.txt, bb_lookback=60, ₹24.7L invested over 16.3 years):
+  - Your Strategy (Timed HODL): ₹182.6L, XIRR 26.2%, Sharpe 1.27, MaxDD -52.4%
+  - SIP on Your Stocks: ₹197.2L, XIRR 27.0%, Sharpe 1.31, MaxDD -51.4%
   - SIP on NIFTY 50: ₹52.3L, XIRR 10.9%, Sharpe 1.13, MaxDD -37.3%
-  - Timed Entry+Exit: ₹9.9L — destroys returns, don't use
-  - Cash drag only 6.2% (46/61 stocks got signals across 136 buy days)
-  - Timed HODL wins on MaxDD (-54% vs -64%) and volatility risk
+  - Timed Entry+Exit: ₹25.6L — destroys returns, don't use
+  - Cash drag only 5.7% (58/73 stocks got signals across 165 buy days)
+  - Timed HODL and SIP near-identical on MaxDD now (-52% vs -51%)
   - SIP nearly matches on absolute returns (neck and neck)
-  - Both crush NIFTY 50 by ~4x
+  - Both crush NIFTY 50 by ~3.5x
+  - Prior 62-symbol / 30-bar run archived in backtest_output_archive_20260417/
 
 # Architecture
 - `bot.py` — single entry point. Downloads all tickers once via `yf.download`, passes shared DataFrame to signal modules. Sends MarkdownV2 Telegram messages.
@@ -41,7 +42,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 # Key Files
 - `bot.py` — production entry point
 - `backtest.py` — portfolio-level backtest (run: `python3 backtest.py`)
-- `stocks.txt` — watchlist (62 symbols, no `.NS` suffix)
+- `stocks.txt` — watchlist (75 symbols, no `.NS` suffix)
 - `backtest_output/` — 8 numbered PNG charts + trades.csv + trades_monthly_summary.csv
 - `.github/workflows/dip-mafia.yml` — cron schedule
 - `requirements.txt` — yfinance, requests (backtest also needs matplotlib, scipy)

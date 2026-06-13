@@ -11,6 +11,8 @@ Output: backtest_output/dashboard.html
 """
 
 import json
+import glob
+import os
 import warnings
 import numpy as np
 import pandas as pd
@@ -23,6 +25,71 @@ OUTPUT_DIR = "backtest_output"
 TRADES_CSV = f"{OUTPUT_DIR}/trades.csv"
 BACKTEST_JSON = f"{OUTPUT_DIR}/dashboard_data.json"
 STRATEGY = "Timed HODL"
+ARCHIVE_GLOB = "backtest_output_archive_*"   # prior watchlist runs, surfaced in the Iterations tab
+TIMED_KEY = "Your Strategy (Timed HODL)"
+DOCS_DIR = "docs"
+
+
+# ─── Iteration history (old vs new watchlist) ────────────────────────────────
+
+def _iter_entry(label, watchlist, data, is_current=False):
+    """One row for the Iterations tab: Timed HODL metrics + equity curve for a run."""
+    metrics = {x["name"]: x for x in data.get("metrics", [])}
+    t = metrics.get(TIMED_KEY, {})
+    eq = data.get("equity", {}).get(TIMED_KEY, {})
+    a = data.get("assumptions", {})
+    s = data.get("summary", {})
+    return {
+        "label": label,
+        "is_current": is_current,
+        "watchlist": watchlist,
+        "n_stocks": s.get("n_stocks"),
+        "final_value": t.get("final_value"),
+        "xirr": t.get("xirr"),
+        "sharpe": t.get("sharpe"),
+        "sortino": t.get("sortino"),
+        "max_drawdown": t.get("max_drawdown"),
+        "cash_pct": s.get("cash_pct"),
+        "period": f"{a.get('start_date', '')} → {a.get('end_date', '')}".strip(" →"),
+        "equity": {"dates": eq.get("dates", []), "values": eq.get("values", [])},
+    }
+
+
+def load_iterations(current_data):
+    """Current run first, then every archived run found via ARCHIVE_GLOB.
+
+    Each archive is a self-contained snapshot of a previous backtest_output/, so
+    future iterations appear automatically once their folder exists — no code
+    change needed. An optional meta.json in the folder enriches the label.
+    """
+    iters = []
+    if current_data:
+        try:
+            wl = sum(1 for ln in open("stocks.txt") if ln.strip())
+        except OSError:
+            wl = None
+        label = f"Current ({wl}-symbol list)" if wl else "Current"
+        iters.append(_iter_entry(label, wl, current_data, is_current=True))
+
+    for d in sorted(glob.glob(ARCHIVE_GLOB), reverse=True):
+        jp = os.path.join(d, "dashboard_data.json")
+        if not os.path.isfile(jp):
+            continue
+        try:
+            data = json.load(open(jp))
+        except (json.JSONDecodeError, OSError):
+            continue
+        meta = {}
+        mp = os.path.join(d, "meta.json")
+        if os.path.isfile(mp):
+            try:
+                meta = json.load(open(mp))
+            except (json.JSONDecodeError, OSError):
+                meta = {}
+        label = meta.get("label") or d.replace("backtest_output_archive_", "")
+        iters.append(_iter_entry(label, meta.get("watchlist_size"), data))
+
+    return iters
 
 
 # ─── Portfolio data ────────────────────────────────────────────────────────
@@ -149,9 +216,11 @@ def fmt_inr(v):
     return f"₹{v:,.0f}"
 
 
-def generate_html(portfolio_data, backtest_data):
+def generate_html(portfolio_data, backtest_data, iterations=None, horizons=None):
     ps = portfolio_data["summary"]
     has_backtest = backtest_data is not None
+    iterations = iterations or []
+    has_iterations = len(iterations) > 1   # current + at least one archive
 
     html = f"""<!DOCTYPE html>
 <html lang="en">
@@ -244,6 +313,10 @@ tr.total-row td {{ border-top: 2px solid var(--border); }}
 .metrics-table td.row-label {{ text-align: right; color: var(--muted); font-weight: 600; font-size: 0.75rem; }}
 .metrics-table tr:nth-child(even) td {{ background: #ffffff04; }}
 .metrics-best {{ font-weight: 700; }}
+.hz-best {{ font-weight: 800; color: #ff3b3b; }}
+.hz-table th.grp {{ border-bottom: 2px solid var(--border); font-size: 0.7rem; color: var(--muted); }}
+.hz-table th.cur {{ color: var(--green); }}
+.hz-title {{ margin: 14px 0 6px; font-size: 0.9rem; color: #fff; }}
 
 /* Assumptions banner */
 .assumptions {{
@@ -321,12 +394,13 @@ tr.total-row td {{ border-top: 2px solid var(--border); }}
 
 <div class="header">
   <h1>Dip Mafia Dashboard</h1>
-  <div class="sub">Updated {datetime.now().strftime('%d %b %Y, %I:%M %p')}</div>
+  <div class="sub">Updated {datetime.now().strftime('%d %b %Y, %I:%M %p')} &bull; <a href="index.html" style="color:var(--accent);text-decoration:none">six7 Almanac →</a></div>
 </div>
 
 <div class="tabs">
   <div class="tab active" onclick="switchTab('portfolio')">Portfolio</div>
   {'''<div class='tab' onclick="switchTab('backtest')">Backtest</div>''' if has_backtest else ""}
+  {'''<div class='tab' onclick="switchTab('iterations')">Iterations</div>''' if has_iterations else ""}
 </div>
 
 <!-- ═══ PORTFOLIO TAB ═══ -->
@@ -390,6 +464,11 @@ tr.total-row td {{ border-top: 2px solid var(--border); }}
   <div id="bt_content"></div>
 </div>
 
+<!-- ═══ ITERATIONS TAB ═══ -->
+<div id="tab-iterations" class="tab-content">
+  <div id="iter_content"></div>
+</div>
+
 <!-- Trade history modal -->
 <div class="modal-overlay" id="modalOverlay" onclick="if(event.target===this)closeModal()">
   <div class="modal">
@@ -429,6 +508,7 @@ function switchTab(id) {{
   document.getElementById('tab-' + id).classList.add('active');
   event.target.classList.add('active');
   if (id === 'backtest' && !window._btRendered) renderBacktest();
+  if (id === 'iterations' && !window._iterRendered) renderIterations();
 }}
 
 function openModal(stock) {{
@@ -522,6 +602,8 @@ new Chart(document.getElementById('pf_allocChart'), {{
 
 // ─── Backtest Tab ───
 {"const BT = " + json.dumps(backtest_data) + ";" if has_backtest else "const BT = null;"}
+const ITER = {json.dumps(iterations)};
+const HZ = {json.dumps(horizons) if horizons else "null"};
 
 window._btRendered = false;
 window._btTileCharts = {{}};
@@ -809,6 +891,145 @@ function renderBacktest() {{
     window._btTileCharts[t.key] = new Chart(canvas, cfgs[t.key]());
   }});
 }}
+
+// ─── Iterations Tab — old vs new watchlist (Timed HODL) ───
+window._iterRendered = false;
+function renderIterations() {{
+  if (!ITER || ITER.length < 2) return;
+  window._iterRendered = true;
+  const el = document.getElementById('iter_content');
+
+  let html = `<div class="assumptions">
+    Comparing the <strong>Timed HODL</strong> strategy across watchlist iterations.
+    Each archived run is a prior <code>stocks.txt</code> snapshot kept under
+    <code>backtest_output_archive_*</code> — new iterations appear here automatically.
+    Same salary-SIP basis across runs; <strong>Current</strong> is highlighted.
+  </div>`;
+
+  // Comparison table
+  html += `<div class="chart-card" style="margin-top:0"><h3>Across Iterations — Timed HODL</h3>
+    <div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th class="row-label"></th>`;
+  ITER.forEach(it => {{
+    const c = it.is_current ? ' style="color:var(--green)"' : '';
+    html += `<th${{c}}>${{it.label}}</th>`;
+  }});
+  html += `</tr></thead><tbody>`;
+
+  const pct = v => (v==null ? '—' : v.toFixed(1)+'%');
+  const num = v => (v==null ? '—' : v.toFixed(2));
+  const rows = [
+    ['Watchlist size',    it => it.watchlist!=null ? it.watchlist : '—', 'max'],
+    ['Stocks with data',  it => it.n_stocks!=null ? it.n_stocks : '—', null],
+    ['Final Value',       it => it.final_value!=null ? fmtInr(it.final_value) : '—', 'max'],
+    ['XIRR',              it => pct(it.xirr), 'max'],
+    ['Sharpe',            it => num(it.sharpe), 'max'],
+    ['Sortino',           it => num(it.sortino), 'max'],
+    ['Max Drawdown',      it => pct(it.max_drawdown), 'max'],
+    ['Cash Drag',         it => pct(it.cash_pct), 'min'],
+    ['Period',            it => it.period || '—', null],
+  ];
+  rows.forEach(([label, fn, bestFn]) => {{
+    html += `<tr><td class="row-label">${{label}}</td>`;
+    const raw = {{
+      'Final Value': ITER.map(it=>it.final_value),
+      'XIRR': ITER.map(it=>it.xirr),
+      'Sharpe': ITER.map(it=>it.sharpe),
+      'Sortino': ITER.map(it=>it.sortino),
+      'Max Drawdown': ITER.map(it=>it.max_drawdown),
+      'Cash Drag': ITER.map(it=>it.cash_pct),
+      'Watchlist size': ITER.map(it=>it.watchlist),
+    }}[label];
+    let bestIdx = -1;
+    if (bestFn && raw) {{
+      const nums = raw.map(v => (v==null ? NaN : v));
+      const valid = nums.filter(n => !isNaN(n));
+      if (valid.length) {{
+        const target = bestFn === 'max' ? Math.max(...valid) : Math.min(...valid);
+        bestIdx = nums.indexOf(target);
+      }}
+    }}
+    ITER.forEach((it, i) => {{
+      const cls = i === bestIdx ? ' class="metrics-best"' : '';
+      const c = i === bestIdx ? ' style="color:var(--green)"' : '';
+      html += `<td${{cls}}${{c}}>${{fn(it)}}</td>`;
+    }});
+    html += `</tr>`;
+  }});
+  html += `</tbody></table></div></div>`;
+
+  // Overlaid equity curve (Timed HODL) anchored to the current run's dates
+  html += `<div class="chart-card" style="margin-top:16px"><h3>Equity Curve — Timed HODL across iterations</h3>
+    <div class="chart-wrap" style="height:440px"><canvas id="iter_eq"></canvas></div></div>`;
+
+  if (HZ && HZ.cells) html += renderHorizons();
+
+  el.innerHTML = html;
+
+  const base = (ITER[0].equity && ITER[0].equity.dates) || [];
+  const palette = ['#4CAF50','#FF9800','#2196F3','#E91E63','#9C27B0','#00BCD4','#FFC107'];
+  const datasets = ITER.map((it, i) => {{
+    const map = {{}};
+    (it.equity.dates||[]).forEach((d, j) => {{ map[d] = it.equity.values[j]; }});
+    return {{
+      label: it.label,
+      data: base.map(d => (d in map ? map[d] : null)),
+      borderColor: palette[i % palette.length],
+      borderWidth: it.is_current ? 2.5 : 1.5,
+      borderDash: it.is_current ? [] : [5,3],
+      pointRadius: 0, fill: false, spanGaps: true,
+    }};
+  }});
+  new Chart(document.getElementById('iter_eq'), {{
+    type: 'line',
+    data: {{ labels: base, datasets }},
+    options: {{ responsive:true, maintainAspectRatio:false, interaction:{{mode:'index',intersect:false}},
+      plugins: {{ legend:{{labels:{{color:'#ccc',font:{{size:10}}}}}},
+        tooltip:{{callbacks:{{label:c=>c.dataset.label+': '+fmtInr(c.raw)}}}} }},
+      scales: {{ x:{{ticks:{{color:'#666',maxTicksLimit:12}},grid:{{color:'#ffffff08'}}}},
+        y:{{ticks:{{color:'#888',callback:v=>fmtInr(v)}},grid:{{color:'#ffffff10'}}}} }}
+    }}
+  }});
+}}
+
+// Horizon comparison tables — 1y/3y/5y/Full × (watchlist × bb-variant), best per row in red.
+function renderHorizons() {{
+  const wls = HZ.watchlists, vars = HZ.variants, hz = HZ.horizons, cells = HZ.cells;
+  const cols = [];
+  wls.forEach(w => vars.forEach(v => cols.push({{wl:w, v:v}})));
+  const metrics = [
+    {{key:'xirr',  title:'XIRR (%)',                       fmt:v=>v.toFixed(1)}},
+    {{key:'mult',  title:'Wealth multiple (final ÷ invested)', fmt:v=>v.toFixed(2)+'x'}},
+    {{key:'maxdd', title:'Max drawdown (%)',               fmt:v=>v.toFixed(1)}},
+  ];
+  let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns — Timed HODL</h3>
+    <div style="color:var(--muted);font-size:0.76rem;margin-bottom:6px">
+      Trailing windows to ${{HZ.end_date}} &bull; ${{HZ.contribution}} &bull; signals on full history (200-bar warmup) &bull;
+      <strong>bb-60 is the default</strong> &bull; best per row in <span style="color:#ff3b3b;font-weight:800">red</span>
+    </div>`;
+  metrics.forEach(m => {{
+    h += `<div class="hz-title">${{m.title}}</div>`;
+    h += `<div style="overflow-x:auto"><table class="metrics-table hz-table"><thead>`;
+    h += `<tr><th class="row-label"></th>`;
+    wls.forEach(w => {{ h += `<th class="grp${{w.is_current?' cur':''}}" colspan="${{vars.length}}">${{w.label}}</th>`; }});
+    h += `</tr><tr><th class="row-label"></th>`;
+    cols.forEach(c => {{ h += `<th${{c.wl.is_current?' class="cur"':''}}>${{c.v.label}}</th>`; }});
+    h += `</tr></thead><tbody>`;
+    hz.forEach(hl => {{
+      const vals = cols.map(c => {{ const cell = cells[`${{c.wl.key}}|${{c.v.key}}|${{hl}}`]; return cell ? cell[m.key] : null; }});
+      const nums = vals.filter(v => v != null);
+      const best = nums.length ? Math.max(...nums) : null;   // higher is better for all three (maxdd closer to 0)
+      h += `<tr><td class="row-label">${{hl}}</td>`;
+      vals.forEach(v => {{
+        if (v == null) {{ h += `<td>—</td>`; return; }}
+        h += `<td${{v === best ? ' class="hz-best"' : ''}}>${{m.fmt(v)}}</td>`;
+      }});
+      h += `</tr>`;
+    }});
+    h += `</tbody></table></div>`;
+  }});
+  h += `</div>`;
+  return h;
+}}
 </script>
 </body>
 </html>"""
@@ -841,11 +1062,31 @@ def main():
     except FileNotFoundError:
         print(f"  No backtest data found ({BACKTEST_JSON}), skipping backtest tab")
 
-    html = generate_html(portfolio_data, backtest_data)
+    iterations = load_iterations(backtest_data)
+    n_arch = max(0, len(iterations) - 1)
+    if n_arch:
+        print(f"  Iterations tab: current + {n_arch} archived run(s)")
+
+    horizons = None
+    try:
+        with open("backtest_output/horizons.json") as f:
+            horizons = json.load(f)
+        print(f"  Horizon comparison: {len(horizons.get('cells', {}))} cells")
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("  No horizons.json (run horizon_compare.py to add the horizon table)")
+
+    html = generate_html(portfolio_data, backtest_data, iterations, horizons)
     out_path = "dashboard.html"
     with open(out_path, "w") as f:
         f.write(html)
     print(f"  Dashboard saved -> {out_path}")
+
+    # Publish to docs/ so it's live on GitHub Pages alongside the six7 almanac
+    if os.path.isdir(DOCS_DIR):
+        docs_path = os.path.join(DOCS_DIR, "strat.html")
+        with open(docs_path, "w") as f:
+            f.write(html)
+        print(f"  Published -> {docs_path}")
 
 
 if __name__ == "__main__":
