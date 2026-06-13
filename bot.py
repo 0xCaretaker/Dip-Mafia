@@ -213,10 +213,10 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             hold_pct = (hold_count / total) * 100
             combined_lines.append("")
             combined_lines.append(
-                f"🟣 Wait for Buy `{wait_count}/{total} · {wait_pct:.1f}%`"
+                f"🟣 Wait for Buy · `{wait_count}/{total} · {wait_pct:.1f}%`"
             )
             combined_lines.append(
-                f"🟡 Hold `{hold_count}/{total} · {hold_pct:.1f}%`"
+                f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )
 
     std_signals = all_interval_signals.get("1d", {})
@@ -233,7 +233,8 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
-        combined_lines.append("_ℹ️ what the arrows mean_")
+        combined_lines.append("_ℹ️ legend_")
+        combined_lines.append("_🟢 buy · 🔴 sell_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
         combined_lines.append("")
