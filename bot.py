@@ -120,6 +120,9 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     combined_lines.append("📊 *Signal Alert*")
     combined_lines.append(f"_{escape_md(day)} · {escape_md(clock)} IST_")
     combined_lines.append("")
+    combined_lines.append("⏬ deep dip · 🔽 below avg")
+    combined_lines.append("🔼 above avg · ⏫ stretched")
+    combined_lines.append("")
 
     # Index summary
     if index_moves:
@@ -217,11 +220,11 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
     # 1) Standard MACD — full universe, no Bollinger gate
-    append_macd_section("*STANDARD MACD*", std_signals, None)
+    append_macd_section("📈 *Trend* _\\(MACD\\)_", std_signals, None)
     # 2) Impulse MACD — full universe, no Bollinger gate
-    append_macd_section("*IMPULSE MACD* _\\(LazyBear\\)_", impulse_signals, None)
-    # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter
-    append_macd_section("*BOLLINGER \\+ IMPULSE MACD*", impulse_signals, bollinger_filter)
+    append_macd_section("⚡ *Momentum* _\\(Impulse\\)_", impulse_signals, None)
+    # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter (the verdict)
+    append_macd_section("🎯 *HODL Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
     # Nothing rendered (no section divider added) → nothing worth sending.
     if divider not in combined_lines:
