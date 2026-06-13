@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**Project: Dip Mafia** (formerly HODL-bot) — a long-only dip-buying signal bot for NSE stocks. Crucial invariant: it is *signals only*. The strategy **never sells** — Sell/red signals are indications of technical weakness for awareness, never executed. Everything user-facing (Telegram, README, repo bio) must reflect "we only buy dips and HODL."
+**Project: Dip Mafia** (formerly HODL-bot), a long-only dip-buying signal bot for NSE stocks. Crucial invariant: it is *signals only*. The strategy **never sells**: Sell/red signals are indications of technical weakness for awareness, never executed. Everything user-facing (Telegram, README, repo bio) must reflect "we only buy dips and HODL."
 
 ## How this runs
 
-The only real entry point is `bot.py`, invoked by `.github/workflows/dip-mafia.yml` on a cron schedule. `bollinger_signals.py` and `macd_signals.py` have `__main__` blocks but they are not part of the production path — treat them as import-only modules. There are no tests, linter, or build step.
+The only real entry point is `bot.py`, invoked by `.github/workflows/dip-mafia.yml` on a cron schedule. `bollinger_signals.py` and `macd_signals.py` have `__main__` blocks but they are not part of the production path, treat them as import-only modules. There are no tests, linter, or build step.
 
 Local invocation (rarely needed):
 ```bash
@@ -18,17 +18,17 @@ python bot.py
 
 Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` suffix; `bot.py` appends it). The pipeline is:
 
-1. **Bollinger Bands as a universe filter** (`bollinger_signals.py`). 200-period, 2σ. A stock is `Buy` if today's low/close touches or breaks the lower band, `Watch` if it did so within the last 60 bars (capped by available history — ~50 bars with 1y data, since the band needs a 200-bar warmup), else `Hold`. This is the *gate* — MACD output for stocks outside Buy+Watch is discarded from the Telegram message.
+1. **Bollinger Bands as a universe filter** (`bollinger_signals.py`). 200-period, 2σ. A stock is `Buy` if today's low/close touches or breaks the lower band, `Watch` if it did so within the last 60 bars (capped by available history, ~50 bars with 1y data, since the band needs a 200-bar warmup), else `Hold`. This is the *gate*, MACD output for stocks outside Buy+Watch is discarded from the Telegram message.
 
 2. **MACD crossovers as the long signal** (`macd_signals.py`). Two indicators run in parallel on the same data:
    - Standard MACD (12/26/9 EMA)
-   - Impulse MACD (LazyBear — SMMA of high/low, ZLEMA of HLC/3, length_ma=34, signal=9)
+   - Impulse MACD (LazyBear, SMMA of high/low, ZLEMA of HLC/3, length_ma=34, signal=9)
 
    Both feed `_trend_to_action`, which walks the crossover series and emits the *latest* state: `Buy`/`Sell` on the crossover bar, then `Hold` (after Buy) or `Wait for Buy` (after Sell) until the next cross. Only `Buy`/`Sell` rows render as stock lines in Telegram; `Hold`/`Wait for Buy` are counted into the summary.
 
 3. **Fallback averaging** (backtest only, `simulate_timed_hodl`). If cash sits idle for >42 trading days (~2 months), deploy it equally into existing holdings where price is below the BB midline (200-SMA). Each stock is capped at 15% of portfolio value to prevent concentration. This reduces cash drag without buying overvalued positions.
 
-4. **Partial SIP+Timed** (backtest only, `simulate_partial_sip`). Splits each month's budget 50/50: half goes as plain SIP across all stocks regardless of signals, half waits for BB+MACD buy signals (with the same fallback logic as the timed strategy). Included as a comparison — currently underperforms pure timed with fallback (₹193.7L vs ₹207.1L) but has better risk-adjusted metrics (Sharpe 1.29, Sortino 3.05).
+4. **Partial SIP+Timed** (backtest only, `simulate_partial_sip`). Splits each month's budget 50/50: half goes as plain SIP across all stocks regardless of signals, half waits for BB+MACD buy signals (with the same fallback logic as the timed strategy). Included as a comparison, currently underperforms pure timed with fallback (₹193.7L vs ₹207.1L) but has better risk-adjusted metrics (Sharpe 1.29, Sortino 3.05).
 
 5. **Telegram delivery** (`bot.py:send_bulk_telegram_message`). MarkdownV2, sent to multiple chat IDs. Two sections: Standard MACD and Impulse MACD, each restricted to the Bollinger-filtered universe. Header includes NIFTY 50 and NIFTY Midcap 100 day move + % from ATH (`get_index_moves`).
 
@@ -38,7 +38,7 @@ Long-only signals for NSE stocks listed in `stocks.txt` (symbols without `.NS` s
 
 **Bollinger is the filter, not a co-equal signal.** If you add or change signals, preserve the invariant that MACD lines in Telegram are gated by `bollinger_filter = {Buy, Watch}`. Console output prints full Bollinger results separately.
 
-**MarkdownV2 escaping.** Any dynamic text inserted into the Telegram message must go through `escape_md` — the special-char set is broad (`.`, `-`, `!`, `(`, `)` etc. all require escaping) and unescaped output will cause Telegram to reject the message.
+**MarkdownV2 escaping.** Any dynamic text inserted into the Telegram message must go through `escape_md`, the special-char set is broad (`.`, `-`, `!`, `(`, `)` etc. all require escaping) and unescaped output will cause Telegram to reject the message.
 
 **Data sufficiency guards.** Bollinger needs `length + 30` bars (230 by default); MACD needs ≥50. Tickers with insufficient history are skipped with a `✗` log line. Timestamps are converted to Asia/Kolkata.
 

@@ -1,12 +1,12 @@
-# Dip Mafia — Crash-Buy Signals for Indian Equities (NSE)
+# Dip Mafia: Crash-Buy Signals for Indian Equities (NSE)
 
-**Dip Mafia** (formerly HODL-bot) is an automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram — fully automated via GitHub Actions.
+**Dip Mafia** (formerly HODL-bot) is an automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram, fully automated via GitHub Actions.
 
-> **Philosophy**: Buy the crash, hold forever. This bot watches 60+ fundamentally screened NSE stocks and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits — just long entries at high-conviction dips.
+> **Philosophy**: Buy the crash, hold forever. This bot watches 60+ fundamentally screened NSE stocks and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits, just long entries at high-conviction dips.
 >
-> **We never sell.** Sell / red signals are **indications only** — they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
+> **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
-> The watchlist in `stocks.txt` is curated via a separate fundamental analysis tool (not included in this repo) — this bot handles the technical timing layer on top of that fundamental filter.
+> The watchlist in `stocks.txt` is curated via a separate fundamental analysis tool (not included in this repo), this bot handles the technical timing layer on top of that fundamental filter.
 
 ### [Join the Telegram channel to receive live signals](https://t.me/dipmafia)
 
@@ -20,7 +20,7 @@
 └──────────────┬──────────────────────┘
                ▼
 ┌─────────────────────────────────────┐
-│     yfinance — 1yr daily OHLCV     │
+│     yfinance, 1yr daily OHLCV     │
 └──────────────┬──────────────────────┘
                ▼
 ┌─────────────────────────────────────┐
@@ -54,7 +54,7 @@
 |---|---|---|---|
 | **Gate** | Bollinger Bands (200, 2σ) | Buy | Price at or below lower band today |
 | | | Watch | Touched lower band in last 30 days |
-| | | Hold | No recent lower band interaction — **filtered out** |
+| | | Hold | No recent lower band interaction, **filtered out** |
 | **Signal** | Standard MACD (12/26/9) | Buy/Sell | Crossover on current bar |
 | | Impulse MACD (LazyBear) | Buy/Sell | SMMA + ZLEMA crossover on current bar |
 | | Both | Hold / Wait for Buy | Between crossovers |
@@ -63,7 +63,7 @@
 
 ### Deduplication
 
-Signals are hashed each run. If unchanged from the previous run, Telegram notifications are skipped — no spam during sideways markets.
+Signals are hashed each run. If unchanged from the previous run, Telegram notifications are skipped, no spam during sideways markets.
 
 ## Sample Output
 
@@ -106,7 +106,7 @@ Go to **Settings > Secrets and variables > Actions** and add:
 
 ### 2. Edit your watchlist
 
-`stocks.txt` — one NSE symbol per line, without `.NS`:
+`stocks.txt`, one NSE symbol per line, without `.NS`:
 ```
 RELIANCE
 TCS
@@ -132,7 +132,7 @@ python bot.py
 
 ## Backtest
 
-A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget — the point of 60+ stocks is that something is always dipping, keeping cash deployed.
+A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget, the point of 60+ stocks is that something is always dipping, keeping cash deployed.
 
 ### Run it
 
@@ -156,7 +156,7 @@ Generates 8 charts in `backtest_output/` + console summary.
   Inflation (6%/yr):  ₹1 in 2010 = ₹2.6 today
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════
-  RESULTS — 61 stocks, ₹24.7L invested
+  RESULTS, 61 stocks, ₹24.7L invested
 ════════════════════════════════════════════════════════════════════════════════════════════════════
                             Your Strategy (Timed HODL)     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
@@ -189,11 +189,11 @@ Generates 8 charts in `backtest_output/` + console summary.
 | Max Drawdown | **-54%** | -64% | -37% |
 | Volatility | 42.8% | **40.7%** | 37.7% |
 
-- **Both strategies crush NIFTY 50 by ~4x** — stock picking matters more than timing
-- **Timed HODL and SIP are neck-and-neck on returns** — but Timed HODL has significantly lower max drawdown (-54% vs -64%)
-- **Real returns beat inflation easily** — 20.9% real XIRR for Timed HODL vs 4.9% for NIFTY 50
-- **Cash drag is only 6.2%** — 60+ stocks keep money deployed
-- **Entry+Exit is terrible** — selling on MACD Sell destroys compounding
+- **Both strategies crush NIFTY 50 by ~4x**, stock picking matters more than timing
+- **Timed HODL and SIP are neck-and-neck on returns**, but Timed HODL has significantly lower max drawdown (-54% vs -64%)
+- **Real returns beat inflation easily**, 20.9% real XIRR for Timed HODL vs 4.9% for NIFTY 50
+- **Cash drag is only 6.2%**, 60+ stocks keep money deployed
+- **Entry+Exit is terrible**, selling on MACD Sell destroys compounding
 
 ### Charts
 

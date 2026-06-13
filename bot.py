@@ -118,7 +118,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     day = now.strftime('%d %b').lstrip('0')
     clock = now.strftime('%I:%M %p').lstrip('0')
     combined_lines.append("🩸 *DIP MAFIA*")
-    combined_lines.append(f"_signal alert · {escape_md(day)} · {escape_md(clock)} IST_")
+    combined_lines.append(f"_{escape_md(day)} · {escape_md(clock)} IST_")
     combined_lines.append("")
 
     # Index summary
@@ -130,9 +130,8 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             short = {"NIFTY Midcap 100": "MIDCAP 100"}.get(name, name)
             pct_str = f"{pct:+.2f}%"
             ath_str = f"{ath_diff:+.1f}%"
-            combined_lines.append(
-                f"{arrow} *{escape_md(short)}*  `{pct_str}`  ·  ATH `{ath_str}`"
-            )
+            combined_lines.append(f"{arrow} *{escape_md(short)}*")
+            combined_lines.append(f"today `{pct_str}`  ·  ATH `{ath_str}`")
         combined_lines.append("")
 
     # Compute sentiment first (need it before MACD sections)
@@ -223,23 +222,23 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
-    # 1) Standard MACD — full universe, no Bollinger gate (earlier, noisier read)
+    # 1) Standard MACD, full universe, no Bollinger gate (earlier, noisier read)
     append_macd_section("📈 *Early Signal* _\\(MACD\\)_", std_signals, None)
-    # 2) Impulse MACD — full universe, no Bollinger gate (stronger confirmation)
+    # 2) Impulse MACD, full universe, no Bollinger gate (stronger confirmation)
     append_macd_section("⚡ *Strong Signal* _\\(iMACD\\)_", impulse_signals, None)
-    # 3) Bollinger + Impulse MACD — impulse gated by the Bollinger filter (the verdict)
+    # 3) Bollinger + Impulse MACD, impulse gated by the Bollinger filter (the verdict)
     append_macd_section("🎯 *THE VERDICT* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
-        combined_lines.append("ℹ️ *BTW — what the arrows mean*")
+        combined_lines.append("ℹ️ *what the arrows mean*")
         combined_lines.append("⏬ deep dip · 🔽 undervalued")
         combined_lines.append("🔼 above avg · ⏫ overvalued")
         combined_lines.append("")
         combined_lines.append(
-            "_Dip Mafia never sells — red just flags weakness · we only buy dips & HODL_"
+            "_Dip Mafia never sells, red just flags weakness · we only buy dips & HODL_"
         )
 
     # Nothing rendered → nothing worth sending.
@@ -257,7 +256,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
 
     final_message = "\n".join(cleaned)
 
-    # Hash raw signal data (actions + prices) — independent of formatting/timestamps
+    # Hash raw signal data (actions + prices), independent of formatting/timestamps
     signal_data = []
     for interval, all_signals in all_interval_signals.items():
         for stock in sorted(all_signals):
@@ -280,7 +279,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     print("=" * 60)
 
     if current_hash == prev_hash:
-        print("⏭️  Skipping Telegram — signals unchanged from last run")
+        print("⏭️  Skipping Telegram: signals unchanged from last run")
         return
 
     with open(hash_file, "w") as f:
@@ -388,7 +387,7 @@ def main():
     for interval, all_signals in all_interval_signals.items():
         print("\n" + "=" * 60)
         label = "IMPULSE MACD (LazyBear)" if "Impulse" in interval else "STANDARD MACD"
-        print(f"{label} — {interval}")
+        print(f"{label} · {interval}")
         print("=" * 60)
 
         grouped = {"Buy": [], "Sell": [], "Hold": [], "Wait for Buy": []}
