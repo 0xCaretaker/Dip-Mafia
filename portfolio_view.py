@@ -993,31 +993,31 @@ function renderIterations() {{
   }});
 }}
 
-// 3-strategy horizon tables (Backtest tab): one block per horizon, metric rows ×
-// strategy columns, best per metric row in red. Keeps the Full-period table above.
+// 3-strategy horizon tables (Backtest tab): ONE TABLE PER METRIC — horizons as
+// rows, strategies as columns, best strategy per row (per horizon) in red.
 function renderStrategyHorizons() {{
   const sh = HZ.strategy_horizons;
-  const strategies = sh.strategies, metrics = sh.metrics, cells = sh.cells;
+  const strategies = sh.strategies, metrics = sh.metrics, cells = sh.cells, horizons = sh.horizons;
+  const short = {{'Timed HODL':'Timed', 'SIP':'SIP', 'NIFTY 50':'NIFTY 50'}};
   const fmt = (v, f) => (v==null ? '—' : (f==='pct' ? v.toFixed(1)+'%' : v.toFixed(2)));
   let h = `<div class="chart-card" style="margin-top:16px"><h3>Horizon Returns — by Strategy</h3>
     <div style="color:var(--muted);font-size:0.76rem;margin-bottom:8px">
       Trailing windows to ${{sh.end_date || HZ.end_date}} &bull; ${{sh.contribution}} &bull;
-      gate ${{sh.gated ? 'on' : 'off'}} (matches backtest) &bull; best per row in
+      gate ${{sh.gated ? 'on' : 'off'}} (matches backtest) &bull; best strategy per row in
       <span style="color:#ff3b3b;font-weight:800">red</span>. Full uses flat contributions,
       so its XIRR is ~ the salary-model headline above.
     </div><div class="bt-grid">`;
-  sh.horizons.forEach(hl => {{
-    h += `<div class="bt-tile" style="cursor:default"><h3>${{hl}}</h3>
+  metrics.forEach(m => {{
+    const lower = m.key === 'cash';   // lower is better only for cash drag
+    h += `<div class="bt-tile" style="cursor:default"><h3>${{m.label}}</h3>
       <div style="overflow-x:auto"><table class="metrics-table"><thead><tr><th class="row-label"></th>`;
-    strategies.forEach(s => {{ h += `<th${{s==='Timed HODL'?' style="color:var(--green)"':''}}>${{s}}</th>`; }});
+    strategies.forEach(s => {{ h += `<th${{s==='Timed HODL'?' style="color:var(--green)"':''}}>${{short[s]||s}}</th>`; }});
     h += `</tr></thead><tbody>`;
-    metrics.forEach(m => {{
+    horizons.forEach(hl => {{
       const vals = strategies.map(s => {{ const c = cells[`${{s}}|${{hl}}`]; return c ? c[m.key] : null; }});
       const nums = vals.filter(v => v!=null);
-      // higher is better for all (XIRR, Sharpe, MaxDD-closer-to-0); cash drag lower is better
-      let best = null;
-      if (nums.length) best = (m.key==='cash') ? Math.min(...nums) : Math.max(...nums);
-      h += `<tr><td class="row-label">${{m.label}}</td>`;
+      const best = nums.length > 1 ? (lower ? Math.min(...nums) : Math.max(...nums)) : null;
+      h += `<tr><td class="row-label">${{hl}}</td>`;
       vals.forEach(v => {{
         if (v==null) {{ h += `<td>—</td>`; return; }}
         h += `<td${{v===best ? ' class="hz-best"' : ''}}>${{fmt(v, m.fmt)}}</td>`;
