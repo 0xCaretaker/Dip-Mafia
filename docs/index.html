@@ -292,6 +292,28 @@ function PH(){
 }
 const hzPhrase = ()=> HZ==="All" ? "all time" : "the last "+HZ;
 
+/* chart mode: absolute rupee value (rises with deposits) vs unitized NAV index */
+let NAVMODE = "value";
+function setNavMode(m){ NAVMODE=m; RENDER[SEC](); }
+const navToggle = ()=>`<span class="seg sm navseg" role="group" aria-label="Chart mode">`+
+  `<button data-m="value" aria-pressed="${NAVMODE==='value'}" onclick="setNavMode('value')">Value</button>`+
+  `<button data-m="nav" aria-pressed="${NAVMODE==='nav'}" onclick="setNavMode('nav')">NAV</button></span>`;
+const navSub = ()=> NAVMODE==="nav"
+  ? "Unitized NAV (base 100) · deposits buy units, so only performance moves the line"
+  : (HZ==="All"?"Full-history book":"Fresh sim started "+HZ+" ago")+" · daily value (rises with deposits + gains)";
+function navChart(host, nav, h){
+  if(NAVMODE==="nav"){
+    const ni=nav.navindex||nav.value;
+    lineChart(host,[{name:"NAV (base 100)",color:cvar("--accent"),d:nav.dates,v:ni,width:2.4,fill:true}],
+      {h,zeroAt:100,yfmt:v=>fmtNum(v,0),tipFmt:v=>v==null?"–":fmtNum(v,1)+" ("+fmtPct((v/100-1)*100,0)+")",draw:true,padL:54});
+  } else {
+    lineChart(host,[
+      {name:"Market value",color:cvar("--accent"),d:nav.dates,v:nav.value,width:2.4,fill:true},
+      {name:"Invested",color:cvar("--ink-mute"),d:nav.dates,v:nav.invested,width:1.3,dash:"4 4"},
+    ],{h,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
+  }
+}
+
 const SECTIONS = [
   ["overview","Overview"], ["portfolio","Portfolio"], ["backtest","Backtest"],
   ["screens","Screens"], ["iterations","Iterations"],
@@ -507,8 +529,9 @@ function renderOverview(){
       <p class="meta">${su.count} holdings accumulated ${since} on ₹${(su.total_invested/1e5).toFixed(2)}L of dip buys, valued at the data-date close. ${HZ==="All"?"The full book.":"A fresh book that started investing "+HZ+" ago."} The strategy only ever buys and holds.</p>
     </div>
     <div class="card">
-      <h3>Portfolio value</h3>
-      <div class="csub">${HZ==="All"?"Full-history book":"Fresh sim started "+HZ+" ago"} · grows from contributions</div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h3>${NAVMODE==="nav"?"NAV index":"Portfolio value"}</h3>${navToggle()}</div>
+      <div class="csub">${navSub()}</div>
       <div class="chart-host" id="ov_nav"></div>
     </div>
   </div>`;
@@ -524,10 +547,7 @@ function renderOverview(){
     html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Starting ${HZ==="All"?"in 2010":HZ+" ago"}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(su.xirr)}</b> annualised (${fmtPct(su.total_ret)} total), against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b> over the same window.</p></div>`;
   }
   el.innerHTML=html;
-  lineChart($("#ov_nav"), [
-    {name:"Portfolio value", color:cvar("--accent"), d:nav.dates, v:nav.value, width:2.4, fill:true},
-    {name:"Invested", color:cvar("--ink-mute"), d:nav.dates, v:nav.invested, width:1.3, dash:"4 4"},
-  ], {h:230, ymin:0, yfmt:v=>fmtCr(v), tipFmt:v=>fmtCr(v), draw:true, padL:54});
+  navChart($("#ov_nav"), nav, 230);
 }
 
 /* ════════════════ PORTFOLIO ════════════════ */
@@ -548,9 +568,10 @@ function renderPortfolio(){
       ${tile("Best / Worst", `<span class="up" style="font-size:1.05rem">${su.best_stock} ${fmtPct(su.best_ret,0)}</span><br><span class="down" style="font-size:1.05rem">${su.worst_stock} ${fmtPct(su.worst_ret,0)}</span>`)}
     </div>
     <div class="card" style="margin-bottom:16px">
-      <h3>Portfolio value vs invested</h3>
-      <div class="csub">${HZ==="All"?"Full-history book":"Fresh sim started "+HZ+" ago"} · daily NAV from ₹0</div>
-      <div class="legend"><span><i style="background:var(--accent)"></i>Market value</span><span style="color:var(--ink-mute)"><i class="dash"></i>Invested</span></div>
+      <div style="display:flex;align-items:center;justify-content:space-between;gap:10px">
+        <h3>${NAVMODE==="nav"?"NAV index (base 100)":"Portfolio value vs invested"}</h3>${navToggle()}</div>
+      <div class="csub">${navSub()}</div>
+      ${NAVMODE==="nav"?"":`<div class="legend"><span><i style="background:var(--accent)"></i>Market value</span><span style="color:var(--ink-mute)"><i class="dash"></i>Invested</span></div>`}
       <div class="chart-host" id="pf_nav"></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px" id="pf_charts">
@@ -564,10 +585,7 @@ function renderPortfolio(){
       ${["stock|Stock","avg_price|Avg","cmp|CMP","shares|Shares","invested|Invested","value|Value","pnl|P&amp;L","ret|Return","weight|Weight"].map(c=>{const[k,l]=c.split("|");return `<th data-col="${k}" onclick="pfSort('${k}')">${l}</th>`}).join("")}
     </tr></thead><tbody id="pf_body"></tbody></table></div>`;
 
-  lineChart($("#pf_nav"),[
-    {name:"Market value",color:cvar("--accent"),d:nav.dates,v:nav.value,width:2.4,fill:true},
-    {name:"Invested",color:cvar("--ink-mute"),d:nav.dates,v:nav.invested,width:1.3,dash:"4 4"},
-  ],{h:260,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
+  navChart($("#pf_nav"), nav, 260);
   donut($("#pf_alloc"),{labels:pf.alloc.labels,values:pf.alloc.values,colors:ALLOC_COLORS});
   $("#pf_alloc_leg").innerHTML=pf.alloc.labels.map((l,i)=>`<span><i style="background:${ALLOC_COLORS[i%ALLOC_COLORS.length]};border-radius:50%;width:9px;height:9px"></i>${l}</span>`).join("");
   const top=pf.pnl.labels.map((s,i)=>[s,pf.pnl.values[i]]).slice(-22);
