@@ -237,16 +237,16 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── stocks.txt             # watchlist
 ├── analysis/              # research/backtest tooling (run from the repo root)
 │   ├── backtest.py        # portfolio backtest - Timed HODL (V4 fallback + midline + bb-60)
-│   ├── horizon_compare.py # 1y/3y/5y/Full horizon table for the strat dashboard
-│   ├── portfolio_view.py  # builds dashboard.html + docs/strat.html
+│   ├── horizon_compare.py # 1y/3y/5y/10y/Full horizon grids for the dashboard
+│   ├── portfolio_view.py  # emits docs/strat_data.js (portfolio NAV + backtest + iterations)
 │   ├── backtest_six7.py   # six7 almanac: lists × horizons (same Timed HODL strategy)
-│   ├── build_web.py       # assembles docs/data.js for the almanac
+│   ├── build_web.py       # assembles docs/data.js for the Screens section
 │   └── run_paths.py       # backtest_output/ layout helper
 ├── pine/                  # TradingView ports (indicator + strategy)
-├── notes/                 # STRATEGY_COMPARISON.md, context.md, TODO.md
+├── notes/                 # STRATEGY_COMPARISON.md, context.md, specs/
 ├── tests/                 # test_bb_position.py
-├── backtest_output/       # dated run subfolders + six7/ almanac + dashboard.html
-├── docs/                  # GitHub Pages (six7 almanac + strat.html)
+├── backtest_output/       # dated run subfolders + six7/ almanac
+├── docs/                  # GitHub Pages: index.html (unified dashboard) + data.js + strat_data.js
 ├── requirements.txt       # yfinance, requests
 └── .github/workflows/
     └── dip-mafia.yml      # GitHub Actions (cron + cache); runs `python bot.py`

@@ -14,3 +14,4 @@ six7_stocks/snapshot_*.json
 .claude/
 .github/skills/
 docs/superpowers/
+.superpowers/

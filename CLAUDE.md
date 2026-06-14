@@ -70,7 +70,6 @@ backtest_output/
                              horizons.json, trades.csv, meta.json, stocks.txt snapshot)
   …                          older runs, same naming
   six7/                      six7 almanac outputs (results tracked; *.pkl caches git-ignored)
-  dashboard.html             rendered dashboard (also published to docs/strat.html)
 ```
 
 There is **no separate archive folder**. The "current" run is simply the newest subfolder - `run_paths.current_run()` returns the one with the highest `meta.json` date (ties broken by folder name); `run_paths.archived_runs()` returns the rest. `portfolio_view.py`, `horizon_compare.py`, and `backtest_six7.py` all resolve paths through `run_paths` - never hard-code `backtest_output/...`.
@@ -80,8 +79,10 @@ There is **no separate archive folder**. The "current" run is simply the newest 
 Whenever `stocks.txt` or a strategy parameter changes, run a fresh strat backtest. Prior runs are kept automatically (each run is its own dated subfolder), so the Iterations tab always compares against them - no manual archiving step:
 
 1. **Re-run** `python3 analysis/backtest.py` (from the repo root). It writes a fresh `backtest_output/<YYYYMMDD>_<N>sym_bb<L>/` (date from `assumptions.end_date`, N from `stocks.txt`, L from `CONFIG.bb_lookback`), auto-emitting `meta.json` and a `stocks.txt` snapshot so the run is self-describing. Older run folders are left untouched. (Prune stale runs by hand if the Iterations list gets noisy.)
-2. **Recompute horizons**: `python3 analysis/horizon_compare.py` writes `<current run>/horizons.json` - Timed HODL 1y/3y/5y/Full returns for the current + each older watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `backtest_output/six7/_price_cache.pkl` when present, else downloads). Feeds the Iterations tab's Horizon Returns tables (best per row in red).
-3. **Rebuild the views**: `python3 analysis/portfolio_view.py` regenerates `dashboard.html` and publishes a copy to `docs/strat.html` (live on GitHub Pages, linked from the six7 almanac). It reads the newest run's `horizons.json` if present. Then update the README "Latest Results" block.
+2. **Recompute horizons**: `python3 analysis/horizon_compare.py` writes `<current run>/horizons.json` - Timed HODL 1y/3y/5y/10y/Full returns for the current + each older watchlist, across bb-60 / bb-30 / bb-60+midline variants (uses the full-history price cache `backtest_output/six7/_price_cache.pkl` when present, else downloads). `strategy_horizons` carries the full per-horizon × per-strategy metric grid (final_value, mult, xirr, sharpe, sortino, maxdd, maxdd_days, vol, cash) that feeds the dashboard's Backtest cards and comparison. Feeds the Iterations section's Horizon Returns tables (best per row highlighted).
+3. **Rebuild the data layer**: `python3 analysis/portfolio_view.py` emits **`docs/strat_data.js`** (`window.STRAT_DATA` = portfolio + backtest + iterations + horizons). It no longer generates HTML; the unified, hand-authored page is **`docs/index.html`** (consumes `strat_data.js` + `data.js`). The portfolio block now includes a reconstructed daily **NAV curve** (shares-held-over-time × historical close, from the six7 price cache) plus true 1Y/3Y/5Y/10Y/All portfolio returns. Then update the README "Latest Results" block.
+
+The unified dashboard (`docs/index.html`) has five horizon-aware sections (Overview · Portfolio · Backtest · Screens · Iterations) behind one global `1Y/3Y/5Y/10Y/All` control. It is hand-authored with a custom SVG chart kit (no chart library); design system in `DESIGN.md`, product context in `PRODUCT.md`. `docs/strat.html` is a redirect stub to `index.html`. The Screens section reads `data.js` (built by `build_web.py`, see the six7 almanac section).
 
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 
