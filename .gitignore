@@ -10,8 +10,11 @@ __pycache__/
 backtest_output/six7/*.pkl
 six7_stocks/snapshot_*.json
 
-# Claude Code local tooling / skills (not part of the project)
-.claude/
+# Claude Code local tooling / skills (not part of the project).
+# Ignore the contents but let git descend so the agents/ deliverable can be tracked.
+.claude/*
+# ...the quant-advisor subagent IS a project deliverable - keep it tracked.
+!.claude/agents/
 .github/skills/
 docs/superpowers/
 .superpowers/
