@@ -51,7 +51,6 @@ CURVE_LISTS = ["top10", "top30", "top50", "top100", "strong_buy",
 SERIES = {
     "Your Strategy (Timed HODL)": "Timed HODL",
     "SIP on Your Stocks": "SIP",
-    "Partial SIP+Timed": "Partial",
     "Timed Entry+Exit": "Exit",
     "SIP on NIFTY 50": "NIFTY 50",
 }
