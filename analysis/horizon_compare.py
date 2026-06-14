@@ -170,6 +170,30 @@ def _cum_invested(index, monthly):
     return pd.Series(out, index=index)
 
 
+def _unit_nav(value_series, monthly, base=100.0):
+    """Unitized NAV index (fund-style, base 100). Each monthly deposit *buys
+    units* at the prevailing NAV, so contributions never move the line - only
+    investment performance does. NAV = portfolio value / units outstanding."""
+    cum = _cum_invested(value_series.index, monthly)
+    inj = cum.diff()
+    if len(inj):
+        inj.iloc[0] = cum.iloc[0]
+    units, out = 0.0, []
+    for i in range(len(value_series)):
+        v = float(value_series.iloc[i])
+        dep = float(inj.iloc[i])
+        if dep > 1e-9:
+            if units <= 0:                       # first deposit: seed at base
+                nav = base
+            else:                                # value before today's deposit
+                nav = max(v - dep, 0.0) / units
+            units += dep / nav if nav > 0 else 0.0
+        else:
+            nav = v / units if units > 0 else base
+        out.append(nav)
+    return pd.Series(out, index=value_series.index)
+
+
 def _horizon_portfolio(buy_log, win, monthly, value_series, metrics, slippage_bps):
     """Per-horizon portfolio payload from a windowed Timed HODL buy_log.
 
@@ -246,7 +270,9 @@ def _horizon_portfolio(buy_log, win, monthly, value_series, metrics, slippage_bp
 
     v_ds = _downsample(value_series)
     i_ds = _downsample(_cum_invested(value_series.index, monthly))
-    nav = {"dates": v_ds["dates"], "value": v_ds["values"], "invested": i_ds["values"]}
+    n_ds = _downsample(_unit_nav(value_series, monthly))
+    nav = {"dates": v_ds["dates"], "value": v_ds["values"], "invested": i_ds["values"],
+           "navindex": n_ds["values"]}
 
     return {"summary": summary, "rows": rows,
             "alloc": {"labels": alloc_labels, "values": alloc_values},
