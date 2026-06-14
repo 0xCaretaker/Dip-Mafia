@@ -81,6 +81,13 @@ nav.sections button[aria-current="true"]::after{
 .seg button:hover{color:var(--ink)}
 .seg button[aria-pressed="true"]{background:var(--accent); color:oklch(0.20 0.03 75); font-weight:700}
 .seg.sm button{padding:5px 9px; font-size:.7rem}
+/* touch devices: meet ~44px hit targets without changing the dense desktop look */
+@media(pointer:coarse){
+  .seg button{padding:10px 14px}
+  .seg.sm button{padding:9px 12px}
+  nav.sections button{padding:11px 14px}
+  .chip{padding:10px 14px}
+}
 button:focus-visible, .seg button:focus-visible, nav.sections button:focus-visible,
 .chip:focus-visible, th:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
 
@@ -102,21 +109,25 @@ main{padding:30px 0 90px}
 
 /* ── tiles ── */
 .tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%,158px),1fr)); gap:12px}
-.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px;
-  display:flex; flex-direction:column}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px}
 .tile .k{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
   color:var(--ink-mute); display:flex; gap:6px; align-items:center}
 .tile .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.6rem; font-weight:600;
   margin-top:7px; line-height:1.02; letter-spacing:-.02em}
 .tile .v small{font-size:.82rem; color:var(--ink-dim); font-weight:500; letter-spacing:0}
-.tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:auto; padding-top:6px}
+.tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:5px}
 /* lead tile: the section's headline metric, raised and scaled up to break the uniform grid */
 .tile.lead{grid-column:span 2; background:var(--surface-2); border-color:var(--line-2); padding:18px 20px}
 .tile.lead .k{font-size:.66rem; color:var(--ink-dim)}
 .tile.lead .v{font-size:2.7rem; font-weight:700; margin-top:10px; letter-spacing:-.035em}
 .tile.lead .v small{font-size:1.1rem}
 .tile.lead .sub{font-size:.78rem}
-@media(max-width:620px){.tile.lead{grid-column:span 1}}
+.tile.link{cursor:pointer; transition:border-color .15s, background .15s, transform .1s}
+.tile.link:hover{border-color:var(--line-2); background:var(--surface-2)}
+.tile.link:active{transform:translateY(1px)}
+.tile.link:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+.tile .go{margin-left:auto; color:var(--ink-mute); font-size:.85em; transition:color .15s, transform .15s}
+.tile.link:hover .go{color:var(--accent); transform:translate(1px,-1px)}
 
 /* ── panels / charts ── */
 .grid{display:grid; gap:16px}
@@ -140,6 +151,7 @@ svg.chart{width:100%; height:auto; display:block; overflow:visible; touch-action
   opacity:0; transition:opacity .12s; white-space:nowrap; box-shadow:0 8px 24px oklch(0 0 0 / .4)}
 .tip .d{color:var(--ink-mute); margin-bottom:5px}
 .tip .r{display:flex; justify-content:space-between; gap:16px}
+.tip .r.xtra{border-top:1px solid var(--line-2); margin-top:5px; padding-top:5px}
 .tip .r i{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle}
 
 /* ── table ── */
@@ -226,10 +238,12 @@ footer a{color:var(--ink-dim); text-decoration:underline; text-underline-offset:
 
 @media(max-width:560px){
   .wrap{padding:0 16px}
-  .tiles{grid-template-columns:1fr}
+  .tiles{grid-template-columns:1fr 1fr}
+  .tile.lead{grid-column:span 2}
+  .tile.lead .v{font-size:2.05rem}
   .sec-head .lede,.hero .meta{max-width:100%}
   .sec-head .asof{text-align:left}
-  .tile .v{font-size:1.18rem; overflow-wrap:anywhere}
+  .tile .v{font-size:1.3rem; overflow-wrap:anywhere}
 }
 @media(prefers-reduced-motion:reduce){
   *,.panel{animation:none !important; transition:none !important}
@@ -327,7 +341,9 @@ function navChart(host, nav, h){
     lineChart(host,[
       {name:"Market value",color:cvar("--accent"),d:nav.dates,v:nav.value,width:2.4,fill:true},
       {name:"Invested",color:cvar("--ink-mute"),d:nav.dates,v:nav.invested,width:1.3,dash:"4 4"},
-    ],{h,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
+    ],{h,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54,
+       tipExtra:bi=>{const p=nav.value[bi]-nav.invested[bi];
+         return `<div class="r xtra"><span>Profit</span><b class="${p>=0?'up':'down'}">${fmtSign(p)}</b></div>`;}});
   }
 }
 
@@ -373,7 +389,7 @@ const ts=d=>new Date(d).getTime();
 /* multi-series time line/area with optional hover crosshair */
 function lineChart(host, series, opts={}){
   // series: [{name,color,d:[],v:[],width,dash,fill,hideTip}]
-  const W=760, H=opts.h||300, P={l:opts.padL??48,r:14,t:14,b:24};
+  const W=Math.max(300,Math.round(host.clientWidth)||760), H=opts.h||300, P={l:opts.padL??48,r:14,t:14,b:24};
   const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:"none"});
   const allv=[].concat(...series.map(s=>s.v));
   let ymin=opts.ymin!=null?opts.ymin:Math.min(...allv);
@@ -449,6 +465,7 @@ function lineChart(host, series, opts={}){
         dots[si].setAttribute("cx",xx); dots[si].setAttribute("cy",Y(ok?v:ymin)); dots[si].setAttribute("opacity",ok?1:0);
         if(!s.hideTip) rows+=`<div class="r"><span><i style="background:${s.color}"></i>${s.name}</span><b>${(opts.tipFmt||yfmt)(v)}</b></div>`;
       });
+      if(opts.tipExtra){const ex=opts.tipExtra(bi); if(ex) rows+=ex;}
       tip.innerHTML=`<div class="d">${base.d[bi]}</div>${rows}`; tip.style.opacity=1;
       let tx=px/W*rect.width+14; if(tx>rect.width-160)tx-=174;
       tip.style.left=tx+"px"; tip.style.top="8px";
@@ -460,13 +477,14 @@ function lineChart(host, series, opts={}){
   return svg;
 }
 
-/* bar chart: vertical/horizontal, optional grouped */
+/* bar chart: vertical/horizontal, optional grouped. Hover a bar for a readout. */
 function barChart(host, {labels, datasets, horizontal=false, h=300, yfmt=v=>v, valFmt}){
-  const W=760, H=h, P={l:horizontal?96:48,r:14,t:12,b:horizontal?20:46};
+  const W=Math.max(300,Math.round(host.clientWidth)||760), H=h, P={l:horizontal?96:48,r:14,t:12,b:horizontal?20:46};
   const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:"none"});
   const allv=[].concat(...datasets.map(d=>d.values.filter(v=>v!=null)));
   let vmin=Math.min(0,...allv), vmax=Math.max(0,...allv); if(vmin===vmax)vmax=vmin+1;
   const n=labels.length, ng=datasets.length;
+  const fmt=valFmt||yfmt, bars=[];
   if(horizontal){
     const X=v=>P.l+(v-vmin)/(vmax-vmin)*(W-P.l-P.r);
     const band=(H-P.t-P.b)/n, bh=Math.min(20, band*0.62/ng);
@@ -481,7 +499,8 @@ function barChart(host, {labels, datasets, horizontal=false, h=300, yfmt=v=>v, v
         const v=ds.values[i]; if(v==null)return;
         const x0=X(Math.min(0,v)), x1=X(Math.max(0,v));
         const col=typeof ds.color==="function"?ds.color(v,i):ds.color;
-        svg.appendChild(E("rect",{x:x0,y:yc-bh*ng/2+bh*j,width:Math.max(1,x1-x0),height:bh*0.88,rx:2,fill:col}));
+        const rect=E("rect",{x:x0,y:yc-bh*ng/2+bh*j,width:Math.max(1,x1-x0),height:bh*0.88,rx:2,fill:col});
+        svg.appendChild(rect); bars.push({rect,label:lab,name:ds.name,value:v,color:col});
       });
     });
     svg.appendChild(g);
@@ -499,31 +518,70 @@ function barChart(host, {labels, datasets, horizontal=false, h=300, yfmt=v=>v, v
         const v=ds.values[i]; if(v==null)return;
         const y0=Y(Math.max(0,v)), y1=Y(Math.min(0,v));
         const col=typeof ds.color==="function"?ds.color(v,i):ds.color;
-        svg.appendChild(E("rect",{x:xc-bw*ng/2+bw*j,y:y0,width:bw*0.86,height:Math.max(1,y1-y0),rx:2,fill:col}));
+        const rect=E("rect",{x:xc-bw*ng/2+bw*j,y:y0,width:bw*0.86,height:Math.max(1,y1-y0),rx:2,fill:col});
+        svg.appendChild(rect); bars.push({rect,label:lab,name:ds.name,value:v,color:col});
       });
     });
     svg.appendChild(g);
   }
   host.innerHTML=""; host.appendChild(svg);
+  // hover readout
+  const tip=elh(`<div class="tip"></div>`); host.appendChild(tip);
+  const show=(b,e)=>{
+    bars.forEach(x=>x.rect.style.opacity=x===b?"1":".32");
+    b.rect.style.filter="brightness(1.12)";
+    tip.innerHTML=`<div class="d">${b.label}</div><div class="r"><span><i style="background:${b.color}"></i>${b.name||"Value"}</span><b>${fmt(b.value)}</b></div>`;
+    tip.style.opacity=1;
+    const rect=host.getBoundingClientRect();
+    let tx=e.clientX-rect.left+14; if(tx>rect.width-150)tx-=160;
+    tip.style.left=tx+"px"; tip.style.top=Math.max(4,e.clientY-rect.top-10)+"px";
+  };
+  const hide=()=>{bars.forEach(x=>{x.rect.style.opacity="1";x.rect.style.filter="none";}); tip.style.opacity=0;};
+  bars.forEach(b=>{
+    b.rect.style.transition="opacity .12s";
+    b.rect.addEventListener("mouseenter",e=>show(b,e));
+    b.rect.addEventListener("mousemove",e=>show(b,e));
+  });
+  svg.addEventListener("mouseleave",hide);
   return svg;
 }
 
-/* donut */
-function donut(host, {labels, values, colors}){
+/* donut: hover a segment to pop it out and read value + share in the center */
+function donut(host, {labels, values, colors, centerLabel="TOTAL"}){
   const total=values.reduce((a,b)=>a+b,0); const W=260,H=260,cx=130,cy=130,r=104,ir=64;
-  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,style:"max-width:260px;margin:0 auto"});
-  let a0=-Math.PI/2;
+  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,style:"max-width:260px;margin:0 auto;overflow:visible"});
+  const segs=[]; let a0=-Math.PI/2;
   values.forEach((v,i)=>{
-    const a1=a0+(v/total)*2*Math.PI;
+    const a1=a0+(v/total)*2*Math.PI, mid=(a0+a1)/2;
     const large=(a1-a0)>Math.PI?1:0;
     const p=[cx+r*Math.cos(a0),cy+r*Math.sin(a0),cx+r*Math.cos(a1),cy+r*Math.sin(a1),
              cx+ir*Math.cos(a1),cy+ir*Math.sin(a1),cx+ir*Math.cos(a0),cy+ir*Math.sin(a0)];
     const d=`M ${p[0]} ${p[1]} A ${r} ${r} 0 ${large} 1 ${p[2]} ${p[3]} L ${p[4]} ${p[5]} A ${ir} ${ir} 0 ${large} 0 ${p[6]} ${p[7]} Z`;
     const path=E("path",{d,fill:colors[i%colors.length],stroke:cvar("--surface"),"stroke-width":2});
-    const tt=E("title"); tt.textContent=`${labels[i]}: ${fmtCr(v)} (${(v/total*100).toFixed(1)}%)`; path.appendChild(tt);
-    svg.appendChild(path); a0=a1;
+    path.style.transition="opacity .14s, transform .14s cubic-bezier(.33,.1,.2,1)";
+    path.style.cursor="default";
+    svg.appendChild(path); segs.push({path,label:labels[i],value:v,mid,color:colors[i%colors.length]}); a0=a1;
   });
+  // center readout
+  const cval=E("text",{x:cx,y:cy-2,"text-anchor":"middle","class":"num",
+    style:"font-size:17px;font-weight:600;fill:var(--ink)"}); cval.textContent=fmtCr(total);
+  const ccap=E("text",{x:cx,y:cy+16,"text-anchor":"middle",
+    style:"font-family:var(--mono);font-size:9px;letter-spacing:.12em;fill:var(--ink-mute)"}); ccap.textContent=centerLabel;
+  svg.appendChild(cval); svg.appendChild(ccap);
   host.innerHTML=""; host.appendChild(svg);
+  const enter=s=>{
+    segs.forEach(x=>{x.path.style.opacity=x===s?"1":".3";});
+    s.path.style.transform=`translate(${Math.cos(s.mid)*7}px,${Math.sin(s.mid)*7}px)`;
+    cval.textContent=fmtCr(s.value);
+    ccap.textContent=`${s.label} · ${(s.value/total*100).toFixed(1)}%`;
+    ccap.style.fill="var(--ink-dim)";
+  };
+  const reset=()=>{
+    segs.forEach(x=>{x.path.style.opacity="1";x.path.style.transform="none";});
+    cval.textContent=fmtCr(total); ccap.textContent=centerLabel; ccap.style.fill="var(--ink-mute)";
+  };
+  segs.forEach(s=>{s.path.addEventListener("mouseenter",()=>enter(s)); s.path.addEventListener("mousemove",()=>enter(s));});
+  svg.addEventListener("mouseleave",reset);
 }
 
 /* ════════════════ helpers for series colours ════════════════ */
@@ -536,8 +594,15 @@ function seriesColor(name){ return cvar(SERIES_COL[name]||"--ink-dim"); }
 const ALLOC_COLORS = ["--accent","--sip","--up","--bench","--down"].map(cvar)
   .concat(["oklch(0.72 0.10 320)","oklch(0.78 0.11 140)","oklch(0.74 0.09 30)","oklch(0.70 0.08 280)","oklch(0.76 0.10 190)","oklch(0.66 0.04 250)"]);
 
-/* tile builder */
-function tile(k, v, sub, vc, lead){ return `<div class="tile${lead?' lead':''}"><div class="k">${k}</div><div class="v ${vc||''}">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`; }
+/* tile builder. `link` (a section id) makes the whole tile a navigable affordance
+   that jumps to where the metric's fuller detail lives. */
+function tile(k, v, sub, vc, lead, link){
+  const cls=`tile${lead?' lead':''}${link?' link':''}`;
+  const arrow=link?`<span class="go" aria-hidden="true">↗</span>`:"";
+  const attrs=link?` role="link" tabindex="0" data-link="${link}" onclick="goLink('${link}')" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();goLink('${link}')}"`:"";
+  return `<div class="${cls}"${attrs}><div class="k">${k}${arrow}</div><div class="v ${vc||''}">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`;
+}
+function goLink(sec){ if(SECTIONS.some(s=>s[0]===sec)) show(sec); }
 function sechead(title, lede, asof){ return `<div class="sec-head"><div><h1>${title}</h1>${lede?`<p class="lede">${lede}</p>`:""}</div>${asof?`<div class="asof">${asof}</div>`:""}</div>`; }
 
 /* ════════════════ OVERVIEW ════════════════ */
@@ -562,12 +627,12 @@ function renderOverview(){
     </div>
   </div>`;
   html += `<div class="tiles">`;
-  html += tile(`Annualised XIRR · ${HZ}`, fmtPctRaw(su.xirr), `money-weighted rate of return`, su.xirr>=0?"up":"down", true);
-  if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP`);
-  if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP`);
-  if(su.max_drawdown!=null) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(su.max_drawdown), `peak to trough`, "down");
-  if(tcell) html += tile(`Cash drag · ${HZ}`, fmtPctRaw(tcell.cash), `avg idle cash`);
-  html += tile(`Invested · ${HZ}`, fmtCr(su.total_invested), `contributed capital`);
+  html += tile(`Annualised XIRR · ${HZ}`, fmtPctRaw(su.xirr), `money-weighted · full metrics in Backtest`, su.xirr>=0?"up":"down", true, "backtest");
+  if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP`, "", false, "backtest");
+  if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP`, "", false, "backtest");
+  if(su.max_drawdown!=null) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(su.max_drawdown), `peak to trough`, "down", false, "backtest");
+  if(tcell) html += tile(`Cash drag · ${HZ}`, fmtPctRaw(tcell.cash), `avg idle cash`, "", false, "backtest");
+  html += tile(`Invested · ${HZ}`, fmtCr(su.total_invested), `holdings in Portfolio`, "", false, "portfolio");
   html += `</div>`;
   if(su.xirr!=null&&scell&&ncell){
     html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Starting ${HZ==="All"?"in 2010":HZ+" ago"}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(su.xirr)}</b> annualised (${fmtPct(su.total_ret)} total), against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b> over the same window.</p></div>`;
@@ -615,7 +680,7 @@ function renderPortfolio(){
   donut($("#pf_alloc"),{labels:pf.alloc.labels,values:pf.alloc.values,colors:ALLOC_COLORS});
   $("#pf_alloc_leg").innerHTML=pf.alloc.labels.map((l,i)=>`<span><i style="background:${ALLOC_COLORS[i%ALLOC_COLORS.length]};border-radius:50%;width:9px;height:9px"></i>${l}</span>`).join("");
   const top=pf.pnl.labels.map((s,i)=>[s,pf.pnl.values[i]]).slice(-22);
-  barChart($("#pf_pnl"),{labels:top.map(t=>t[0]),datasets:[{values:top.map(t=>t[1]),color:v=>v>=0?cvar("--up"):cvar("--down")}],horizontal:true,h:360,yfmt:v=>fmtCr(v)});
+  barChart($("#pf_pnl"),{labels:top.map(t=>t[0]),datasets:[{name:"P&L",values:top.map(t=>t[1]),color:v=>v>=0?cvar("--up"):cvar("--down")}],horizontal:true,h:360,yfmt:v=>fmtCr(v)});
   pfRender();
 }
 function pfRender(){
@@ -743,11 +808,11 @@ function renderBacktest(){
   const regs=b.regimes.filter((r,i)=>!cut||new Date(REGIME_END[i])>=cut);
   if(regs.length){
     barChart($("#bt_reg"),{labels:regs.map(r=>r.regime),
-      datasets:b.regime_strategies.map(n=>({color:seriesColor(n),values:regs.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
+      datasets:b.regime_strategies.map(n=>({name:short(n),color:seriesColor(n),values:regs.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
   } else $("#bt_reg").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">No full market regime in this window.</p>`;
   // buy distribution (within window)
   const bd=buyDistForHorizon(22).reverse();
-  if(bd.length) barChart($("#bt_buy"),{labels:bd.map(d=>d[0]),datasets:[{values:bd.map(d=>d[1]),color:cvar("--accent")}],horizontal:true,h:360,yfmt:v=>v});
+  if(bd.length) barChart($("#bt_buy"),{labels:bd.map(d=>d[0]),datasets:[{name:"Buys",values:bd.map(d=>d[1]),color:cvar("--accent")}],horizontal:true,h:360,yfmt:v=>v});
   else $("#bt_buy").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">No buys in this window.</p>`;
 }
 function renderBtCmp(c){
@@ -894,6 +959,10 @@ function show(sec){
   window.scrollTo({top:0,behavior:"instant"});
 }
 function setHz(h){ HZ=h; document.querySelectorAll("#hzSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.h===h)); RENDER[SEC](); }
+// re-render the active section on width change so charts stay crisp (viewBox tracks container width)
+let _rzT, _rzW=window.innerWidth;
+window.addEventListener("resize",()=>{ if(window.innerWidth===_rzW)return; _rzW=window.innerWidth;
+  clearTimeout(_rzT); _rzT=setTimeout(()=>RENDER[SEC](),180); });
 
 // build nav + horizon control
 $("#nav").innerHTML=SECTIONS.map(([k,l])=>`<button data-s="${k}" onclick="show('${k}')">${l}</button>`).join("");
