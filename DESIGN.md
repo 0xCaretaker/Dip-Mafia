@@ -47,7 +47,7 @@ Scale (fixed, ratio ~1.2): 0.68 / 0.75 / 0.82 / 0.92 / 1.0 / 1.15 / 1.5 / 2.2 / 
 
 ## Components
 
-Segmented control (nav + horizon), stat tile, chart panel, data table (sticky head, hover row, sortable), pill/tag, tooltip+crosshair, donut legend, comparison table (best-per-row highlight). Each interactive element: default / hover / focus-visible / active / disabled. Empty + loading states. Motion 150-250ms ease-out; horizon/section changes cross-fade; charts draw-in once (reduced-motion: instant). No page-load choreography.
+Segmented control (nav + horizon), stat tile, **lead tile** (the one headline metric per section: raised `--surface-2`, spans 2 grid cols, figure at 2.7rem/700 vs the 1.6rem/600 of regular tiles - this size+weight jump is the hierarchy spine, deliberately breaking the uniform grid), chart panel, data table (sticky head, hover row, sortable), pill/tag, tooltip+crosshair, donut legend, comparison table (best-per-row highlight). Figures lead: mono, tabular, weight 600-700, tight tracking; labels stay quiet (mono, uppercase, `--ink-mute`). The Overview hero number is the single largest element (Fraunces, clamp to 5.4rem, well under 6) with `₹` and `Cr`/`L` rendered as muted superscript affixes so the digits dominate. Each interactive element: default / hover / focus-visible / active / disabled. Empty + loading states. Motion 150-250ms ease-out; horizon/section changes cross-fade; charts draw-in once (reduced-motion: instant). No page-load choreography.
 
 ## Charts (hand-built SVG)
 
