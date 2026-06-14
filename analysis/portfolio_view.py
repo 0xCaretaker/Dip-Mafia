@@ -368,11 +368,13 @@ def reshape_backtest(backtest_data, horizons):
     for k, v in (sh.get("cells") or {}).items():
         strat, hl = k.rsplit("|", 1)
         cells[f"{strat}|{label_map.get(hl, hl)}"] = v
+    curves = {label_map.get(hl, hl): c for hl, c in (sh.get("curves") or {}).items()}
     backtest_data["horizon_metrics"] = {
         "horizons": [label_map.get(h, h) for h in (sh.get("horizons") or [])],
         "strategies": sh.get("strategies") or ["Timed HODL", "SIP", "NIFTY 50"],
         "metrics": sh.get("metrics") or [],
         "cells": cells,
+        "curves": curves,
         "gated": sh.get("gated"),
         "contribution": sh.get("contribution"),
     }
@@ -427,6 +429,12 @@ def main():
     if n_arch:
         print(f"  Iterations: current + {n_arch} archived run(s)")
 
+    # Iterations grid: drop strategy_horizons (its curves now live in
+    # backtest.horizon_metrics) so the payload doesn't carry them twice.
+    grid = None
+    if horizons:
+        grid = {k: v for k, v in horizons.items() if k != "strategy_horizons"}
+
     payload = {
         "generated_at": datetime.now().strftime("%Y-%m-%d %H:%M"),
         "current_run": os.path.basename(CURRENT_RUN),
@@ -435,7 +443,7 @@ def main():
         "portfolio": portfolio_data,
         "backtest": backtest_data,
         "iterations": iterations,
-        "horizons_grid": horizons,
+        "horizons_grid": grid,
     }
 
     os.makedirs(DOCS_DIR, exist_ok=True)
