@@ -244,6 +244,15 @@ footer a{color:var(--ink-dim); text-decoration:underline; text-underline-offset:
 .modal .x:hover{color:var(--ink)}
 .modal h3{font-size:1.1rem; margin-bottom:4px}
 .modal .msub{color:var(--ink-dim); font-size:.82rem; margin-bottom:14px; font-family:var(--mono)}
+.modal.wide{max-width:min(940px,94vw)}
+.zoom-btn{position:absolute; top:6px; right:6px; z-index:2; width:26px; height:26px;
+  display:flex; align-items:center; justify-content:center; padding:0; line-height:1;
+  background:var(--surface); border:1px solid var(--line-2); border-radius:7px;
+  color:var(--ink-mute); cursor:pointer; opacity:0; font-size:.92rem;
+  transition:opacity .14s, color .14s, border-color .14s}
+.chart-host:hover .zoom-btn, .zoom-btn:focus-visible{opacity:1}
+.zoom-btn:hover{color:var(--ink); border-color:var(--line)}
+@media(hover:none){.zoom-btn{opacity:.55}}
 
 @media(max-width:560px){
   .wrap{padding:0 16px}
@@ -391,6 +400,28 @@ function sliceTS(dates, values, years){
 }
 
 /* ════════════════ SVG chart kit ════════════════ */
+/* chart zoom: each line/bar chart registers a thunk that can redraw it into any
+   host, and gets a hover "enlarge" button that opens it large in the shared modal. */
+const CHART_RENDERERS={};
+function registerChart(host, fn){
+  if(!host||!host.id||host.id==="m_zoomhost") return;
+  CHART_RENDERERS[host.id]=fn;
+  if(!host.querySelector(".zoom-btn")){
+    const b=elh(`<button class="zoom-btn" type="button" aria-label="Enlarge chart" title="Enlarge">⤢</button>`);
+    b.addEventListener("click",e=>{e.stopPropagation(); openChartModal(host.id);});
+    host.appendChild(b);
+  }
+}
+function openChartModal(id){
+  const fn=CHART_RENDERERS[id]; if(!fn) return;
+  const host=document.getElementById(id), card=host&&host.closest(".card");
+  $("#mTitle").textContent = card&&card.querySelector("h3") ? card.querySelector("h3").textContent : "Chart";
+  $("#mSub").textContent   = card&&card.querySelector(".csub") ? card.querySelector(".csub").textContent : "";
+  $("#mBody").innerHTML=`<div class="chart-host" id="m_zoomhost"></div>`;
+  $(".modal").classList.add("wide");
+  $("#overlay").classList.add("active");
+  fn($("#m_zoomhost"), {h:460});
+}
 const NS="http://www.w3.org/2000/svg";
 const E=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); return e;};
 const ts=d=>new Date(d).getTime();
@@ -483,6 +514,7 @@ function lineChart(host, series, opts={}){
     const hide=()=>{tip.style.opacity=0; cross.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0));};
     svg.addEventListener("mouseleave",hide); svg.addEventListener("touchend",hide);
   }
+  registerChart(host,(hh,eo)=>lineChart(hh,series,Object.assign({},opts,eo)));
   return svg;
 }
 
@@ -552,6 +584,7 @@ function barChart(host, {labels, datasets, horizontal=false, h=300, yfmt=v=>v, v
     b.rect.addEventListener("mousemove",e=>show(b,e));
   });
   svg.addEventListener("mouseleave",hide);
+  registerChart(host,(hh,eo)=>barChart(hh,Object.assign({labels,datasets,horizontal,h,yfmt,valFmt},eo)));
   return svg;
 }
 
@@ -774,10 +807,11 @@ function stockModal(stock){
     `<div class="csub" style="margin-bottom:2px">Price over ${HZ==="All"?"full history":"the last "+HZ} · <span style="color:var(--accent)">●</span> buy points · avg-cost line</div>`+
     `<div class="chart-host" id="m_price" style="margin-bottom:16px"></div>`+
     `<div class="table-wrap" style="border:none"><table><thead><tr><th>Date</th><th>Price</th><th>Shares</th><th>Amount</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td>₹${t.price.toFixed(2)}</td><td>${t.shares.toFixed(1)}</td><td>${fmtCr(t.amount)}</td></tr>`).join("")}</tbody></table></div>`;
+  $(".modal").classList.remove("wide");
   $("#overlay").classList.add("active");
   priceMini($("#m_price"), r.spark, r.trades, r.avg_price, r.cmp, 190);
 }
-function closeModal(){ $("#overlay").classList.remove("active"); }
+function closeModal(){ $("#overlay").classList.remove("active"); $(".modal").classList.remove("wide"); }
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
@@ -824,7 +858,7 @@ function renderBacktest(){
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px">
       <div class="card"><h3>Cash idle</h3><div class="csub">% sitting in cash (drag) · fresh ${HZ==="All"?"full":HZ} sim</div><div class="chart-host" id="bt_cash"></div></div>
-      <div class="card"><h3>Rolling alpha vs SIP</h3><div class="csub">12m/36m outperformance · windowed to ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_alpha"></div></div>
+      <div class="card"><h3>Outperformance vs SIP</h3><div class="csub">Rolling alpha: how far Timed HODL's trailing 12- and 36-month return runs ahead of an equal-weight SIP, in percentage points. Above the zero line is winning.</div><div class="chart-host" id="bt_alpha"></div><div class="csub" id="bt_alpha_win" style="margin-top:6px"></div></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr">
       <div class="card"><h3>Regime returns</h3><div class="csub">NAV-based, by market condition within ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_reg"></div></div>
@@ -863,17 +897,25 @@ function renderBacktest(){
     lineChart($("#bt_cash"),cuS,{h:240,ymin:0,ymax:105,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v.toFixed(0)+"%",padL:42});
   }
   // rolling alpha (windowed)
+  const ALPHA_LABEL={"1Y":"12-month","3Y":"36-month"};
   const alNames=Object.keys(b.rolling_alpha||{});
   const alSeries=alNames.map((k,i)=>{const s=sliceTS(b.rolling_alpha[k].dates,b.rolling_alpha[k].values,HZ_YEARS[HZ]);
-    return {name:k+" α",color:i===0?cvar("--up"):cvar("--sip"),d:s.d,v:s.v,width:1.4,fill:i===0};}).filter(s=>s.d.length>1);
-  if(alSeries.length) lineChart($("#bt_alpha"),alSeries,{h:240,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
-  else $("#bt_alpha").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">Window too short for a rolling 12m alpha.</p>`;
+    return {name:ALPHA_LABEL[k]||k,color:i===0?cvar("--up"):cvar("--sip"),d:s.d,v:s.v,width:1.4,fill:i===0};}).filter(s=>s.d.length>1);
+  const alWin=$("#bt_alpha_win");
+  if(alSeries.length){
+    lineChart($("#bt_alpha"),alSeries,{h:240,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
+    const winTxt=alSeries.map(s=>{const w=s.v.filter(x=>x!=null&&x>0).length, n=s.v.filter(x=>x!=null).length; return n?`${s.name} ${Math.round(w/n*100)}%`:null;}).filter(Boolean).join(" · ");
+    if(alWin) alWin.textContent=winTxt?`Beat SIP ${winTxt} of the window.`:"";
+  } else {
+    $("#bt_alpha").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">Window too short for a rolling 12-month alpha.</p>`;
+    if(alWin) alWin.textContent="";
+  }
   // regime grouped bars (regimes overlapping the window)
   const cut=horizonCutoff(a?a.end_date:S.end_date);
   const regs=b.regimes.filter((r,i)=>!cut||new Date(REGIME_END[i])>=cut);
   if(regs.length){
     barChart($("#bt_reg"),{labels:regs.map(r=>r.regime),
-      datasets:b.regime_strategies.map(n=>({name:short(n),color:seriesColor(n),values:regs.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
+      datasets:b.regime_strategies.map(n=>({name:short(n),color:seriesColor(n),values:regs.map(r=>r[n]??null)})),h:260,yfmt:v=>v.toFixed(1)+"%"});
   } else $("#bt_reg").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">No full market regime in this window.</p>`;
   // buy distribution (within window)
   const bd=buyDistForHorizon(22).reverse();
@@ -931,6 +973,13 @@ function renderScreens(){
 function scrSetSort(k){ SCR_SORT=k; document.querySelectorAll("#scrSort button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrBoard(); }
 function scrPick(k, scroll){ SCR_LIST=k; document.querySelectorAll("#scr_chips .chip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrInspect();
   if(scroll){ const el=document.getElementById("scr_inspect"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); } }
+/* curve for a list/benchmark at the active horizon: prefer the per-horizon windowed
+   curve (re-based from the window start), fall back to the full-history curve. */
+function scrCurve(key){
+  const hk=SIX_MAP[HZ];
+  const ch=SIX.curves_h&&SIX.curves_h[hk]&&SIX.curves_h[hk][key];
+  return ch||(SIX.curves&&SIX.curves[key])||null;
+}
 function renderScrBoard(){
   const hk=SIX_MAP[HZ]; const rows=(SIX.comparison[hk]||[]).slice();
   const sv=r=>SCR_SORT==="final"?(r.timed.final||0):SCR_SORT==="xirr"?(r.timed.xirr??-999):SCR_SORT==="sharpe"?(r.timed.sharpe??-999):(r.timed.maxdd??-999);
@@ -939,8 +988,8 @@ function renderScrBoard(){
   $("#scr_body").innerHTML=rows.map(r=>{
     const best=(r.timed.final||0)===bestF&&!r.benchmark;
     let tags=""; if(best)tags=`<span class="tag crown">★ best</span>`; else if(r.key==="stocks_current")tags=`<span class="tag live">live</span>`; else if(r.key==="univest_old")tags=`<span class="tag">legacy</span>`; else if(r.benchmark)tags=`<span class="tag">index</span>`;
-    const cv=SIX.curves[r.key], tser=cv&&cv.equity&&cv.equity["Timed HODL"];
-    const sv=tser?sliceTS(tser.d,tser.v,HZ_YEARS[HZ]).v:null, clickable=!!cv;
+    const cv=scrCurve(r.key), tser=cv&&cv.equity&&cv.equity["Timed HODL"];
+    const sv=tser?tser.v:null, clickable=!!cv&&!r.benchmark;
     return `<tr class="${best?'best':r.key==='stocks_current'?'cur':''}${clickable?' drill':''}"${clickable?` onclick="scrPick('${r.key}',true)" tabindex="0" onkeydown="if(event.key==='Enter')scrPick('${r.key}',true)"`:''}>
       <td>${r.label} ${tags}</td>
       <td class="sparkcell">${sv?sparkline(sv,84,24):'<span class="sparkna">–</span>'}</td>
@@ -952,17 +1001,20 @@ function renderScrBoard(){
   }).join("");
 }
 function renderScrInspect(){
-  const k=SCR_LIST, c=SIX.curves[k], m=SIX.meta[k], hk=SIX_MAP[HZ], yrs=HZ_YEARS[HZ];
+  const k=SCR_LIST, m=SIX.meta[k], hk=SIX_MAP[HZ];
+  const c=scrCurve(k)||{equity:{},drawdowns:{}};
+  const frow=(SIX.comparison[hk]||[]).find(r=>r.key===k)||{timed:{},n:null};
   $("#scr_ctitle").textContent=`${m.label} equity curve`;
-  $("#scr_cblurb").textContent=`${m.blurb||""} · ${c.summary.n_stocks} priced`;
+  const npriced=frow.n!=null?frow.n:(c.summary&&c.summary.n_stocks);
+  $("#scr_cblurb").textContent=`${m.blurb||""}${npriced!=null?` · ${npriced} priced`:""}`;
   const COL={"Timed HODL":"--accent","SIP":"--sip","NIFTY 50":"--bench"};
-  const eq=["Timed HODL","SIP","NIFTY 50"].filter(n=>c.equity[n]).map(n=>{const s=sliceTS(c.equity[n].d,c.equity[n].v,yrs);
-    return {name:n,color:cvar(COL[n]),d:s.d,v:s.v,width:n==="Timed HODL"?2.4:1.5,dash:n==="NIFTY 50"?"5 4":null};});
+  const eq=["Timed HODL","SIP","NIFTY 50"].filter(n=>c.equity[n]).map(n=>(
+    {name:n,color:cvar(COL[n]),d:c.equity[n].d,v:c.equity[n].v,width:n==="Timed HODL"?2.4:1.5,dash:n==="NIFTY 50"?"5 4":null}));
   lineChart($("#scr_eq"),eq,{h:240,ymin:0,yfmt:v=>"₹"+(v/1e5).toFixed(0)+"L",tipFmt:v=>fmtCr(v),draw:true,padL:50});
-  const dd=["Timed HODL","SIP"].filter(n=>c.drawdowns[n]).map(n=>{const s=sliceTS(c.drawdowns[n].d,c.drawdowns[n].v,yrs);
-    return {name:n,color:cvar(COL[n]),d:s.d,v:s.v,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"};});
+  const dd=["Timed HODL","SIP"].filter(n=>c.drawdowns[n]).map(n=>(
+    {name:n,color:cvar(COL[n]),d:c.drawdowns[n].d,v:c.drawdowns[n].v,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"}));
   lineChart($("#scr_dd"),dd,{h:170,ymax:2,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
-  const frow=(SIX.comparison[hk]||[]).find(r=>r.key===k)||{timed:{}}; const t=frow.timed;
+  const t=frow.timed||{};
   $("#scr_minfo").innerHTML=`Invested ${fmtCr(frow.invested)} · over ${HZ==="All"?"full history":HZ}`;
   $("#scr_metrics").innerHTML=[
     ["Final",fmtCr(t.final)],["XIRR",fmtPctRaw(t.xirr)],["Sharpe",fmtNum(t.sharpe)],["Sortino",fmtNum(t.sortino)],

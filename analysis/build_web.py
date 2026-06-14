@@ -78,17 +78,38 @@ def comparison_row(r):
     label = META.get(key, (key, ""))[0]
     t, s, n = r.get("timed", {}), r.get("sip", {}), r.get("nifty") or {}
     inv = float(r.get("total_invested", 0)) or None
+    is_bench = bool(r.get("benchmark"))
     # honest total return = final/invested-1 (NOT the misleading portfolio-series CAGR)
     ret = (t.get("final_value") / inv - 1) * 100 if (inv and t.get("final_value") is not None) else None
+    # an index benchmark IS a monthly SIP into the index: its timed value == its SIP value
+    sip_final = t.get("final_value") if is_bench else s.get("final_value")
+    sip_xirr = t.get("xirr") if is_bench else s.get("xirr")
     return {
         "key": key, "label": label, "n": r.get("n_with_data"),
-        "invested": round(inv) if inv else None, "benchmark": bool(r.get("benchmark")),
+        "invested": round(inv) if inv else None, "benchmark": is_bench,
         "timed": {"final": t.get("final_value"), "ret": ret, "xirr": t.get("xirr"),
                   "cagr": t.get("cagr"), "vol": t.get("volatility"),
                   "sharpe": t.get("sharpe"), "sortino": t.get("sortino"), "maxdd": t.get("max_drawdown")},
-        "sip": {"final": s.get("final_value"), "xirr": s.get("xirr")},
+        "sip": {"final": sip_final, "xirr": sip_xirr},
         "nifty": {"final": n.get("final_value"), "xirr": n.get("xirr")},
     }
+
+
+def build_curve(curve):
+    """Per-horizon windowed curve (from a comparison row) -> web {equity, drawdowns}.
+
+    Same SERIES rename + downsample as the full-history list curves, so the dashboard
+    can re-base the Screens inspect chart per horizon instead of slicing a full curve.
+    """
+    eq, dd = {}, {}
+    for raw, short in SERIES.items():
+        e = curve.get("equity", {}).get(raw)
+        if e and short in EQUITY_KEEP:
+            eq[short] = downsample(e, 200)
+        d = curve.get("drawdowns", {}).get(raw)
+        if d and short in DD_KEEP:
+            dd[short] = downsample(d, 200)
+    return {"equity": eq, "drawdowns": dd}
 
 
 def main():
@@ -127,6 +148,22 @@ def main():
             "summary": d["summary"], "equity": eq, "drawdowns": dd,
         }
 
+    # per-horizon windowed curves (lists + index benchmarks), keyed by horizon then
+    # list key. The dashboard prefers these for a horizon, falling back to the
+    # full-history `curves` for "All" / lists with no windowed curve.
+    curves_h = {}
+    for h, _ in HORIZONS:
+        path = os.path.join(OUT, f"comparison_{h}.json")
+        if not os.path.isfile(path):
+            continue
+        ch = {}
+        for r in json.load(open(path))["results"]:
+            c = r.get("curve")
+            if c:
+                ch[r["list"]] = build_curve(c)
+        if ch:
+            curves_h[h] = ch
+
     period_full = comparison.get("full", [{}])
     data = {
         "generated_at": datetime.now(timezone.utc).strftime("%Y-%m-%d"),
@@ -140,6 +177,7 @@ def main():
         "meta": {k: {"label": v[0], "blurb": v[1], "count": counts.get(k)} for k, v in META.items()},
         "comparison": comparison,
         "curves": curves,
+        "curves_h": curves_h,
         "caveat": ("Lists are a current (2026-06-01) fundamental screen run backward - "
                    "survivorship / look-ahead biased hindsight, not a tradeable signal."),
     }
@@ -151,6 +189,7 @@ def main():
     size = os.path.getsize(os.path.join(DOCS, "data.js")) / 1024
     print(f"  wrote {DOCS}/data.js  ({size:.0f} KB)")
     print(f"  horizons: {list(comparison)} | curve lists: {list(curves)}")
+    print(f"  per-horizon curves: {{ {', '.join(f'{h}:{len(c)}' for h, c in curves_h.items())} }}")
 
 
 if __name__ == "__main__":
