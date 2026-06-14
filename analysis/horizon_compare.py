@@ -226,6 +226,15 @@ def _horizon_portfolio(buy_log, win, monthly, value_series, metrics, slippage_bp
         if cp is None or a["shares"] <= 0:
             continue
         value = a["shares"] * cp
+        # compact close-price spark over the window (sparkline + modal drilldown)
+        spark = None
+        df = win.get(s)
+        if df is not None:
+            cs = df["Close"].dropna()
+            if len(cs) >= 2:
+                sp = _downsample(cs, 40)
+                spark = {"v": [round(x, 2) for x in sp["values"]],
+                         "d0": sp["dates"][0], "d1": sp["dates"][-1]}
         rows.append({
             "stock": s, "avg_price": round(a["invested"] / a["shares"], 2),
             "cmp": round(cp, 2), "shares": round(a["shares"], 1),
@@ -234,7 +243,7 @@ def _horizon_portfolio(buy_log, win, monthly, value_series, metrics, slippage_bp
             "ret": round((value - a["invested"]) / a["invested"] * 100, 1) if a["invested"] else None,
             "weight": 0.0, "num_buys": a["n"],
             "first_buy": a["first"].strftime("%Y-%m-%d"), "last_buy": a["last"].strftime("%Y-%m-%d"),
-            "trades": a["trades"], "_v": value,
+            "trades": a["trades"], "spark": spark, "_v": value,
         })
     rows.sort(key=lambda r: r["_v"], reverse=True)
     held_val = sum(r["_v"] for r in rows)

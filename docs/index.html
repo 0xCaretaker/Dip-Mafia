@@ -175,8 +175,15 @@ tr.cur td:first-child{box-shadow:inset 2px 0 0 var(--up)}
 .cell-best{color:var(--accent); font-weight:700}
 .wbar{display:inline-flex; align-items:center; justify-content:flex-end; gap:6px}
 .wbar i{height:5px; border-radius:3px; display:inline-block; min-width:3px}
-.stocklink{cursor:pointer; border-bottom:1px dotted var(--ink-mute)}
-.stocklink:hover{border-color:var(--accent); color:var(--accent)}
+.stocklink{border-bottom:1px dotted var(--ink-mute)}
+tbody tr.drill{cursor:pointer}
+tbody tr.drill:hover .stocklink{border-color:var(--accent); color:var(--accent)}
+tbody tr.drill:focus-visible{outline:2px solid var(--accent); outline-offset:-2px}
+td.sparkcell{text-align:left; padding-top:4px; padding-bottom:4px}
+.spark{display:block; vertical-align:middle}
+.sparkna{color:var(--ink-mute)}
+thead th.nosort{cursor:default}
+thead th.nosort:hover{color:var(--ink-mute)}
 
 .controls{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center}
 .controls input{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
@@ -584,6 +591,56 @@ function donut(host, {labels, values, colors, centerLabel="TOTAL"}){
   svg.addEventListener("mouseleave",reset);
 }
 
+/* inline sparkline (table cell): bare trend line, coloured by net move */
+function sparkline(v, w=92, h=26){
+  if(!v||v.length<2) return `<span class="sparkna">–</span>`;
+  const mn=Math.min(...v), mx=Math.max(...v), rng=(mx-mn)||1;
+  const X=i=>1+i/(v.length-1)*(w-2), Y=val=>h-2-((val-mn)/rng)*(h-5);
+  const up=v[v.length-1]>=v[0], col=up?cvar('--up'):cvar('--down');
+  let d=`M ${X(0).toFixed(1)} ${Y(v[0]).toFixed(1)}`;
+  for(let i=1;i<v.length;i++) d+=` L ${X(i).toFixed(1)} ${Y(v[i]).toFixed(1)}`;
+  return `<svg class="spark" width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" preserveAspectRatio="none" aria-hidden="true">`+
+    `<path d="${d}" fill="none" stroke="${col}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>`+
+    `<circle cx="${X(v.length-1).toFixed(1)}" cy="${Y(v[v.length-1]).toFixed(1)}" r="1.9" fill="${col}"/></svg>`;
+}
+
+/* modal drilldown: stock price line over the window with buy markers + avg/CMP refs */
+function priceMini(host, spark, trades, avg, cmp, h=180){
+  const v=spark&&spark.v; if(!v||v.length<2){ host.innerHTML=`<p class="csub" style="padding:24px 0;text-align:center">No price series.</p>`; return; }
+  const W=Math.max(300,Math.round(host.clientWidth)||520), H_=h, P={l:50,r:12,t:12,b:20};
+  const t0=ts(spark.d0), t1=ts(spark.d1)||t0+1;
+  let mn=Math.min(...v), mx=Math.max(...v); if(avg){mn=Math.min(mn,avg);mx=Math.max(mx,avg);}
+  const rng=(mx-mn)||1; mn=Math.max(0,mn-rng*0.06); mx+=rng*0.06;
+  const X=i=>P.l+i/(v.length-1)*(W-P.l-P.r), Y=val=>P.t+(1-(val-mn)/(mx-mn))*(H_-P.t-P.b);
+  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H_}`,preserveAspectRatio:"none"});
+  const g=E("g",{class:"axis"});
+  for(let i=0;i<=3;i++){const val=mn+(mx-mn)*i/3, y=Y(val);
+    svg.appendChild(E("line",{class:"gridline",x1:P.l,y1:y,x2:W-P.r,y2:y}));
+    const tx=E("text",{x:P.l-8,y:y+3,"text-anchor":"end"}); tx.textContent="₹"+val.toFixed(0); g.appendChild(tx);}
+  svg.appendChild(g);
+  // area + line
+  let d=`M ${X(0).toFixed(1)} ${Y(v[0]).toFixed(1)}`;
+  for(let i=1;i<v.length;i++) d+=` L ${X(i).toFixed(1)} ${Y(v[i]).toFixed(1)}`;
+  const ac=cvar('--accent');
+  const gid="pm"+v.length; const grad=E("linearGradient",{id:gid,x1:0,y1:0,x2:0,y2:1});
+  grad.appendChild(E("stop",{offset:"0%","stop-color":ac,"stop-opacity":.20})); grad.appendChild(E("stop",{offset:"100%","stop-color":ac,"stop-opacity":0}));
+  svg.appendChild(grad);
+  svg.appendChild(E("path",{d:d+` L ${X(v.length-1).toFixed(1)} ${Y(mn).toFixed(1)} L ${X(0).toFixed(1)} ${Y(mn).toFixed(1)} Z`,fill:`url(#${gid})`,stroke:"none"}));
+  svg.appendChild(E("path",{d,fill:"none",stroke:ac,"stroke-width":2,"stroke-linejoin":"round"}));
+  // avg-cost reference
+  if(avg){const y=Y(avg); svg.appendChild(E("line",{x1:P.l,y1:y,x2:W-P.r,y2:y,stroke:cvar('--ink-mute'),"stroke-width":1,"stroke-dasharray":"4 4"}));
+    const lab=E("text",{x:W-P.r,y:y-4,"text-anchor":"end",style:"font-family:var(--mono);font-size:9px;fill:var(--ink-mute)"}); lab.textContent="avg ₹"+avg.toFixed(0); svg.appendChild(lab);}
+  // buy markers positioned by date fraction
+  (trades||[]).forEach(tr=>{
+    let f=(ts(tr.date)-t0)/(t1-t0); f=Math.max(0,Math.min(1,f));
+    const x=P.l+f*(W-P.l-P.r), y=Y(tr.price);
+    const c=E("circle",{cx:x.toFixed(1),cy:y.toFixed(1),r:3,fill:cvar('--accent'),stroke:cvar('--surface'),"stroke-width":1.4});
+    const tt=E("title"); tt.textContent=`${tr.date} · buy ₹${tr.price.toFixed(2)} · ${fmtCr(tr.amount)}`; c.appendChild(tt);
+    svg.appendChild(c);
+  });
+  host.innerHTML=""; host.appendChild(svg);
+}
+
 /* ════════════════ helpers for series colours ════════════════ */
 const SERIES_COL = {
   "Your Strategy (Timed HODL)":"--accent", "Timed HODL":"--accent",
@@ -673,7 +730,8 @@ function renderPortfolio(){
     </div>
     <div class="controls"><input id="pf_q" placeholder="Filter stocks…" oninput="pfFilter()"></div>
     <div class="table-wrap"><table id="pf_tbl"><thead><tr>
-      ${["stock|Stock","avg_price|Avg","cmp|CMP","shares|Shares","invested|Invested","value|Value","pnl|P&amp;L","ret|Return","weight|Weight"].map(c=>{const[k,l]=c.split("|");return `<th data-col="${k}" onclick="pfSort('${k}')">${l}</th>`}).join("")}
+      <th data-col="stock" onclick="pfSort('stock')">Stock</th><th class="nosort">Trend</th>
+      ${["avg_price|Avg","cmp|CMP","shares|Shares","invested|Invested","value|Value","pnl|P&amp;L","ret|Return","weight|Weight"].map(c=>{const[k,l]=c.split("|");return `<th data-col="${k}" onclick="pfSort('${k}')">${l}</th>`}).join("")}
     </tr></thead><tbody id="pf_body"></tbody></table></div>`;
 
   navChart($("#pf_nav"), nav, 260);
@@ -692,14 +750,15 @@ function pfRender(){
   const maxw=allrows.length?Math.max(...allrows.map(r=>r.weight)):1;
   let ti=0,tv=0,html="";
   rows.forEach(r=>{ ti+=r.invested; tv+=r.value;
-    html+=`<tr>
-      <td><span class="stocklink" onclick="stockModal('${r.stock}')">${r.stock}</span></td>
+    html+=`<tr class="drill" onclick="stockModal('${r.stock}')" tabindex="0" onkeydown="if(event.key==='Enter')stockModal('${r.stock}')">
+      <td><span class="stocklink">${r.stock}</span></td>
+      <td class="sparkcell">${sparkline(r.spark&&r.spark.v)}</td>
       <td>₹${r.avg_price.toFixed(2)}</td><td>₹${r.cmp.toFixed(2)}</td><td>${r.shares.toFixed(1)}</td>
       <td>${fmtCr(r.invested)}</td><td>${fmtCr(r.value)}</td>
       <td class="${cls(r.pnl)}">${fmtSign(r.pnl)}</td><td class="${cls(r.ret)}">${fmtPct(r.ret)}</td>
       <td><span class="wbar">${r.weight.toFixed(1)}%<i style="width:${(r.weight/maxw*46).toFixed(0)}px;background:${r.pnl>=0?'var(--up)':'var(--down)'}"></i></span></td></tr>`; });
   const tp=tv-ti;
-  html+=`<tr class="total"><td>TOTAL (${rows.length})</td><td></td><td></td><td></td><td>${fmtCr(ti)}</td><td>${fmtCr(tv)}</td><td class="${cls(tp)}">${fmtSign(tp)}</td><td class="${cls(tp)}">${fmtPct(tp/ti*100)}</td><td>100%</td></tr>`;
+  html+=`<tr class="total"><td>TOTAL (${rows.length})</td><td></td><td></td><td></td><td></td><td>${fmtCr(ti)}</td><td>${fmtCr(tv)}</td><td class="${cls(tp)}">${fmtSign(tp)}</td><td class="${cls(tp)}">${fmtPct(tp/ti*100)}</td><td>100%</td></tr>`;
   $("#pf_body").innerHTML=html;
   document.querySelectorAll("#pf_tbl th").forEach(th=>th.classList.toggle("sorted",th.dataset.col===col));
 }
@@ -709,8 +768,12 @@ function stockModal(stock){
   const r=PH().rows.find(d=>d.stock===stock); if(!r)return;
   $("#mTitle").textContent=r.stock;
   $("#mSub").innerHTML=`${r.num_buys} buys · ${r.first_buy} → ${r.last_buy} · avg ₹${r.avg_price.toFixed(2)} · CMP ₹${r.cmp.toFixed(2)} · <span class="${cls(r.pnl)}">${fmtSign(r.pnl)} (${fmtPct(r.ret)})</span>`;
-  $("#mBody").innerHTML=`<div class="table-wrap" style="border:none"><table><thead><tr><th>Date</th><th>Price</th><th>Shares</th><th>Amount</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td>₹${t.price.toFixed(2)}</td><td>${t.shares.toFixed(1)}</td><td>${fmtCr(t.amount)}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#mBody").innerHTML=
+    `<div class="csub" style="margin-bottom:2px">Price over ${HZ==="All"?"full history":"the last "+HZ} · <span style="color:var(--accent)">●</span> buy points · avg-cost line</div>`+
+    `<div class="chart-host" id="m_price" style="margin-bottom:16px"></div>`+
+    `<div class="table-wrap" style="border:none"><table><thead><tr><th>Date</th><th>Price</th><th>Shares</th><th>Amount</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td>₹${t.price.toFixed(2)}</td><td>${t.shares.toFixed(1)}</td><td>${fmtCr(t.amount)}</td></tr>`).join("")}</tbody></table></div>`;
   $("#overlay").classList.add("active");
+  priceMini($("#m_price"), r.spark, r.trades, r.avg_price, r.cmp, 190);
 }
 function closeModal(){ $("#overlay").classList.remove("active"); }
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
@@ -844,9 +907,9 @@ function renderScreens(){
         ${[["final","Final ₹"],["xirr","XIRR"],["sharpe","Sharpe"],["maxdd","Drawdown"]].map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===SCR_SORT}" onclick="scrSetSort('${k}')">${l}</button>`).join("")}
       </span></div>
     <div class="table-wrap" style="margin-bottom:22px"><table id="scr_tbl"><thead><tr>
-      <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th><th>SIP final</th>
+      <th>List</th><th class="nosort">Trend</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th><th>SIP final</th>
     </tr></thead><tbody id="scr_body"></tbody></table></div>
-    <div class="sec-head" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">${HZ==="All"?"Full-history":HZ} equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
+    <div class="sec-head" id="scr_inspect" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">${HZ==="All"?"Full-history":HZ} equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
     <div class="chips" id="scr_chips" style="margin-bottom:16px"></div>
     <div class="grid" style="grid-template-columns:1.5fr 1fr">
       <div class="card"><h3 id="scr_ctitle">Equity curve</h3><div class="csub" id="scr_cblurb"></div>
@@ -864,7 +927,8 @@ function renderScreens(){
   renderScrInspect();
 }
 function scrSetSort(k){ SCR_SORT=k; document.querySelectorAll("#scrSort button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrBoard(); }
-function scrPick(k){ SCR_LIST=k; document.querySelectorAll("#scr_chips .chip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrInspect(); }
+function scrPick(k, scroll){ SCR_LIST=k; document.querySelectorAll("#scr_chips .chip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrInspect();
+  if(scroll){ const el=document.getElementById("scr_inspect"); if(el) el.scrollIntoView({behavior:"smooth",block:"start"}); } }
 function renderScrBoard(){
   const hk=SIX_MAP[HZ]; const rows=(SIX.comparison[hk]||[]).slice();
   const sv=r=>SCR_SORT==="final"?(r.timed.final||0):SCR_SORT==="xirr"?(r.timed.xirr??-999):SCR_SORT==="sharpe"?(r.timed.sharpe??-999):(r.timed.maxdd??-999);
@@ -873,8 +937,12 @@ function renderScrBoard(){
   $("#scr_body").innerHTML=rows.map(r=>{
     const best=(r.timed.final||0)===bestF&&!r.benchmark;
     let tags=""; if(best)tags=`<span class="tag crown">★ best</span>`; else if(r.key==="stocks_current")tags=`<span class="tag live">live</span>`; else if(r.key==="univest_old")tags=`<span class="tag">legacy</span>`; else if(r.benchmark)tags=`<span class="tag">index</span>`;
-    return `<tr class="${best?'best':r.key==='stocks_current'?'cur':''}">
-      <td>${r.label} ${tags}</td><td>${r.n??"–"}</td><td style="color:var(--ink-dim)">${fmtCr(r.invested)}</td>
+    const cv=SIX.curves[r.key], tser=cv&&cv.equity&&cv.equity["Timed HODL"];
+    const sv=tser?sliceTS(tser.d,tser.v,HZ_YEARS[HZ]).v:null, clickable=!!cv;
+    return `<tr class="${best?'best':r.key==='stocks_current'?'cur':''}${clickable?' drill':''}"${clickable?` onclick="scrPick('${r.key}',true)" tabindex="0" onkeydown="if(event.key==='Enter')scrPick('${r.key}',true)"`:''}>
+      <td>${r.label} ${tags}</td>
+      <td class="sparkcell">${sv?sparkline(sv,84,24):'<span class="sparkna">–</span>'}</td>
+      <td>${r.n??"–"}</td><td style="color:var(--ink-dim)">${fmtCr(r.invested)}</td>
       <td>${fmtCr(r.timed.final)}</td><td>${fmtX(r.timed.final/r.invested)}</td>
       <td class="${cls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td><td class="${cls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
       <td>${fmtNum(r.timed.sharpe)}</td><td class="down">${fmtPctRaw(r.timed.maxdd)}</td>
@@ -950,7 +1018,7 @@ function renderIterations(){
 /* ════════════════ shell ════════════════ */
 const RENDER={overview:renderOverview,portfolio:renderPortfolio,backtest:renderBacktest,screens:renderScreens,iterations:renderIterations};
 function show(sec){
-  SEC=sec;
+  SEC=sec; closeModal();
   document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
   $("#panel-"+sec).classList.add("active");
   document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.s===sec));
