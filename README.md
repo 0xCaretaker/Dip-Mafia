@@ -204,12 +204,13 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 
 | Horizon | Timed HODL | SIP (same stocks) | NIFTY 50 |
 |---|---|---|---|
-| 1 year | **-0.1%** | 12.8% | -10.2% |
-| 3 years | 11.4% | 23.6% | 1.4% |
-| 5 years | 31.9% | 38.4% | 5.9% |
-| Full (~16y) | 26.8% | 27.6% | 10.3% |
+| 1 year | **17.0%** | 1.1% | -4.6% |
+| 3 years | 9.7% | 21.3% | 4.2% |
+| 5 years | 30.0% | 36.4% | 7.5% |
+| 10 years | 35.8% | 35.1% | 10.9% |
+| Full (~16y) | 26.3% | 27.0% | 10.9% |
 
-> 1y/3y/5y use a flat ₹20k/mo SIP; Full uses the salary model (so it matches the headline above). Timing trails plain SIP on return at 1/3/5y, but over the last year it held roughly flat (-0.1%) while NIFTY fell ~10%, the drawdown protection is where the edge shows.
+> Every horizon is a fresh windowed sim on the salary model (₹22k/mo from 2010, +10%/yr, 25% invested), calendar-anchored then restricted to the window, so Full reproduces the headline above. Timing beats plain SIP at 1y and 10y and protects in the down year (deploying into the dip while NIFTY fell ~5%); it trails on raw return at 3y/5y, where a relentless SIP rode the rally without waiting for weakness.
 
 ### Charts
 

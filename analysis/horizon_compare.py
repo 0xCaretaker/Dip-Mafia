@@ -1,19 +1,22 @@
 #!/usr/bin/env python3
 """
-Horizon comparison for the dashboard Iterations tab.
+Horizon data for the unified dashboard (Backtest + Iterations sections).
 
 For the current watchlist and every archived watchlist (each run's
 <run>/stocks.txt under backtest_output/), computes Timed HODL returns over
-1y / 3y / 5y / Full trailing windows, for three signal variants:
+1y / 3y / 5y / 10y / Full trailing windows on the bb-60 signal config.
 
-  bb60      - Bollinger watch lookback 60 (the default / live config)
-  bb30      - lookback 30
-  bb60mid   - lookback 60 + extra "close below BB midline" buy gate
+For the CURRENT watchlist it additionally produces the full Timed HODL / SIP /
+NIFTY 50 metric grid and per-horizon equity / drawdown / cash curves (Backtest
+section). Each horizon is a fresh windowed sim.
+
+Contributions use the salary model (bt.CONFIG: ₹22k/mo in 2010, +10%/yr, 25%
+invested), calendar-anchored to 2010 then restricted to the window - the SAME
+model as backtest.py, the six7 almanac and the Portfolio/Iterations numbers, so
+every horizon's "Full"/"All" agrees with them.
 
 Signals are computed over full history (so the 200-bar Bollinger warmup is always
-satisfied); only the investing/measurement window is the trailing horizon. A flat
-₹20k/month contribution is used so horizons are comparable to each other and to the
-six7 almanac.
+satisfied); only the investing/measurement window is the trailing horizon.
 
 Prices come from backtest_output/six7/_price_cache.pkl when present (full history,
 no download); otherwise they are downloaded once via backtest.download_batch.
@@ -50,11 +53,10 @@ STRAT_METRICS = [
     {"key": "vol",         "label": "Volatility",  "fmt": "pct"},
     {"key": "cash",        "label": "Cash drag",   "fmt": "pct"},
 ]
-# bb-60 first = the default. (key, label, lookback, require_below_mid)
+# bb-60 = the live default; the dashboard Iterations comparison uses it only.
+# (key, label, lookback, require_below_mid)
 VARIANTS = [
-    ("bb60",    "bb-60",      60, False),
-    ("bb30",    "bb-30",      30, False),
-    ("bb60mid", "bb-60 +mid", 60, True),
+    ("bb60", "bb-60", 60, False),
 ]
 
 
@@ -87,28 +89,47 @@ def load_prices(symbols):
 
 
 def signals_for(data, lookback):
+    # Salary model (bt.CONFIG defaults: ₹22k/mo in 2010, +10%/yr, 25% invested) -
+    # the same contribution model as backtest.py, the six7 almanac and the
+    # Portfolio/Iterations numbers, so every horizon's "All" agrees with them.
     cfg = dict(bt.CONFIG)
     cfg["bb_lookback"] = lookback
-    cfg["initial_salary"] = 80_000          # 80k * 0.25 = flat 20k/mo
-    cfg["salary_growth"] = 0.0
-    cfg["invest_pct"] = 0.25
     bb, bb_mid, imp, _imp_st, _sk = bt.generate_all_signals(data, cfg)
     return cfg, bb, bb_mid, imp
+
+
+def _window_monthly(data, symbols, bb, cfg, end_dt, years):
+    """Calendar-anchored monthly investments for a trailing window.
+
+    The salary ramp is anchored to the first date of *full* history (so 2025
+    months use 2025-level salary), then restricted to the window. Returns
+    (win_stock_dfs, syms, monthly, hstart) or (None, ..., None) if empty.
+    """
+    fsyms = [s for s in symbols if s in bb]
+    full_dates = bt.get_all_dates({s: data[s] for s in fsyms}, fsyms)
+    if not full_dates:
+        return None, [], None, None
+    full_monthly = bt.build_monthly_investments(full_dates, cfg)
+    hstart = (min(data[s].index.min() for s in fsyms)
+              if years is None else end_dt - pd.DateOffset(years=years))
+    win = {s: data[s][data[s].index >= hstart] for s in fsyms}
+    win = {s: df for s, df in win.items() if not df.empty}
+    syms = list(win.keys())
+    if not bt.get_all_dates(win, syms):
+        return None, syms, None, hstart
+    monthly = {k: v for k, v in full_monthly.items() if v["date"] >= hstart}
+    if not monthly:
+        return None, syms, None, hstart
+    return win, syms, monthly, hstart
 
 
 def run_cell(data, symbols, years, sig, end_dt):
     cfg, bb, bb_mid, imp, below_mid = sig
     bt.BUY_REQUIRE_BELOW_MID = below_mid
-    hstart = (min(data[s].index.min() for s in symbols if s in data)
-              if years is None else end_dt - pd.DateOffset(years=years))
-    win = {s: data[s][data[s].index >= hstart] for s in symbols if s in bb}
-    win = {s: df for s, df in win.items() if not df.empty}
-    syms = list(win.keys())
-    dates = bt.get_all_dates(win, syms)
-    if not dates:
+    win, syms, monthly, _hstart = _window_monthly(data, symbols, bb, cfg, end_dt, years)
+    if win is None:
         bt.BUY_REQUIRE_BELOW_MID = False
         return None
-    monthly = bt.build_monthly_investments(dates, cfg)
     sim, cf, _bl, _idle = bt.simulate_timed_hodl(
         win, syms, monthly, bb, bb_mid, imp, slippage_bps=cfg["slippage_bps"])
     bt.BUY_REQUIRE_BELOW_MID = False
@@ -117,6 +138,25 @@ def run_cell(data, symbols, years, sig, end_dt):
     return {"xirr": round(m["xirr"], 1),
             "mult": round(m["final_value"] / inv, 2) if inv else None,
             "maxdd": round(m["max_drawdown"], 1)}
+
+
+def _drawdown(series):
+    cm = series.cummax()
+    return (series - cm) / cm * 100
+
+
+def _downsample(series, n=170):
+    """Compact a daily series to ~n points (keeps first and last) as {dates, values}."""
+    s = series.dropna()
+    if len(s) == 0:
+        return {"dates": [], "values": []}
+    if len(s) <= n:
+        idx = list(range(len(s)))
+    else:
+        step = len(s) / n
+        idx = sorted(set(int(i * step) for i in range(n)) | {len(s) - 1})
+    return {"dates": [s.index[i].strftime("%Y-%m-%d") for i in idx],
+            "values": [round(float(s.iloc[i]), 2) for i in idx]}
 
 
 def _load_nifty():
@@ -146,26 +186,21 @@ def _nifty_sip_window(nd, monthly):
 
 
 def strategy_horizons(data, symbols, sig, end_dt):
-    """Timed HODL / SIP / NIFTY 50 across horizons, all metrics, flat ₹20k, gated
-    to match the backtest default (bt.BUY_REQUIRE_BELOW_MID)."""
+    """Timed HODL / SIP / NIFTY 50 across horizons: full metric grid + per-horizon
+    equity / drawdown / cash curves, on the salary model, gated to match the
+    backtest default (bt.BUY_REQUIRE_BELOW_MID). Each horizon is a fresh windowed
+    sim with calendar-anchored contributions, so 'Full' reproduces the salary-model
+    headline (the Portfolio / Iterations / almanac numbers)."""
     cfg, bb, bb_mid, imp, _mid = sig
-    fcfg = dict(bt.CONFIG); fcfg["bb_lookback"] = 60
-    fcfg["initial_salary"] = 80_000; fcfg["salary_growth"] = 0.0; fcfg["invest_pct"] = 0.25
-    # Match the gated backtest default (the run_cell loop above leaves the global off).
+    scfg = dict(bt.CONFIG); scfg["bb_lookback"] = 60
     prev_gate = bt.BUY_REQUIRE_BELOW_MID
     bt.BUY_REQUIRE_BELOW_MID = True
     nifty = _load_nifty()
-    cells = {}
+    cells, curves = {}, {}
     for hl, yr in HORIZONS:
-        hstart = (min(data[s].index.min() for s in symbols if s in data)
-                  if yr is None else end_dt - pd.DateOffset(years=yr))
-        win = {s: data[s][data[s].index >= hstart] for s in symbols if s in bb}
-        win = {s: df for s, df in win.items() if not df.empty}
-        syms = list(win.keys())
-        dates = bt.get_all_dates(win, syms)
-        if not dates:
+        win, syms, monthly, hstart = _window_monthly(data, symbols, bb, scfg, end_dt, yr)
+        if win is None:
             continue
-        monthly = bt.build_monthly_investments(dates, fcfg)
         inv = sum(v["amount"] for v in monthly.values())
 
         def _cell(m, cash_pct):
@@ -180,29 +215,38 @@ def strategy_horizons(data, symbols, sig, end_dt):
 
         # Timed HODL (gate per backtest default + V4 fallback defaults)
         tsim, tcf, _bl, _idle = bt.simulate_timed_hodl(win, syms, monthly, bb, bb_mid, imp,
-                                                       slippage_bps=fcfg["slippage_bps"])
+                                                       slippage_bps=scfg["slippage_bps"])
         tm = bt.compute_metrics(tsim["portfolio"], "T", tcf)
         tot = tsim["portfolio"].replace(0, np.nan)
-        cash = float((tsim["cash"] / tot * 100).fillna(100).mean())
-        cells[f"Timed HODL|{hl}"] = _cell(tm, round(cash, 1))
+        cash_series = (tsim["cash"] / tot * 100).fillna(100)
+        cells[f"Timed HODL|{hl}"] = _cell(tm, round(float(cash_series.mean()), 1))
         # SIP
-        ssim, scf = bt.simulate_sip(win, syms, monthly, fcfg["slippage_bps"])
+        ssim, scf = bt.simulate_sip(win, syms, monthly, scfg["slippage_bps"])
         sm = bt.compute_metrics(ssim["portfolio"], "S", scf)
         cells[f"SIP|{hl}"] = _cell(sm, None)
         # NIFTY 50
+        nser = None
         if nifty is not None:
-            nsim, ncf = _nifty_sip_window(nifty[nifty.index >= hstart], monthly)
-            nm = bt.compute_metrics(nsim, "N", ncf)
+            nser, ncf = _nifty_sip_window(nifty[nifty.index >= hstart], monthly)
+            nm = bt.compute_metrics(nser, "N", ncf)
             cells[f"NIFTY 50|{hl}"] = _cell(nm, None)
+        # per-horizon curves (downsampled for the dashboard charts)
+        eq = {"Timed HODL": _downsample(tsim["portfolio"]), "SIP": _downsample(ssim["portfolio"])}
+        dd = {"Timed HODL": _downsample(_drawdown(tsim["portfolio"])),
+              "SIP": _downsample(_drawdown(ssim["portfolio"]))}
+        if nser is not None:
+            eq["NIFTY 50"] = _downsample(nser)
+        curves[hl] = {"equity": eq, "drawdown": dd, "cash": _downsample(cash_series)}
     gated = bool(bt.BUY_REQUIRE_BELOW_MID)
     bt.BUY_REQUIRE_BELOW_MID = prev_gate
     return {
         "gated": gated,
-        "contribution": "flat ₹20k/month",
+        "contribution": "salary model (₹22k/mo from 2010, +10%/yr, 25% invested)",
         "horizons": [h for h, _ in HORIZONS],
         "strategies": ["Timed HODL", "SIP", "NIFTY 50"],
         "metrics": STRAT_METRICS,
         "cells": cells,
+        "curves": curves,
     }
 
 
@@ -256,7 +300,7 @@ def build():
     out = {
         "end_date": str(end_dt.date()),
         "source": "price cache" if os.path.isfile(PRICE_CACHE) else "download",
-        "contribution": "flat ₹20k/month",
+        "contribution": "salary model (₹22k/mo from 2010, +10%/yr, 25% invested)",
         "default_variant": "bb60",
         "horizons": [h for h, _ in HORIZONS],
         "variants": [{"key": k, "label": l} for k, l, _lb, _m in VARIANTS],

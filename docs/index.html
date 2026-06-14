@@ -598,6 +598,20 @@ function closeModal(){ $("#overlay").classList.remove("active"); }
 $("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
 document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
 
+/* ════════════════ horizon helpers (regime / buy windows) ════════════════ */
+// REGIME end dates, in backtest.py REGIMES order (matches b.regimes order).
+const REGIME_END = ["2003-05-01","2008-01-01","2009-03-31","2015-03-01","2020-01-01","2020-06-01","2022-01-01","2023-01-01","2026-12-31"];
+function horizonCutoff(refDate){
+  const yrs=HZ_YEARS[HZ]; if(yrs==null) return null;
+  const c=new Date(refDate); c.setFullYear(c.getFullYear()-yrs); return c;
+}
+function buyDistForHorizon(n=22){
+  const cut=horizonCutoff(S.portfolio.nav.dates[S.portfolio.nav.dates.length-1]);
+  const counts={};
+  S.portfolio.rows.forEach(r=>r.trades.forEach(t=>{ if(!cut||new Date(t.date)>=cut) counts[r.stock]=(counts[r.stock]||0)+1; }));
+  return Object.entries(counts).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,n);
+}
+
 /* ════════════════ BACKTEST ════════════════ */
 function renderBacktest(){
   const el=$("#panel-backtest"); const b=S.backtest;
@@ -605,7 +619,7 @@ function renderBacktest(){
   const a=b.assumptions, bm=b.horizon_metrics, c=bm.cells;
   const t=c["Timed HODL|"+HZ]||{};
   el.innerHTML = sechead("Backtest",
-    `Timed HODL vs equal-weight SIP vs a NIFTY 50 SIP, on the live ${a&&a.years?Math.round(a.years)+"-year":""} salary-investing model. Metric cards and the comparison scope to ${HZ}; equity and drawdown are windowed.`,
+    `Timed HODL vs equal-weight SIP vs a NIFTY 50 SIP. Every card and chart is a fresh ${HZ==="All"?"full-history":HZ} sim on the salary-investing model, so "All" reproduces the headline portfolio.`,
     `${a?a.start_date+" → "+a.end_date:""}<br>gate ${bm.gated?"on":"off"} · ${bm.contribution||""}`) + `
     <div class="tiles" style="margin-bottom:16px">
       ${tile(`Final value · ${HZ}`, fmtCr(t.final_value), "Timed HODL", "up")}
@@ -616,7 +630,7 @@ function renderBacktest(){
       ${tile("Volatility / Cash", `${fmtPctRaw(t.vol)} <small>/ ${fmtPctRaw(t.cash)}</small>`)}
     </div>
     <div class="card" style="margin-bottom:16px">
-      <h3>Equity curves</h3><div class="csub">Portfolio value · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <h3>Equity curves</h3><div class="csub">Portfolio value · fresh ${HZ==="All"?"full-history":HZ} sim</div>
       <div class="legend" id="bt_eqleg"></div>
       <div class="chart-host" id="bt_eq"></div>
     </div>
@@ -626,46 +640,62 @@ function renderBacktest(){
         <div class="table-wrap" style="border:none" id="bt_cmp"></div></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px">
-      <div class="card"><h3>Cash utilisation</h3><div class="csub">% of portfolio deployed · windowed</div><div class="chart-host" id="bt_cash"></div></div>
-      <div class="card"><h3>Rolling alpha vs SIP</h3><div class="csub">Full backtest · positive = outperforming</div><div class="chart-host" id="bt_alpha"></div></div>
+      <div class="card"><h3>Cash idle</h3><div class="csub">% sitting in cash (drag) · fresh ${HZ==="All"?"full":HZ} sim</div><div class="chart-host" id="bt_cash"></div></div>
+      <div class="card"><h3>Rolling alpha vs SIP</h3><div class="csub">12m/36m outperformance · windowed to ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_alpha"></div></div>
     </div>
     <div class="grid" style="grid-template-columns:1fr 1fr">
-      <div class="card"><h3>Regime returns</h3><div class="csub">Full backtest · NAV-based, by market condition</div><div class="chart-host" id="bt_reg"></div></div>
-      <div class="card"><h3>Buy distribution</h3><div class="csub">Full backtest · most-bought names</div><div class="chart-host" id="bt_buy"></div></div>
+      <div class="card"><h3>Regime returns</h3><div class="csub">NAV-based, by market condition within ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_reg"></div></div>
+      <div class="card"><h3>Buy distribution</h3><div class="csub">Most-bought names · buys within ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_buy"></div></div>
     </div>`;
 
-  // equity
-  const eqNames=Object.keys(b.equity);
-  const eqSeries=eqNames.map(n=>{const s=sliceTS(b.equity[n].dates,b.equity[n].values,HZ_YEARS[HZ]);
-    return {name:n.replace("Your Strategy (Timed HODL)","Timed HODL").replace("SIP on Your Stocks","SIP").replace("SIP on NIFTY 50","NIFTY 50"),
-      color:seriesColor(n), d:s.d, v:s.v, width:n.includes("Timed HODL")?2.6:1.6, dash:n.includes("NIFTY")?"5 4":null};});
+  const cu=(bm.curves&&bm.curves[HZ])||null;
+  const short=n=>n.replace("Your Strategy (Timed HODL)","Timed HODL").replace("SIP on Your Stocks","SIP").replace("SIP on NIFTY 50","NIFTY 50");
+  // equity (fresh windowed sim curves; fallback to sliced full run)
+  let eqSeries;
+  if(cu&&cu.equity){
+    eqSeries=Object.keys(cu.equity).map(n=>({name:n,color:seriesColor(n),d:cu.equity[n].dates,v:cu.equity[n].values,width:n==="Timed HODL"?2.6:1.6,dash:n==="NIFTY 50"?"5 4":null}));
+  } else {
+    eqSeries=Object.keys(b.equity).map(n=>{const s=sliceTS(b.equity[n].dates,b.equity[n].values,HZ_YEARS[HZ]);
+      return {name:short(n),color:seriesColor(n),d:s.d,v:s.v,width:n.includes("Timed HODL")?2.6:1.6,dash:n.includes("NIFTY")?"5 4":null};});
+  }
   $("#bt_eqleg").innerHTML=eqSeries.map(s=>`<span><i style="background:${s.color}" class="${s.dash?'dash':''}"></i>${s.name}</span>`).join("");
   lineChart($("#bt_eq"),eqSeries,{h:280,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
   // drawdown
-  const ddNames=Object.keys(b.drawdowns);
-  const ddSeries=ddNames.map(n=>{const s=sliceTS(b.drawdowns[n].dates,b.drawdowns[n].values,HZ_YEARS[HZ]);
-    return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:n.includes("Timed HODL")?2:1.4,fill:n.includes("Timed HODL")};});
+  let ddSeries;
+  if(cu&&cu.drawdown){
+    ddSeries=Object.keys(cu.drawdown).map(n=>({name:n,color:seriesColor(n),d:cu.drawdown[n].dates,v:cu.drawdown[n].values,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"}));
+  } else {
+    ddSeries=Object.keys(b.drawdowns).map(n=>{const s=sliceTS(b.drawdowns[n].dates,b.drawdowns[n].values,HZ_YEARS[HZ]);
+      return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:n.includes("Timed HODL")?2:1.4,fill:n.includes("Timed HODL")};});
+  }
   lineChart($("#bt_dd"),ddSeries,{h:240,ymax:2,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
   // comparison table
   renderBtCmp(c);
-  // cash util (windowed)
-  const cuNames=Object.keys(b.cash_util);
-  const cuSeries=cuNames.map(n=>{const s=sliceTS(b.cash_util[n].dates,b.cash_util[n].values,HZ_YEARS[HZ]);
-    return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:1.6,fill:n.includes("Timed HODL")};});
-  lineChart($("#bt_cash"),cuSeries,{h:240,ymin:0,ymax:105,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(0)+"%",padL:42});
-  // rolling alpha (full)
-  const alNames=Object.keys(b.rolling_alpha);
-  if(alNames.length){
-    const alSeries=alNames.map((k,i)=>({name:k+" α ("+b.rolling_alpha[k].pct_win+"% wins)",color:i===0?cvar("--up"):cvar("--sip"),
-      d:b.rolling_alpha[k].dates,v:b.rolling_alpha[k].values,width:1.4,fill:i===0}));
-    lineChart($("#bt_alpha"),alSeries,{h:240,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
-  } else $("#bt_alpha").innerHTML=`<p class="csub">No rolling-alpha series.</p>`;
-  // regime grouped bars
-  barChart($("#bt_reg"),{labels:b.regimes.map(r=>r.regime),
-    datasets:b.regime_strategies.map(n=>({color:seriesColor(n),values:b.regimes.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
-  // buy distribution (full, top 22)
-  const bd=b.buy_distribution.slice(0,22).reverse();
-  barChart($("#bt_buy"),{labels:bd.map(d=>d[0]),datasets:[{values:bd.map(d=>d[1]),color:cvar("--accent")}],horizontal:true,h:360,yfmt:v=>v});
+  // cash idle (windowed sim)
+  if(cu&&cu.cash){
+    lineChart($("#bt_cash"),[{name:"Cash idle %",color:cvar("--accent"),d:cu.cash.dates,v:cu.cash.values,width:1.6,fill:true}],
+      {h:240,ymin:0,ymax:Math.max(20,Math.ceil(Math.max(...cu.cash.values)/10)*10),yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(0)+"%",padL:42,hover:true});
+  } else {
+    const cuS=Object.keys(b.cash_util).map(n=>{const s=sliceTS(b.cash_util[n].dates,b.cash_util[n].values,HZ_YEARS[HZ]);return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:1.6,fill:n.includes("Timed HODL")};});
+    lineChart($("#bt_cash"),cuS,{h:240,ymin:0,ymax:105,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v.toFixed(0)+"%",padL:42});
+  }
+  // rolling alpha (windowed)
+  const alNames=Object.keys(b.rolling_alpha||{});
+  const alSeries=alNames.map((k,i)=>{const s=sliceTS(b.rolling_alpha[k].dates,b.rolling_alpha[k].values,HZ_YEARS[HZ]);
+    return {name:k+" α",color:i===0?cvar("--up"):cvar("--sip"),d:s.d,v:s.v,width:1.4,fill:i===0};}).filter(s=>s.d.length>1);
+  if(alSeries.length) lineChart($("#bt_alpha"),alSeries,{h:240,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
+  else $("#bt_alpha").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">Window too short for a rolling 12m alpha.</p>`;
+  // regime grouped bars (regimes overlapping the window)
+  const cut=horizonCutoff(a?a.end_date:S.end_date);
+  const regs=b.regimes.filter((r,i)=>!cut||new Date(REGIME_END[i])>=cut);
+  if(regs.length){
+    barChart($("#bt_reg"),{labels:regs.map(r=>r.regime),
+      datasets:b.regime_strategies.map(n=>({color:seriesColor(n),values:regs.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
+  } else $("#bt_reg").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">No full market regime in this window.</p>`;
+  // buy distribution (within window)
+  const bd=buyDistForHorizon(22).reverse();
+  if(bd.length) barChart($("#bt_buy"),{labels:bd.map(d=>d[0]),datasets:[{values:bd.map(d=>d[1]),color:cvar("--accent")}],horizontal:true,h:360,yfmt:v=>v});
+  else $("#bt_buy").innerHTML=`<p class="csub" style="padding:30px 0;text-align:center">No buys in this window.</p>`;
 }
 function renderBtCmp(c){
   const strd=["Timed HODL","SIP","NIFTY 50"], short={"Timed HODL":"Timed","SIP":"SIP","NIFTY 50":"NIFTY"};
@@ -689,7 +719,7 @@ function renderScreens(){
   if(!SIX){ el.innerHTML=sechead("Screens","six7 data (data.js) not found."); return; }
   const hk=SIX_MAP[HZ];
   el.innerHTML = sechead("Screens · six7",
-    "Which fundamental screen would have compounded best? Each list run through the same Timed HODL engine. The leaderboard scopes to the horizon; inspect shows full history.",
+    "Which fundamental screen would have compounded best? Each list run through the same Timed HODL engine. Leaderboard and inspect both scope to the horizon.",
     `scan <b>${SIX.snapshot_date}</b><br>${(SIX.universe||0).toLocaleString()} stocks scored`) + `
     <div class="controls"><span class="hz-label" style="display:inline">Rank by</span>
       <span class="seg sm" id="scrSort">
@@ -698,14 +728,14 @@ function renderScreens(){
     <div class="table-wrap" style="margin-bottom:22px"><table id="scr_tbl"><thead><tr>
       <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th><th>SIP final</th>
     </tr></thead><tbody id="scr_body"></tbody></table></div>
-    <div class="sec-head" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">Full-horizon equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
+    <div class="sec-head" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">${HZ==="All"?"Full-history":HZ} equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
     <div class="chips" id="scr_chips" style="margin-bottom:16px"></div>
     <div class="grid" style="grid-template-columns:1.5fr 1fr">
       <div class="card"><h3 id="scr_ctitle">Equity curve</h3><div class="csub" id="scr_cblurb"></div>
         <div class="legend"><span><i style="background:var(--accent)"></i>Timed HODL</span><span><i style="background:var(--sip)"></i>SIP</span><span style="color:var(--bench)"><i class="dash"></i>NIFTY 50</span></div>
         <div class="chart-host" id="scr_eq"></div>
         <h3 style="margin-top:18px">Drawdown</h3><div class="chart-host" id="scr_dd"></div></div>
-      <div class="card"><h3>Full horizon</h3><div class="csub" id="scr_minfo"></div>
+      <div class="card"><h3>${HZ==="All"?"Full horizon":"Over "+HZ}</h3><div class="csub" id="scr_minfo"></div>
         <div class="tiles" id="scr_metrics" style="grid-template-columns:1fr 1fr; margin-top:10px"></div></div>
     </div>`;
   renderScrBoard();
@@ -734,16 +764,18 @@ function renderScrBoard(){
   }).join("");
 }
 function renderScrInspect(){
-  const k=SCR_LIST, c=SIX.curves[k], m=SIX.meta[k];
+  const k=SCR_LIST, c=SIX.curves[k], m=SIX.meta[k], hk=SIX_MAP[HZ], yrs=HZ_YEARS[HZ];
   $("#scr_ctitle").textContent=`${m.label} equity curve`;
   $("#scr_cblurb").textContent=`${m.blurb||""} · ${c.summary.n_stocks} priced`;
   const COL={"Timed HODL":"--accent","SIP":"--sip","NIFTY 50":"--bench"};
-  const eq=["Timed HODL","SIP","NIFTY 50"].filter(n=>c.equity[n]).map(n=>({name:n,color:cvar(COL[n]),d:c.equity[n].d,v:c.equity[n].v,width:n==="Timed HODL"?2.4:1.5,dash:n==="NIFTY 50"?"5 4":null}));
+  const eq=["Timed HODL","SIP","NIFTY 50"].filter(n=>c.equity[n]).map(n=>{const s=sliceTS(c.equity[n].d,c.equity[n].v,yrs);
+    return {name:n,color:cvar(COL[n]),d:s.d,v:s.v,width:n==="Timed HODL"?2.4:1.5,dash:n==="NIFTY 50"?"5 4":null};});
   lineChart($("#scr_eq"),eq,{h:240,ymin:0,yfmt:v=>"₹"+(v/1e5).toFixed(0)+"L",tipFmt:v=>fmtCr(v),draw:true,padL:50});
-  const dd=["Timed HODL","SIP"].filter(n=>c.drawdowns[n]).map(n=>({name:n,color:cvar(COL[n]),d:c.drawdowns[n].d,v:c.drawdowns[n].v,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"}));
+  const dd=["Timed HODL","SIP"].filter(n=>c.drawdowns[n]).map(n=>{const s=sliceTS(c.drawdowns[n].d,c.drawdowns[n].v,yrs);
+    return {name:n,color:cvar(COL[n]),d:s.d,v:s.v,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"};});
   lineChart($("#scr_dd"),dd,{h:170,ymax:2,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
-  const frow=(SIX.comparison.full||[]).find(r=>r.key===k)||{timed:{}}; const t=frow.timed;
-  $("#scr_minfo").innerHTML=`Invested ${fmtCr(c.invested)} · bought ${c.summary.n_stocks_bought}/${c.summary.n_stocks}`;
+  const frow=(SIX.comparison[hk]||[]).find(r=>r.key===k)||{timed:{}}; const t=frow.timed;
+  $("#scr_minfo").innerHTML=`Invested ${fmtCr(frow.invested)} · over ${HZ==="All"?"full history":HZ}`;
   $("#scr_metrics").innerHTML=[
     ["Final",fmtCr(t.final)],["XIRR",fmtPctRaw(t.xirr)],["Sharpe",fmtNum(t.sharpe)],["Sortino",fmtNum(t.sortino)],
     ["Max DD",fmtPctRaw(t.maxdd)],["Volatility",fmtPctRaw(t.vol)],
@@ -756,10 +788,10 @@ function renderIterations(){
   if(it.length<2){ el.innerHTML=sechead("Iterations","Only one run on file: iterations appear once a second backtest run exists."); return; }
   const grid=S.horizons_grid; const gh=GRID_MAP[HZ]; const dv=(grid&&grid.default_variant)||"bb60";
   el.innerHTML = sechead("Iterations",
-    "How each watchlist version would have performed. The comparison scopes to the horizon (bb-60 signals); the equity overlay is full history.",
+    `How each watchlist version would have performed, scoped to ${HZ==="All"?"full history":HZ} (bb-60 signals, salary model).`,
     `${grid?grid.contribution:""}<br>to <b>${grid?grid.end_date:S.end_date}</b>`) + `
     <div class="table-wrap" style="margin-bottom:20px"><table><thead><tr><th></th>${it.map(i=>`<th${i.is_current?' class="sorted"':''}>${i.label}</th>`).join("")}</tr></thead><tbody id="it_body"></tbody></table></div>
-    <div class="card"><h3>Timed HODL equity across iterations</h3><div class="csub">Full history, anchored to the current run's dates</div>
+    <div class="card"><h3>Timed HODL equity across iterations</h3><div class="csub">${HZ==="All"?"Full history":HZ}, anchored to the current run's dates</div>
       <div class="legend" id="it_leg"></div><div class="chart-host" id="it_eq"></div></div>`;
   // table: full-period rows from iterations + horizon rows from grid
   const wlKeyFor=i=> i.is_current?"Current":(grid.watchlists.find(w=>!w.is_current&&w.label!=="Current")||{}).key;
@@ -788,7 +820,8 @@ function renderIterations(){
   });
   $("#it_body").innerHTML=h;
   // overlay equity
-  const base=(it[0].equity&&it[0].equity.dates)||[];
+  const baseFull=(it[0].equity&&it[0].equity.dates)||[];
+  const base=sliceTS(baseFull, baseFull.map((_,i)=>i), HZ_YEARS[HZ]).d;   // window the anchor dates
   const pal=[cvar("--accent"),cvar("--sip"),cvar("--up"),cvar("--down"),cvar("--bench")];
   const series=it.map((i,idx)=>{const map={}; (i.equity.dates||[]).forEach((d,j)=>map[d]=i.equity.values[j]);
     return {name:i.label,color:pal[idx%pal.length],d:base,v:base.map(d=>d in map?map[d]:null),width:i.is_current?2.4:1.5,dash:i.is_current?null:"5 4"};});
