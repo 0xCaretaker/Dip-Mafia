@@ -149,6 +149,38 @@ def nav_metrics(sim_df, cashflows, name):
     return m
 
 
+# ── windowed equity curves for the web (per-horizon, re-based from window start) ──
+
+def _ds(series, n=220):
+    """pandas value Series (datetime index) -> {dates, values} downsampled to ~n pts."""
+    s = series.dropna()
+    if len(s) == 0:
+        return None
+    if len(s) > n:
+        step = len(s) / n
+        idx = sorted({int(i * step) for i in range(n)} | {len(s) - 1})
+        s = s.iloc[idx]
+    return {"dates": [d.strftime("%Y-%m-%d") for d in s.index],
+            "values": [round(float(v), 2) for v in s.values]}
+
+
+def _dd(series):
+    cm = series.cummax()
+    return (series - cm) / cm * 100
+
+
+def curve_block(equity, drawdowns):
+    """{label: value Series} x2 -> downsampled {equity:{...}, drawdowns:{...}} curve.
+
+    Labels use bt.LABEL_* so build_web's SERIES map renames them (Timed HODL / SIP /
+    NIFTY 50). Each series is the windowed value curve, so the web re-bases per horizon.
+    """
+    eq = {k: _ds(v) for k, v in equity.items() if v is not None and len(v)}
+    dd = {k: _ds(_dd(v)) for k, v in drawdowns.items() if v is not None and len(v)}
+    return {"equity": {k: v for k, v in eq.items() if v},
+            "drawdowns": {k: v for k, v in dd.items() if v}}
+
+
 def bench_row(key, index_data, cfg, hstart, flat=None):
     """Benchmark row: SIP the same monthly money into an index over the window."""
     if index_data is None:
@@ -159,10 +191,14 @@ def bench_row(key, index_data, cfg, hstart, flat=None):
     minv = build_schedule(sorted(bd.index), cfg, flat)
     sim, cf = nifty_sip(bd, minv, cfg["slippage_bps"])
     m = nav_metrics(sim, cf, key)
+    # An index can't be dip-timed; the benchmark IS a monthly SIP into the index, so
+    # its single value curve is emitted under LABEL_TIMED to drive the table sparkline.
     return {"list": key, "n_with_data": None,
             "total_invested": sum(v["amount"] for v in minv.values()),
             "start": str(sim.index[0].date()), "end": str(sim.index[-1].date()),
-            "timed": m, "sip": {}, "nifty": None, "benchmark": True}
+            "timed": m, "sip": {}, "nifty": None, "benchmark": True,
+            "curve": curve_block({bt.LABEL_TIMED: sim["portfolio"]},
+                                 {bt.LABEL_TIMED: sim["portfolio"]})}
 
 
 def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data, flat=None):
@@ -188,6 +224,10 @@ def run_metrics(name, syms_ns, stock_dfs_full, signals, cfg, hstart, nifty_data,
         "timed": nav_metrics(timed, timed_cf, bt.LABEL_TIMED),
         "sip": nav_metrics(sip, sip_cf, bt.LABEL_SIP),
         "nifty": nav_metrics(nifty, nifty_cf, bt.LABEL_NIFTY),
+        "curve": curve_block(
+            {bt.LABEL_TIMED: timed["portfolio"], bt.LABEL_SIP: sip["portfolio"],
+             bt.LABEL_NIFTY: nifty["portfolio"]},
+            {bt.LABEL_TIMED: timed["portfolio"], bt.LABEL_SIP: sip["portfolio"]}),
     }
 
 
