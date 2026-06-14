@@ -161,19 +161,19 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 ════════════════════════════════════════════════════════════════════════════════════════════════════
   RESULTS - 73 stocks, ₹25.2L invested
 ════════════════════════════════════════════════════════════════════════════════════════════════════
-                            Your Strategy (Timed HODL)      Partial SIP+Timed     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
+                            Your Strategy (Timed HODL)     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
-  Final Value                              ₹199.0L                ₹199.5L                ₹214.0L                 ₹34.2L                 ₹50.9L
-  Inflation-Adj Value                       ₹76.5L                 ₹76.7L                 ₹82.3L                 ₹13.1L                 ₹19.6L
-  Wealth Multiple                             7.9x                   7.9x                   8.5x                   1.4x                   2.0x
-  Real Multiple (infl-adj)                    3.0x                   3.0x                   3.3x                   0.5x                   0.8x
-  XIRR                                       26.8%                  26.8%                  27.6%                   4.7%                  10.3%
-  Real XIRR (minus 6% infl)                  20.8%                  20.8%                  21.6%                  -1.3%                   4.3%
-  Sharpe                                      1.32                   1.31                   1.31                   0.93                   1.12
-  Sortino                                     3.17                   3.11                   3.06                   2.02                   3.36
-  Max Drawdown                              -50.8%                 -50.0%                 -51.4%                 -68.2%                 -37.3%
-  Max DD Duration                         710 days               709 days               709 days               851 days               183 days
-  Volatility                                 38.8%                  39.2%                  39.4%                  46.8%                  37.6%
+  Final Value                              ₹199.0L                ₹214.0L                 ₹34.2L                 ₹50.9L
+  Inflation-Adj Value                       ₹76.5L                 ₹82.3L                 ₹13.1L                 ₹19.6L
+  Wealth Multiple                             7.9x                   8.5x                   1.4x                   2.0x
+  Real Multiple (infl-adj)                    3.0x                   3.3x                   0.5x                   0.8x
+  XIRR                                       26.8%                  27.6%                   4.7%                  10.3%
+  Real XIRR (minus 6% infl)                  20.8%                  21.6%                  -1.3%                   4.3%
+  Sharpe                                      1.32                   1.31                   0.93                   1.12
+  Sortino                                     3.17                   3.06                   2.02                   3.36
+  Max Drawdown                              -50.8%                 -51.4%                 -68.2%                 -37.3%
+  Max DD Duration                         710 days               709 days               851 days               183 days
+  Volatility                                 38.8%                  39.4%                  46.8%                  37.6%
 
   Buy signals fired on 183 days across 69/73 stocks
   Cash drag (Your Strategy): 1.2%   ·   longest idle: 21 trading days (~1 month)   ·   542 fallback buys

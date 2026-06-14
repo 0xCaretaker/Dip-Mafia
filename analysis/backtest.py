@@ -493,7 +493,6 @@ def _rupee_fmt(ax):
 def chart_1_equity(portfolios, nifty_series, total_invested, filename):
     fig, ax = plt.subplots(figsize=(14, 7))
     ax.plot(portfolios[LABEL_TIMED].index, portfolios[LABEL_TIMED].values, color=C_TIMED, linewidth=2.2, label=LABEL_TIMED, zorder=5)
-    ax.plot(portfolios[LABEL_PARTIAL].index, portfolios[LABEL_PARTIAL].values, color=C_PARTIAL, linewidth=1.8, label=LABEL_PARTIAL, zorder=4)
     ax.plot(portfolios[LABEL_SIP].index, portfolios[LABEL_SIP].values, color=C_SIP, linewidth=1.8, label=LABEL_SIP, zorder=3)
     ax.plot(portfolios[LABEL_EXIT].index, portfolios[LABEL_EXIT].values, color=C_EXIT, linewidth=1.3, alpha=0.7, label=LABEL_EXIT, zorder=2)
     if nifty_series is not None:
@@ -527,7 +526,7 @@ def chart_1_equity(portfolios, nifty_series, total_invested, filename):
 
 
 def chart_2_drawdowns(portfolios, nifty_series, filename):
-    items = [(LABEL_TIMED, C_TIMED), (LABEL_PARTIAL, C_PARTIAL), (LABEL_SIP, C_SIP)]
+    items = [(LABEL_TIMED, C_TIMED), (LABEL_SIP, C_SIP)]
     if nifty_series is not None:
         items.append((LABEL_NIFTY, C_NIFTY))
 
@@ -572,10 +571,10 @@ def chart_3_cash(timed_sim, exit_sim, filename):
 
 
 def chart_4_regimes(nav_series, nifty_price, filename):
-    strats = [LABEL_TIMED, LABEL_PARTIAL, LABEL_SIP]
+    strats = [LABEL_TIMED, LABEL_SIP]
     if nifty_price is not None:
         strats.append(LABEL_NIFTY)
-    colors = {LABEL_TIMED: C_TIMED, LABEL_PARTIAL: C_PARTIAL, LABEL_SIP: C_SIP, LABEL_NIFTY: C_NIFTY}
+    colors = {LABEL_TIMED: C_TIMED, LABEL_SIP: C_SIP, LABEL_NIFTY: C_NIFTY}
 
     regime_names = list(REGIMES.keys())
     data_rows = []
@@ -741,7 +740,7 @@ def chart_8_summary_table(metrics_list, total_invested, n_stocks, n_signals, n_s
     row_labels = [r[0] for r in rows]
     cell_text = [r[1] for r in rows]
 
-    colors_header = [C_TIMED, C_PARTIAL, C_SIP, C_EXIT, C_NIFTY][:len(col_labels)]
+    colors_header = [C_TIMED, C_SIP, C_EXIT, C_NIFTY][:len(col_labels)]
     table = ax.table(cellText=cell_text, rowLabels=row_labels, colLabels=col_labels,
                      cellLoc="center", rowLoc="right", loc="center")
     table.auto_set_font_size(False)
@@ -931,7 +930,7 @@ def save_dashboard_data(portfolios, nifty_series, timed_sim, exit_sim,
 
     # Regime returns
     regime_data = []
-    strats = [LABEL_TIMED, LABEL_PARTIAL, LABEL_SIP]
+    strats = [LABEL_TIMED, LABEL_SIP]
     if nifty_price is not None:
         strats.append(LABEL_NIFTY)
     for rname, (start, end, rtype) in REGIMES.items():
@@ -1011,7 +1010,7 @@ def save_dashboard_data(portfolios, nifty_series, timed_sim, exit_sim,
             "n_fallback": n_fallback,
         },
         "strategy_colors": {
-            LABEL_TIMED: C_TIMED, LABEL_PARTIAL: C_PARTIAL,
+            LABEL_TIMED: C_TIMED,
             LABEL_SIP: C_SIP, LABEL_EXIT: C_EXIT, LABEL_NIFTY: C_NIFTY,
         },
     }
@@ -1060,18 +1059,17 @@ def main():
     print(f"\n  Simulating strategies...")
     sip_sim, sip_cf = simulate_sip(stock_dfs, sig_syms, monthly_inv, cfg["slippage_bps"])
     timed_sim, timed_cf, buy_log, idle_streaks = simulate_timed_hodl(stock_dfs, sig_syms, monthly_inv, bb_sig, bb_mid, imp_sig, cfg["slippage_bps"])
-    partial_sim, partial_cf, partial_log = simulate_partial_sip(stock_dfs, sig_syms, monthly_inv, bb_sig, bb_mid, imp_sig, cfg["slippage_bps"])
+    # Partial SIP+Timed (simulate_partial_sip) disabled for now, suspected incorrect.
     exit_sim, exit_cf, trade_log = simulate_timed_exit(stock_dfs, sig_syms, monthly_inv, bb_sig, imp_sig, imp_state, cfg["slippage_bps"])
     nifty_sim, nifty_cf = simulate_nifty_sip(cfg, monthly_inv)
 
     m_timed = compute_metrics(timed_sim["portfolio"], LABEL_TIMED, timed_cf)
     m_sip = compute_metrics(sip_sim["portfolio"], LABEL_SIP, sip_cf)
-    m_partial = compute_metrics(partial_sim["portfolio"], LABEL_PARTIAL, partial_cf)
     m_exit = compute_metrics(exit_sim["portfolio"], LABEL_EXIT, exit_cf)
     m_nifty = compute_metrics(nifty_sim["portfolio"], LABEL_NIFTY, nifty_cf) if nifty_sim is not None else None
 
     portfolios = {LABEL_TIMED: timed_sim["portfolio"], LABEL_SIP: sip_sim["portfolio"],
-                  LABEL_PARTIAL: partial_sim["portfolio"], LABEL_EXIT: exit_sim["portfolio"]}
+                  LABEL_EXIT: exit_sim["portfolio"]}
     nifty_series = nifty_sim["portfolio"] if nifty_sim is not None else None
 
     buy_dates = set(b["date"] for b in buy_log)
@@ -1082,7 +1080,7 @@ def main():
     max_idle = max(idle_streaks) if idle_streaks else 0
     avg_idle = np.mean(idle_streaks) if idle_streaks else 0
 
-    metrics_list = [m_timed, m_partial, m_sip, m_exit]
+    metrics_list = [m_timed, m_sip, m_exit]
     if m_nifty: metrics_list.append(m_nifty)
 
     assumptions = compute_investment_assumptions(cfg, dates)
@@ -1117,9 +1115,8 @@ def main():
     nifty_raw = yf.download("^NSEI", start=cfg["start"], end=cfg["end"], progress=False)
     nifty_price = flatten_cols(nifty_raw)["Close"].dropna() if not nifty_raw.empty else None
     nav_timed = _compute_nav(timed_sim, timed_cf)
-    nav_partial = _compute_nav(partial_sim, partial_cf)
     nav_sip = _compute_nav(sip_sim, sip_cf)
-    nav_series = {LABEL_TIMED: nav_timed, LABEL_PARTIAL: nav_partial, LABEL_SIP: nav_sip}
+    nav_series = {LABEL_TIMED: nav_timed, LABEL_SIP: nav_sip}
     chart_4_regimes(nav_series, nifty_price, "4_regime_returns.png")
     chart_5_rolling_alpha(portfolios, "5_rolling_alpha.png")
     chart_6_buy_distribution(buy_log, len(sig_syms), "6_buy_distribution.png")

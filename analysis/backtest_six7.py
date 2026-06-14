@@ -211,22 +211,20 @@ def run_full_suite(name, syms_ns, stock_dfs_full, signals, cfg, nifty_price):
     sip_sim, sip_cf = bt.simulate_sip(dfs, syms, monthly_inv, cfg["slippage_bps"])
     timed_sim, timed_cf, buy_log, idle = bt.simulate_timed_hodl(
         dfs, syms, monthly_inv, bb, bb_mid, imp, cfg["slippage_bps"])
-    partial_sim, partial_cf, _ = bt.simulate_partial_sip(
-        dfs, syms, monthly_inv, bb, bb_mid, imp, cfg["slippage_bps"])
+    # Partial SIP+Timed (simulate_partial_sip) disabled for now, suspected incorrect.
     exit_sim, exit_cf, trade_log = bt.simulate_timed_exit(
         dfs, syms, monthly_inv, bb, imp, imp_st, cfg["slippage_bps"])
     nifty_sim, nifty_cf = bt.simulate_nifty_sip(cfg, monthly_inv)
 
     m_timed = bt.compute_metrics(timed_sim["portfolio"], bt.LABEL_TIMED, timed_cf)
     m_sip = bt.compute_metrics(sip_sim["portfolio"], bt.LABEL_SIP, sip_cf)
-    m_partial = bt.compute_metrics(partial_sim["portfolio"], bt.LABEL_PARTIAL, partial_cf)
     m_exit = bt.compute_metrics(exit_sim["portfolio"], bt.LABEL_EXIT, exit_cf)
     m_nifty = bt.compute_metrics(nifty_sim["portfolio"], bt.LABEL_NIFTY, nifty_cf) if nifty_sim is not None else None
 
     portfolios = {bt.LABEL_TIMED: timed_sim["portfolio"], bt.LABEL_SIP: sip_sim["portfolio"],
-                  bt.LABEL_PARTIAL: partial_sim["portfolio"], bt.LABEL_EXIT: exit_sim["portfolio"]}
+                  bt.LABEL_EXIT: exit_sim["portfolio"]}
     nifty_series = nifty_sim["portfolio"] if nifty_sim is not None else None
-    metrics_list = [m_timed, m_partial, m_sip, m_exit] + ([m_nifty] if m_nifty else [])
+    metrics_list = [m_timed, m_sip, m_exit] + ([m_nifty] if m_nifty else [])
 
     buy_dates = {b["date"] for b in buy_log}
     stocks_bought = {b["stock"] for b in buy_log}
@@ -240,7 +238,6 @@ def run_full_suite(name, syms_ns, stock_dfs_full, signals, cfg, nifty_price):
     bt.chart_2_drawdowns(portfolios, nifty_series, "2_drawdowns.png")
     bt.chart_3_cash(timed_sim, exit_sim, "3_cash_utilization.png")
     nav_series = {bt.LABEL_TIMED: bt._compute_nav(timed_sim, timed_cf),
-                  bt.LABEL_PARTIAL: bt._compute_nav(partial_sim, partial_cf),
                   bt.LABEL_SIP: bt._compute_nav(sip_sim, sip_cf)}
     bt.chart_4_regimes(nav_series, nifty_price, "4_regime_returns.png")
     bt.chart_5_rolling_alpha(portfolios, "5_rolling_alpha.png")
