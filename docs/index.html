@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Dip Mafia · strategy almanac</title>
+<link rel="icon" href="favicon.svg" type="image/svg+xml">
+<link rel="apple-touch-icon" href="favicon.svg">
 <meta name="description" content="Dip Mafia: a long-only dip-buying signal strategy for NSE stocks. Portfolio, backtest, fundamental screens and watchlist iterations, every view scoped to 1Y / 3Y / 5Y / 10Y / All.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -100,13 +102,21 @@ main{padding:30px 0 90px}
 
 /* ── tiles ── */
 .tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%,158px),1fr)); gap:12px}
-.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px;
+  display:flex; flex-direction:column}
 .tile .k{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
   color:var(--ink-mute); display:flex; gap:6px; align-items:center}
-.tile .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.5rem; font-weight:500;
-  margin-top:6px; line-height:1.05}
-.tile .v small{font-size:.82rem; color:var(--ink-dim); font-weight:400}
-.tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:4px}
+.tile .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.6rem; font-weight:600;
+  margin-top:7px; line-height:1.02; letter-spacing:-.02em}
+.tile .v small{font-size:.82rem; color:var(--ink-dim); font-weight:500; letter-spacing:0}
+.tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:auto; padding-top:6px}
+/* lead tile: the section's headline metric, raised and scaled up to break the uniform grid */
+.tile.lead{grid-column:span 2; background:var(--surface-2); border-color:var(--line-2); padding:18px 20px}
+.tile.lead .k{font-size:.66rem; color:var(--ink-dim)}
+.tile.lead .v{font-size:2.7rem; font-weight:700; margin-top:10px; letter-spacing:-.035em}
+.tile.lead .v small{font-size:1.1rem}
+.tile.lead .sub{font-size:.78rem}
+@media(max-width:620px){.tile.lead{grid-column:span 1}}
 
 /* ── panels / charts ── */
 .grid{display:grid; gap:16px}
@@ -182,13 +192,20 @@ tr.cur td:first-child{box-shadow:inset 2px 0 0 var(--up)}
 .note-strip .pin{color:var(--accent); font-family:var(--disp); font-size:1.1rem; line-height:1}
 
 /* ── overview hero ── */
-.hero{display:grid; grid-template-columns:1.1fr 1fr; gap:24px; align-items:center;
-  padding:14px 0 26px; border-bottom:1px solid var(--line); margin-bottom:26px}
+.hero{display:grid; grid-template-columns:1.15fr 1fr; gap:28px; align-items:center;
+  padding:20px 0 30px; border-bottom:1px solid var(--line); margin-bottom:28px}
 @media(max-width:860px){.hero{grid-template-columns:1fr}}
-.hero .big{font-family:var(--disp); font-weight:500; font-size:clamp(2.6rem,7vw,4.4rem);
-  line-height:.96; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
-.hero .pnl{font-family:var(--mono); font-size:1.05rem; margin-top:10px}
-.hero .meta{color:var(--ink-dim); font-size:.9rem; margin-top:14px; max-width:46ch}
+.hero .big{font-family:var(--disp); font-weight:600; font-size:clamp(3rem,8.5vw,5.4rem);
+  line-height:.9; letter-spacing:-.035em; font-variant-numeric:tabular-nums}
+.hero .big .cur{font-size:.46em; color:var(--ink-mute); font-weight:500; vertical-align:.32em; margin-right:.05em}
+.hero .big .u{font-size:.4em; color:var(--ink-dim); font-weight:600; vertical-align:.34em; margin-left:.08em; letter-spacing:0}
+.hero .pnl{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.42rem;
+  font-weight:700; letter-spacing:-.01em; margin-top:14px; display:flex; align-items:baseline;
+  flex-wrap:wrap; gap:0}
+.hero .pnl .dot{margin:0 .55em; color:var(--ink-mute); font-weight:400}
+.hero .pnl .ov{margin-left:.7em; font-size:.78rem; font-weight:500; color:var(--ink-mute);
+  letter-spacing:.02em; text-transform:none}
+.hero .meta{color:var(--ink-dim); font-size:.9rem; margin-top:16px; max-width:46ch; line-height:1.6}
 .verdict{font-size:.95rem; color:var(--ink-dim); line-height:1.7; margin-top:6px}
 .verdict b{color:var(--ink)}
 
@@ -321,6 +338,15 @@ const SECTIONS = [
 
 /* ── format ── */
 const fmtCr = v => v==null||isNaN(v) ? "–" : (Math.abs(v)>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : Math.abs(v)>=1e5 ? "₹"+(v/1e5).toFixed(2)+"L" : "₹"+Math.round(v).toLocaleString("en-IN"));
+/* hero figure: rupee sign + Cr/L unit rendered as muted affixes, digits dominant */
+function fmtHero(v){
+  if(v==null||isNaN(v)) return "–";
+  const a=Math.abs(v); let num,unit="";
+  if(a>=1e7){num=(v/1e7).toFixed(2); unit="Cr";}
+  else if(a>=1e5){num=(v/1e5).toFixed(2); unit="L";}
+  else num=Math.round(v).toLocaleString("en-IN");
+  return `<span class="cur">₹</span>${num}${unit?`<span class="u">${unit}</span>`:""}`;
+}
 const fmtSign = v => v==null||isNaN(v) ? "–" : (v>=0?"+":"")+fmtCr(v);
 const fmtPct = (v,d=1) => v==null||isNaN(v) ? "–" : (v>=0?"+":"")+v.toFixed(d)+"%";
 const fmtPctRaw = (v,d=1) => v==null||isNaN(v) ? "–" : v.toFixed(d)+"%";
@@ -511,7 +537,7 @@ const ALLOC_COLORS = ["--accent","--sip","--up","--bench","--down"].map(cvar)
   .concat(["oklch(0.72 0.10 320)","oklch(0.78 0.11 140)","oklch(0.74 0.09 30)","oklch(0.70 0.08 280)","oklch(0.76 0.10 190)","oklch(0.66 0.04 250)"]);
 
 /* tile builder */
-function tile(k, v, sub, vc){ return `<div class="tile"><div class="k">${k}</div><div class="v ${vc||''}">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`; }
+function tile(k, v, sub, vc, lead){ return `<div class="tile${lead?' lead':''}"><div class="k">${k}</div><div class="v ${vc||''}">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`; }
 function sechead(title, lede, asof){ return `<div class="sec-head"><div><h1>${title}</h1>${lede?`<p class="lede">${lede}</p>`:""}</div>${asof?`<div class="asof">${asof}</div>`:""}</div>`; }
 
 /* ════════════════ OVERVIEW ════════════════ */
@@ -524,8 +550,8 @@ function renderOverview(){
   let html = `
   <div class="hero">
     <div>
-      <div class="big">${fmtCr(su.total_value)}</div>
-      <div class="pnl ${cls(su.total_pnl)}">${fmtSign(su.total_pnl)} &nbsp;·&nbsp; ${fmtPct(su.total_ret)} over ${hz}</div>
+      <div class="big">${fmtHero(su.total_value)}</div>
+      <div class="pnl ${cls(su.total_pnl)}">${fmtSign(su.total_pnl)}<span class="dot">·</span>${fmtPct(su.total_ret)}<span class="ov">over ${hz}</span></div>
       <p class="meta">${su.count} holdings accumulated ${since} on ₹${(su.total_invested/1e5).toFixed(2)}L of dip buys, valued at the data-date close. ${HZ==="All"?"The full book.":"A fresh book that started investing "+HZ+" ago."} The strategy only ever buys and holds.</p>
     </div>
     <div class="card">
@@ -536,9 +562,9 @@ function renderOverview(){
     </div>
   </div>`;
   html += `<div class="tiles">`;
-  html += tile(`Portfolio return · ${HZ}`, fmtPct(su.total_ret), su.xirr!=null?`${fmtPctRaw(su.xirr)} annualised`:"", cls(su.total_ret));
-  if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP XIRR`);
-  if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP XIRR`);
+  html += tile(`Annualised XIRR · ${HZ}`, fmtPctRaw(su.xirr), `money-weighted rate of return`, su.xirr>=0?"up":"down", true);
+  if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP`);
+  if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP`);
   if(su.max_drawdown!=null) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(su.max_drawdown), `peak to trough`, "down");
   if(tcell) html += tile(`Cash drag · ${HZ}`, fmtPctRaw(tcell.cash), `avg idle cash`);
   html += tile(`Invested · ${HZ}`, fmtCr(su.total_invested), `contributed capital`);
@@ -560,7 +586,7 @@ function renderPortfolio(){
   el.innerHTML = sechead("Portfolio", lede,
     `valued at <b>${S.end_date||S.generated_at}</b><br>${su.count} holdings · ${HZ}`) + `
     <div class="tiles" style="margin-bottom:16px">
-      ${tile(`Book value · ${HZ}`, fmtCr(su.total_value))}
+      ${tile(`Book value · ${HZ}`, fmtCr(su.total_value), "valued at data-date close", "", true)}
       ${tile(`P&amp;L · ${HZ}`, fmtSign(su.total_pnl), fmtPct(su.total_ret)+" over "+hzPhrase(), cls(su.total_pnl))}
       ${tile(`XIRR · ${HZ}`, su.xirr!=null?fmtPctRaw(su.xirr):"–", "annualised", cls(su.xirr))}
       ${tile(`Invested · ${HZ}`, fmtCr(su.total_invested))}
@@ -649,7 +675,7 @@ function renderBacktest(){
     `Timed HODL vs equal-weight SIP vs a NIFTY 50 SIP. Every card and chart is a fresh ${HZ==="All"?"full-history":HZ} sim on the salary-investing model, so "All" reproduces the headline portfolio.`,
     `${a?a.start_date+" → "+a.end_date:""}<br>gate ${bm.gated?"on":"off"} · ${bm.contribution||""}`) + `
     <div class="tiles" style="margin-bottom:16px">
-      ${tile(`Final value · ${HZ}`, fmtCr(t.final_value), "Timed HODL", "up")}
+      ${tile(`Final value · ${HZ}`, fmtCr(t.final_value), "Timed HODL", "up", true)}
       ${tile("Multiple", fmtX(t.mult), "final ÷ invested")}
       ${tile("XIRR", fmtPctRaw(t.xirr), "annualised", t.xirr>=0?"up":"down")}
       ${tile("Sharpe / Sortino", `${fmtNum(t.sharpe)} <small>/ ${fmtNum(t.sortino)}</small>`)}
