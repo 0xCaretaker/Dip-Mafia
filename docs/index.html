@@ -3,514 +3,821 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Dip Mafia · six7 — Backtest Almanac</title>
-<meta name="description" content="Multi-horizon backtest of six7 fundamental-screen stock lists vs the Univest watchlists — NSE, 2010–2026.">
+<title>Dip Mafia · strategy almanac</title>
+<meta name="description" content="Dip Mafia: a long-only dip-buying signal strategy for NSE stocks. Portfolio, backtest, fundamental screens and watchlist iterations, every view scoped to 1Y / 3Y / 5Y / 10Y / All.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,900&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;700&family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600&display=swap" rel="stylesheet">
 <style>
 :root{
-  --ink:#0a0b0d; --ink-2:#101216; --panel:#121419; --panel-2:#161922;
-  --line:#23262f; --line-2:#2d313c;
-  --paper:#ece6d8; --paper-dim:#a7a293; --muted:#74757d;
-  --gold:#e8b73f; --gold-dim:#9c7d2c;
-  --teal:#48c9b0; --slate:#8b90a6; --green:#5fd38a; --red:#ef6f6f;
-  --r:14px;
+  --bg:oklch(0.165 0.012 250);
+  --surface:oklch(0.205 0.014 250);
+  --surface-2:oklch(0.250 0.016 250);
+  --line:oklch(0.300 0.014 250);
+  --line-2:oklch(0.380 0.014 250);
+  --ink:oklch(0.965 0.004 250);
+  --ink-dim:oklch(0.770 0.010 250);
+  --ink-mute:oklch(0.620 0.012 250);
+  --accent:oklch(0.800 0.130 75);
+  --accent-2:oklch(0.700 0.120 70);
+  --accent-soft:oklch(0.800 0.130 75 / 0.12);
+  --up:oklch(0.760 0.150 155);
+  --down:oklch(0.680 0.175 25);
+  --sip:oklch(0.740 0.100 220);
+  --bench:oklch(0.700 0.020 250);
+  --r:12px; --r-sm:8px;
+  --z-sticky:30; --z-tip:60; --z-modal:80;
+  --sans:"Inter",system-ui,-apple-system,sans-serif;
+  --mono:"JetBrains Mono",ui-monospace,monospace;
+  --disp:"Fraunces",Georgia,serif;
 }
 *{margin:0;padding:0;box-sizing:border-box}
 html{scroll-behavior:smooth}
 body{
-  background:var(--ink); color:var(--paper);
-  font-family:"Newsreader",Georgia,serif; font-size:17px; line-height:1.55;
-  -webkit-font-smoothing:antialiased;
-  background-image:
-    radial-gradient(1200px 600px at 78% -8%, rgba(232,183,63,.10), transparent 60%),
-    radial-gradient(900px 500px at 5% 0%, rgba(72,201,176,.06), transparent 55%);
-  background-attachment:fixed;
+  background:var(--bg); color:var(--ink); font-family:var(--sans);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+  background-image:radial-gradient(900px 480px at 88% -10%, oklch(0.800 0.130 75 / 0.06), transparent 60%);
+  background-attachment:fixed; min-height:100vh;
 }
-/* film grain */
-body::before{
-  content:""; position:fixed; inset:0; z-index:1; pointer-events:none; opacity:.35; mix-blend-mode:overlay;
-  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-}
-.wrap{max-width:1180px; margin:0 auto; padding:0 28px; position:relative; z-index:2}
-.mono{font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums; letter-spacing:-.01em}
-.disp{font-family:"Fraunces",serif}
+.mono{font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.01em}
+.num{font-family:var(--mono); font-variant-numeric:tabular-nums}
+.up{color:var(--up)} .down{color:var(--down)}
+.wrap{max-width:1240px; margin:0 auto; padding:0 24px}
+a{color:inherit}
+::selection{background:var(--accent-soft)}
 
 /* ── top bar ── */
-.topbar{position:sticky; top:0; z-index:30; backdrop-filter:blur(10px);
-  background:linear-gradient(180deg, rgba(10,11,13,.92), rgba(10,11,13,.7));
+.topbar{position:sticky; top:0; z-index:var(--z-sticky);
+  backdrop-filter:blur(12px);
+  background:color-mix(in oklch, var(--bg) 82%, transparent);
   border-bottom:1px solid var(--line)}
-.topbar .wrap{display:flex; align-items:center; justify-content:space-between; height:62px}
-.brand{display:flex; align-items:baseline; gap:10px; font-weight:600}
-.brand .seal{font-family:"Fraunces",serif; font-weight:900; font-size:1.15rem; color:var(--gold);
-  letter-spacing:.02em}
-.brand .div{color:var(--line-2)}
-.brand .sub{font-size:.74rem; letter-spacing:.32em; text-transform:uppercase; color:var(--paper-dim);
-  font-family:"JetBrains Mono",monospace}
-.stamp{font-family:"JetBrains Mono",monospace; font-size:.7rem; color:var(--muted); text-align:right; line-height:1.5}
-.stamp b{color:var(--paper-dim); font-weight:500}
+.topbar .row{display:flex; align-items:center; gap:18px; height:60px}
+.brand{display:flex; align-items:baseline; gap:9px; flex-shrink:0; text-decoration:none}
+.brand .mark{font-family:var(--disp); font-weight:600; font-size:1.18rem; color:var(--ink); letter-spacing:-.01em}
+.brand .mark b{color:var(--accent)}
+.brand .tag{font-family:var(--mono); font-size:.62rem; letter-spacing:.22em; text-transform:uppercase; color:var(--ink-mute); display:none}
+@media(min-width:1040px){.brand .tag{display:inline}}
 
-/* ── hero ── */
-.hero{padding:64px 0 30px; border-bottom:1px solid var(--line)}
-.kicker{font-family:"JetBrains Mono",monospace; font-size:.72rem; letter-spacing:.4em; text-transform:uppercase;
-  color:var(--gold-dim); margin-bottom:20px}
-.hero h1{font-family:"Fraunces",serif; font-weight:400; font-size:clamp(2.4rem,6vw,4.6rem); line-height:.98;
-  letter-spacing:-.015em; color:var(--paper)}
-.hero h1 em{font-style:italic; color:var(--gold)}
-.hero .lede{margin-top:22px; max-width:62ch; font-size:1.16rem; color:var(--paper-dim)}
-.ledger-note{margin-top:26px; display:flex; gap:14px; align-items:flex-start; max-width:74ch;
-  padding:14px 18px; border:1px solid var(--line); border-left:3px solid var(--gold-dim);
-  border-radius:0 10px 10px 0; background:rgba(232,183,63,.04)}
-.ledger-note .mk{font-family:"Fraunces",serif; font-weight:900; color:var(--gold); font-size:1.3rem; line-height:1}
-.ledger-note p{font-size:.92rem; color:var(--paper-dim); font-style:italic}
+nav.sections{display:flex; gap:2px; margin-left:6px; min-width:0; overflow-x:auto; scrollbar-width:none}
+nav.sections::-webkit-scrollbar{display:none}
+nav.sections button{
+  font-family:var(--sans); font-size:.86rem; font-weight:500; color:var(--ink-dim);
+  background:none; border:none; padding:8px 13px; border-radius:var(--r-sm); cursor:pointer;
+  white-space:nowrap; transition:color .15s, background .15s; position:relative}
+nav.sections button:hover{color:var(--ink); background:var(--surface)}
+nav.sections button[aria-current="true"]{color:var(--ink)}
+nav.sections button[aria-current="true"]::after{
+  content:""; position:absolute; left:13px; right:13px; bottom:-1px; height:2px;
+  background:var(--accent); border-radius:2px}
+.spacer{flex:1}
+
+.seg{display:inline-flex; background:var(--surface); border:1px solid var(--line);
+  border-radius:999px; padding:3px; gap:1px; flex-shrink:0}
+.seg button{font-family:var(--mono); font-size:.74rem; font-weight:500; color:var(--ink-dim);
+  background:none; border:none; padding:6px 11px; border-radius:999px; cursor:pointer;
+  transition:.15s; white-space:nowrap}
+.seg button:hover{color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--accent); color:oklch(0.20 0.03 75); font-weight:700}
+.seg.sm button{padding:5px 9px; font-size:.7rem}
+button:focus-visible, .seg button:focus-visible, nav.sections button:focus-visible,
+.chip:focus-visible, th:focus-visible{outline:2px solid var(--accent); outline-offset:2px}
+
+.hz-label{font-family:var(--mono); font-size:.6rem; letter-spacing:.18em; text-transform:uppercase;
+  color:var(--ink-mute); margin-right:9px; display:none}
+@media(min-width:720px){.hz-label{display:inline}}
 
 /* ── section scaffold ── */
-section{padding:46px 0; border-bottom:1px solid var(--line)}
-.sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:20px; flex-wrap:wrap; margin-bottom:26px}
-.sec-head h2{font-family:"Fraunces",serif; font-weight:500; font-size:1.9rem; letter-spacing:-.01em}
-.sec-head .note{font-size:.86rem; color:var(--muted); max-width:46ch}
+main{padding:30px 0 90px}
+.panel{display:none; animation:fade .28s ease-out}
+.panel.active{display:block}
+@keyframes fade{from{opacity:0; transform:translateY(6px)} to{opacity:1; transform:none}}
+.sec-head{display:flex; align-items:flex-end; justify-content:space-between; gap:18px;
+  flex-wrap:wrap; margin-bottom:22px}
+.sec-head h1{font-family:var(--sans); font-weight:700; font-size:1.5rem; letter-spacing:-.02em}
+.sec-head .lede{color:var(--ink-dim); font-size:.92rem; max-width:60ch; margin-top:5px}
+.sec-head .asof{font-family:var(--mono); font-size:.68rem; color:var(--ink-mute); text-align:right; line-height:1.7}
+.sec-head .asof b{color:var(--ink-dim); font-weight:500}
 
-/* ── segmented controls ── */
-.seg{display:inline-flex; background:var(--panel); border:1px solid var(--line); border-radius:999px; padding:4px; gap:2px}
-.seg button{font-family:"JetBrains Mono",monospace; font-size:.78rem; letter-spacing:.02em; color:var(--paper-dim);
-  background:none; border:none; padding:8px 16px; border-radius:999px; cursor:pointer; transition:.2s; white-space:nowrap}
-.seg button:hover{color:var(--paper)}
-.seg button[aria-pressed="true"]{background:var(--gold); color:#1b1505; font-weight:700}
+/* ── tiles ── */
+.tiles{display:grid; grid-template-columns:repeat(auto-fit, minmax(min(100%,158px),1fr)); gap:12px}
+.tile{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:15px 16px}
+.tile .k{font-family:var(--mono); font-size:.62rem; letter-spacing:.12em; text-transform:uppercase;
+  color:var(--ink-mute); display:flex; gap:6px; align-items:center}
+.tile .v{font-family:var(--mono); font-variant-numeric:tabular-nums; font-size:1.5rem; font-weight:500;
+  margin-top:6px; line-height:1.05}
+.tile .v small{font-size:.82rem; color:var(--ink-dim); font-weight:400}
+.tile .sub{font-family:var(--mono); font-size:.72rem; color:var(--ink-dim); margin-top:4px}
 
-.toolbar{display:flex; align-items:center; justify-content:space-between; gap:16px; flex-wrap:wrap; margin-bottom:24px}
-.toolbar .lbl{font-family:"JetBrains Mono",monospace; font-size:.7rem; letter-spacing:.24em; text-transform:uppercase; color:var(--muted); margin-right:10px}
-
-/* ── leaderboard table ── */
-.board{width:100%; border-collapse:collapse; font-size:.92rem}
-.board thead th{font-family:"JetBrains Mono",monospace; font-size:.66rem; letter-spacing:.14em; text-transform:uppercase;
-  color:var(--muted); font-weight:500; text-align:right; padding:0 14px 12px; border-bottom:1px solid var(--line-2)}
-.board thead th:first-child{text-align:left}
-.board tbody td{padding:13px 14px; border-bottom:1px solid var(--line); text-align:right;
-  font-family:"JetBrains Mono",monospace; font-variant-numeric:tabular-nums}
-.board tbody td:first-child{text-align:left; font-family:"Newsreader",serif; font-size:1.02rem}
-.board tbody tr{transition:background .18s}
-.board tbody tr:hover{background:var(--panel)}
-.board tr.best td{background:rgba(232,183,63,.07)}
-.board tr.best td:first-child{box-shadow:inset 3px 0 0 var(--gold)}
-.board tr.uni td:first-child{box-shadow:inset 3px 0 0 var(--teal)}
-.board tr.old td{opacity:.72}
-.name-cell{display:flex; align-items:center; gap:10px}
-.tag{font-family:"JetBrains Mono",monospace; font-size:.58rem; letter-spacing:.08em; text-transform:uppercase;
-  padding:2px 7px; border-radius:999px; border:1px solid var(--line-2); color:var(--paper-dim); white-space:nowrap}
-.tag.uni{color:var(--teal); border-color:rgba(72,201,176,.4)}
-.tag.crown{color:var(--gold); border-color:var(--gold-dim)}
-.val-pos{color:var(--green)} .val-neg{color:var(--red)}
-.barcell{position:relative; min-width:120px}
-.bar{height:7px; border-radius:4px; background:var(--gold); display:inline-block; vertical-align:middle;
-  box-shadow:0 0 12px rgba(232,183,63,.35)}
-.board tr.old .bar{background:var(--slate); box-shadow:none}
-.board tr.uni .bar{background:var(--teal); box-shadow:0 0 12px rgba(72,201,176,.3)}
-
-/* ── inspect ── */
-.chips{display:flex; flex-wrap:wrap; gap:8px}
-.chip{font-family:"JetBrains Mono",monospace; font-size:.76rem; color:var(--paper-dim); cursor:pointer;
-  padding:7px 13px; border:1px solid var(--line); border-radius:999px; background:var(--panel); transition:.18s; white-space:nowrap}
-.chip:hover{border-color:var(--line-2); color:var(--paper)}
-.chip[aria-pressed="true"]{background:var(--paper); color:var(--ink); border-color:var(--paper); font-weight:700}
-.chip .ct{opacity:.55; margin-left:6px}
-
-.inspect-grid{display:grid; grid-template-columns:1.6fr 1fr; gap:22px; margin-top:24px}
-@media(max-width:880px){.inspect-grid{grid-template-columns:1fr}}
-.card{background:linear-gradient(180deg,var(--panel),var(--ink-2)); border:1px solid var(--line); border-radius:var(--r); padding:20px}
-.card h3{font-family:"JetBrains Mono",monospace; font-size:.68rem; letter-spacing:.2em; text-transform:uppercase; color:var(--muted); margin-bottom:4px}
-.card .blurb{font-style:italic; color:var(--paper-dim); font-size:.92rem; margin-bottom:16px}
-.chart-legend{display:flex; gap:18px; flex-wrap:wrap; margin:6px 0 12px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--paper-dim)}
-.chart-legend span{display:inline-flex; align-items:center; gap:7px}
-.chart-legend i{width:14px; height:3px; border-radius:2px; display:inline-block}
-svg.chart{width:100%; height:auto; display:block; overflow:visible}
-.axis text{font-family:"JetBrains Mono",monospace; font-size:10px; fill:var(--muted)}
-.grid line{stroke:var(--line); stroke-width:1}
+/* ── panels / charts ── */
+.grid{display:grid; gap:16px}
+.card{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); padding:18px}
+.card h3{font-size:.95rem; font-weight:600; letter-spacing:-.01em}
+.card .csub{color:var(--ink-mute); font-size:.78rem; margin-top:3px}
+.legend{display:flex; gap:16px; flex-wrap:wrap; margin:10px 0 4px;
+  font-family:var(--mono); font-size:.72rem; color:var(--ink-dim)}
+.legend span{display:inline-flex; align-items:center; gap:7px}
+.legend i{width:14px; height:3px; border-radius:2px; display:inline-block}
+.legend i.dash{height:0; border-top:2px dashed currentColor; width:16px}
+.chart-host{position:relative; margin-top:8px}
+svg.chart{width:100%; height:auto; display:block; overflow:visible; touch-action:none}
+.axis text{font-family:var(--mono); font-size:10px; fill:var(--ink-mute)}
+.gridline{stroke:var(--line); stroke-width:1}
+.zeroline{stroke:var(--line-2); stroke-width:1}
 .crosshair{stroke:var(--line-2); stroke-dasharray:3 3}
-.tip{position:absolute; pointer-events:none; background:rgba(8,9,11,.96); border:1px solid var(--line-2);
-  border-radius:8px; padding:9px 11px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--paper);
-  opacity:0; transition:opacity .12s; z-index:20; white-space:nowrap}
-.tip b{color:var(--gold)} .tip .row{display:flex; justify-content:space-between; gap:14px}
+.tip{position:absolute; pointer-events:none; z-index:var(--z-tip);
+  background:var(--surface-2); border:1px solid var(--line-2); border-radius:var(--r-sm);
+  padding:9px 11px; font-family:var(--mono); font-size:.72rem; color:var(--ink);
+  opacity:0; transition:opacity .12s; white-space:nowrap; box-shadow:0 8px 24px oklch(0 0 0 / .4)}
+.tip .d{color:var(--ink-mute); margin-bottom:5px}
+.tip .r{display:flex; justify-content:space-between; gap:16px}
+.tip .r i{width:8px; height:8px; border-radius:50%; display:inline-block; margin-right:6px; vertical-align:middle}
 
-.metrics{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-.metric{border:1px solid var(--line); border-radius:10px; padding:13px 14px; background:var(--ink-2)}
-.metric .k{font-family:"JetBrains Mono",monospace; font-size:.62rem; letter-spacing:.14em; text-transform:uppercase; color:var(--muted)}
-.metric .v{font-family:"Fraunces",serif; font-size:1.7rem; font-weight:500; margin-top:3px; line-height:1; font-variant-numeric:tabular-nums}
-.metric .v small{font-size:.9rem; color:var(--paper-dim); font-family:"JetBrains Mono",monospace; font-weight:400}
-.factline{margin-top:14px; font-family:"JetBrains Mono",monospace; font-size:.72rem; color:var(--muted); line-height:1.9}
-.factline b{color:var(--paper-dim); font-weight:500}
+/* ── table ── */
+.table-wrap{background:var(--surface); border:1px solid var(--line); border-radius:var(--r); overflow:auto}
+table{width:100%; border-collapse:collapse; font-size:.82rem}
+thead th{font-family:var(--mono); font-size:.64rem; letter-spacing:.08em; text-transform:uppercase;
+  color:var(--ink-mute); font-weight:500; text-align:right; padding:11px 13px;
+  border-bottom:1px solid var(--line-2); position:sticky; top:0; background:var(--surface);
+  cursor:pointer; user-select:none; white-space:nowrap}
+thead th:first-child{text-align:left}
+thead th.sorted{color:var(--accent)}
+tbody td{padding:9px 13px; border-bottom:1px solid var(--line); text-align:right; white-space:nowrap;
+  font-family:var(--mono); font-variant-numeric:tabular-nums}
+tbody td:first-child{text-align:left; font-family:var(--sans); font-weight:600; color:var(--ink)}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface-2)}
+tr.total td{background:var(--surface-2); font-weight:700; border-top:1px solid var(--line-2)}
+tr.best td{background:var(--accent-soft)}
+tr.best td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+tr.cur td:first-child{box-shadow:inset 2px 0 0 var(--up)}
+.cell-best{color:var(--accent); font-weight:700}
+.wbar{display:inline-flex; align-items:center; justify-content:flex-end; gap:6px}
+.wbar i{height:5px; border-radius:3px; display:inline-block; min-width:3px}
+.stocklink{cursor:pointer; border-bottom:1px dotted var(--ink-mute)}
+.stocklink:hover{border-color:var(--accent); color:var(--accent)}
 
-/* reveal */
-.reveal{opacity:0; transform:translateY(14px); animation:rise .7s cubic-bezier(.2,.7,.2,1) forwards}
-@keyframes rise{to{opacity:1; transform:none}}
-.draw{stroke-dasharray:var(--len); stroke-dashoffset:var(--len); animation:draw 1.3s cubic-bezier(.4,0,.1,1) forwards}
+.controls{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center}
+.controls input{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
+  color:var(--ink); padding:8px 12px; font-size:.82rem; font-family:var(--sans); width:200px}
+.controls input::placeholder{color:var(--ink-mute)}
+.controls input:focus{outline:2px solid var(--accent); outline-offset:1px; border-color:transparent}
+
+.chips{display:flex; flex-wrap:wrap; gap:7px}
+.chip{font-family:var(--mono); font-size:.74rem; color:var(--ink-dim); cursor:pointer;
+  padding:6px 12px; border:1px solid var(--line); border-radius:999px; background:var(--surface);
+  transition:.15s; white-space:nowrap}
+.chip:hover{color:var(--ink); border-color:var(--line-2)}
+.chip[aria-pressed="true"]{background:var(--ink); color:var(--bg); border-color:var(--ink); font-weight:600}
+.chip .ct{opacity:.5; margin-left:5px}
+
+.tag{font-family:var(--mono); font-size:.56rem; letter-spacing:.06em; text-transform:uppercase;
+  padding:2px 7px; border-radius:999px; border:1px solid var(--line-2); color:var(--ink-dim)}
+.tag.crown{color:var(--accent); border-color:var(--accent-2)}
+.tag.live{color:var(--up); border-color:oklch(0.760 0.150 155 / .4)}
+
+.note-strip{display:flex; gap:12px; align-items:flex-start; padding:12px 16px; margin-bottom:18px;
+  background:var(--surface); border:1px solid var(--line); border-radius:var(--r);
+  font-size:.84rem; color:var(--ink-dim); line-height:1.7}
+.note-strip b{color:var(--ink); font-weight:600}
+.note-strip .pin{color:var(--accent); font-family:var(--disp); font-size:1.1rem; line-height:1}
+
+/* ── overview hero ── */
+.hero{display:grid; grid-template-columns:1.1fr 1fr; gap:24px; align-items:center;
+  padding:14px 0 26px; border-bottom:1px solid var(--line); margin-bottom:26px}
+@media(max-width:860px){.hero{grid-template-columns:1fr}}
+.hero .big{font-family:var(--disp); font-weight:500; font-size:clamp(2.6rem,7vw,4.4rem);
+  line-height:.96; letter-spacing:-.02em; font-variant-numeric:tabular-nums}
+.hero .pnl{font-family:var(--mono); font-size:1.05rem; margin-top:10px}
+.hero .meta{color:var(--ink-dim); font-size:.9rem; margin-top:14px; max-width:46ch}
+.verdict{font-size:.95rem; color:var(--ink-dim); line-height:1.7; margin-top:6px}
+.verdict b{color:var(--ink)}
+
+footer{border-top:1px solid var(--line); padding:30px 0 50px; color:var(--ink-mute); font-size:.8rem}
+footer .mono{font-size:.72rem; line-height:1.9}
+footer a{color:var(--ink-dim); text-decoration:underline; text-underline-offset:3px}
+
+/* ── modal ── */
+.overlay{display:none; position:fixed; inset:0; z-index:var(--z-modal);
+  background:oklch(0 0 0 / .72); padding:24px; align-items:center; justify-content:center}
+.overlay.active{display:flex}
+.modal{background:var(--surface); border:1px solid var(--line-2); border-radius:var(--r);
+  padding:22px; max-width:560px; width:100%; max-height:82vh; overflow:auto}
+.modal .x{float:right; cursor:pointer; color:var(--ink-mute); font-size:1.4rem; line-height:1; background:none; border:none}
+.modal .x:hover{color:var(--ink)}
+.modal h3{font-size:1.1rem; margin-bottom:4px}
+.modal .msub{color:var(--ink-dim); font-size:.82rem; margin-bottom:14px; font-family:var(--mono)}
+
+@media(max-width:560px){
+  .wrap{padding:0 16px}
+  .tiles{grid-template-columns:1fr}
+  .sec-head .lede,.hero .meta{max-width:100%}
+  .sec-head .asof{text-align:left}
+  .tile .v{font-size:1.18rem; overflow-wrap:anywhere}
+}
+@media(prefers-reduced-motion:reduce){
+  *,.panel{animation:none !important; transition:none !important}
+  .draw{stroke-dashoffset:0 !important}
+}
+body{overflow-x:hidden}
+@media(max-width:680px){
+  .topbar .row{flex-wrap:wrap; height:auto; padding:9px 0; gap:8px 12px}
+  .spacer{display:none}
+  #hzSeg{margin-left:auto}
+  nav.sections{order:5; width:100%; margin-left:0}
+}
+@media(max-width:760px){
+  .hero{grid-template-columns:1fr}
+  .grid[style]{grid-template-columns:1fr !important}
+  .sec-head .asof{text-align:left}
+}
+.draw{stroke-dasharray:var(--len); stroke-dashoffset:var(--len); animation:draw 1.1s cubic-bezier(.33,.1,.2,1) forwards}
 @keyframes draw{to{stroke-dashoffset:0}}
-
-footer{padding:40px 0 70px; color:var(--muted); font-size:.82rem}
-footer .mono{font-size:.72rem}
-footer a{color:var(--paper-dim)}
-.legend-dot{display:inline-block;width:9px;height:9px;border-radius:50%;vertical-align:middle;margin-right:6px}
-
-/* meta rows: scannable key/value facts, replacing run-on dot-separated lines */
-.metarow{display:flex; flex-wrap:wrap; gap:8px 0; align-items:stretch}
-.metarow .mi{display:flex; flex-direction:column; gap:3px; padding:1px 20px;
-  border-left:1px solid var(--line)}
-.metarow .mi:first-child{padding-left:0; border-left:none}
-.metarow .mi .k{font-family:"JetBrains Mono",monospace; font-size:.58rem; letter-spacing:.18em;
-  text-transform:uppercase; color:var(--muted)}
-.metarow .mi .v{font-family:"JetBrains Mono",monospace; font-size:.92rem; color:var(--paper);
-  font-variant-numeric:tabular-nums; white-space:nowrap}
-.metarow .mi .v.accent{color:var(--gold)}
-@media(max-width:620px){.metarow .mi{padding:1px 13px}}
-/* legend key: explains the table glyphs, de-emphasised */
-.legend-key{font-family:"JetBrains Mono",monospace; font-size:.7rem; color:var(--muted); line-height:1.7}
-.legend-key b{color:var(--paper); font-weight:500}
-.legend-key .sym{color:var(--gold); font-weight:700}
-.legend-key .sep{color:var(--line-2); margin:0 9px}
 </style>
 </head>
 <body>
 
-<div class="topbar"><div class="wrap">
-  <div class="brand">
-    <span class="seal">Dip Mafia · six7</span><span class="div">/</span>
-    <span class="sub">Backtest Almanac</span>
-  </div>
-  <div class="stamp" id="stamp"></div>
-  <a href="strat.html" style="margin-left:auto;color:inherit;text-decoration:none;border-bottom:1px solid currentColor;font-size:0.85rem;opacity:0.8">Strategy dashboard →</a>
-</div></div>
-
-<header class="hero"><div class="wrap">
-  <div class="kicker reveal">NSE · Bollinger + Impulse MACD · Timed HODL</div>
-  <h1 class="reveal" style="animation-delay:.05s">Which screen would<br>have <em>compounded</em> best?</h1>
-  <p class="lede reveal" id="lede" style="animation-delay:.12s"></p>
-  <div class="ledger-note reveal" style="animation-delay:.18s">
-    <span class="mk">¶</span>
-    <p id="caveat"></p>
-  </div>
+<header class="topbar"><div class="wrap row">
+  <a class="brand" href="#overview">
+    <span class="mark">Dip<b>Mafia</b></span>
+    <span class="tag">almanac of hindsight</span>
+  </a>
+  <nav class="sections" id="nav" aria-label="Sections"></nav>
+  <span class="spacer"></span>
+  <span class="hz-label">Horizon</span>
+  <span class="seg" id="hzSeg" role="group" aria-label="Time horizon"></span>
 </div></header>
 
-<!-- LEADERBOARD -->
-<section><div class="wrap">
-  <div class="sec-head">
-    <h2 class="disp">The Leaderboard</h2>
-    <p class="note">Final value, return and risk for every list. Bars scale to the best Timed-HODL outcome in the window.</p>
-  </div>
-  <div class="toolbar">
-    <div><span class="lbl">Horizon</span><span class="seg" id="horizonSeg"></span></div>
-    <div><span class="lbl">Rank by</span><span class="seg" id="sortSeg">
-      <button data-sort="final" aria-pressed="true">Final ₹</button>
-      <button data-sort="xirr">XIRR</button>
-      <button data-sort="sharpe">Sharpe</button>
-      <button data-sort="maxdd">Drawdown</button>
-    </span></div>
-  </div>
-  <div class="metarow" id="hzMeta" style="margin:-2px 0 14px"></div>
-  <p class="legend-key" id="hzLegend" style="margin:0 0 18px"></p>
-  <table class="board"><thead><tr>
-    <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th></th>
-    <th>×</th><th>Return</th><th>XIRR<small style="font-weight:400">·ann</small></th><th>Sharpe</th><th>Sortino</th><th>Max DD</th><th>SIP final</th>
-  </tr></thead><tbody id="boardBody"></tbody></table>
-</div></section>
-
-<!-- INSPECT -->
-<section><div class="wrap">
-  <div class="sec-head">
-    <h2 class="disp">Inspect a List</h2>
-    <p class="note">Full-horizon equity &amp; drawdown (2010–2026). Timed HODL vs equal-weight SIP vs NIFTY&nbsp;50.</p>
-  </div>
-  <div class="chips" id="listChips"></div>
-  <div class="inspect-grid">
-    <div>
-      <div class="card">
-        <h3 id="curveTitle">Equity curve</h3>
-        <div class="blurb" id="curveBlurb"></div>
-        <div class="chart-legend">
-          <span><i style="background:var(--gold)"></i>Timed HODL</span>
-          <span><i style="background:var(--teal)"></i>SIP</span>
-          <span><i style="background:var(--slate)"></i>NIFTY 50</span>
-        </div>
-        <div style="position:relative">
-          <svg class="chart" id="equityChart" viewBox="0 0 720 300" preserveAspectRatio="none"></svg>
-          <div class="tip" id="equityTip"></div>
-        </div>
-      </div>
-      <div class="card" style="margin-top:22px">
-        <h3>Drawdown — peak to trough</h3>
-        <div class="chart-legend">
-          <span><i style="background:var(--gold)"></i>Timed HODL</span>
-          <span><i style="background:var(--teal)"></i>SIP</span>
-        </div>
-        <svg class="chart" id="ddChart" viewBox="0 0 720 180" preserveAspectRatio="none"></svg>
-      </div>
-    </div>
-    <div>
-      <div class="card">
-        <h3>Timed HODL — full horizon</h3>
-        <div class="metrics" id="metricCards"></div>
-        <div class="factline" id="factline"></div>
-      </div>
-    </div>
-  </div>
-</div></section>
+<main class="wrap">
+  <section id="panel-overview"   class="panel" aria-label="Overview"></section>
+  <section id="panel-portfolio"  class="panel" aria-label="Portfolio"></section>
+  <section id="panel-backtest"   class="panel" aria-label="Backtest"></section>
+  <section id="panel-screens"    class="panel" aria-label="Screens"></section>
+  <section id="panel-iterations" class="panel" aria-label="Iterations"></section>
+</main>
 
 <footer><div class="wrap">
-  <p class="disp" style="font-size:1.35rem;color:var(--paper-dim)">An almanac of hindsight, not advice.</p>
-  <div class="legend-key" style="margin-top:6px;max-width:64ch">The engine that produced every row:</div>
-  <div class="metarow" id="engineMeta" style="margin-top:14px"></div>
-  <p class="legend-key" id="footnote" style="margin-top:22px"></p>
+  <p>An almanac of hindsight, not advice. Signals only: the strategy buys dips and HODLs; it never sells.</p>
+  <p class="mono" id="footmeta"></p>
 </div></footer>
 
+<div class="overlay" id="overlay" role="dialog" aria-modal="true" aria-labelledby="mTitle">
+  <div class="modal">
+    <button class="x" aria-label="Close" onclick="closeModal()">&times;</button>
+    <h3 id="mTitle"></h3>
+    <div class="msub" id="mSub"></div>
+    <div id="mBody"></div>
+  </div>
+</div>
+
 <script src="data.js"></script>
+<script src="strat_data.js"></script>
 <script>
-const D = window.SIX7_DATA;
-const $ = s => document.querySelector(s);
-// 2-decimal precision so short-horizon finals (e.g. ₹0.78L vs ₹0.67L) stay distinct
-const fmtL = v => v==null ? "–" : "₹"+(v/1e5).toFixed(2)+"L";
-const fmtCr = v => v==null ? "–" : (v>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : "₹"+(v/1e5).toFixed(2)+"L");
-const fmtPct = v => v==null ? "–" : (v>=0?"+":"")+v.toFixed(1)+"%";
-const fmt2 = v => v==null ? "–" : v.toFixed(2);
-const fmtX = (final, inv) => (final==null||!inv) ? "–" : (final/inv).toFixed(2)+"×";
-const moneyHZ = v => fmtCr(v);   // lakhs/crore across every horizon
-const signCls = v => v==null ? "" : (v>=0 ? "val-pos" : "val-neg");
-const UNI = {stocks_current:1, univest_old:1};   // Univest-family watchlists (teal)
+"use strict";
+const S = window.STRAT_DATA, SIX = window.SIX7_DATA;
+const $ = (s,r=document)=>r.querySelector(s);
+const elh = (h)=>{const t=document.createElement('template'); t.innerHTML=h.trim(); return t.content.firstChild;};
 
-/* state */
-let HZ = "full", SORT = "final", LIST = "buy_plus";
+/* ── state ── */
+const HORIZONS = (S && S.horizon_set) || ["1Y","3Y","5Y","10Y","All"];
+const HZ_YEARS = {"1Y":1,"3Y":3,"5Y":5,"10Y":10,"All":null};
+const SIX_MAP  = {"1Y":"1y","3Y":"3y","5Y":"5y","10Y":"10y","All":"full"};
+const GRID_MAP = {"1Y":"1y","3Y":"3y","5Y":"5y","10Y":"10y","All":"Full"};
+let HZ = "All", SEC = "overview";
 
-/* ── stamp / caveat ── */
-const MONTHS=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
-const HZ_SHORT={full:"Full (16y)","10y":"10y","5y":"5y","3y":"3y","1y":"1y"};
-const periodPretty = p => !p ? "" : p.split("→").map(s=>{const d=new Date(s.trim());
-  return MONTHS[d.getMonth()]+" "+d.getFullYear();}).join(" → ");
-const mi = (k,v,accent) => `<span class="mi"><span class="k">${k}</span><span class="v${accent?" accent":""}">${v}</span></span>`;
+const SECTIONS = [
+  ["overview","Overview"], ["portfolio","Portfolio"], ["backtest","Backtest"],
+  ["screens","Screens"], ["iterations","Iterations"],
+];
 
-$("#stamp").innerHTML = `scan <b>${D.snapshot_date}</b> · ${(D.universe||0).toLocaleString()} stocks scored<br>built <b>${D.generated_at}</b>`;
-$("#caveat").textContent = D.caveat;
+/* ── format ── */
+const fmtCr = v => v==null||isNaN(v) ? "–" : (Math.abs(v)>=1e7 ? "₹"+(v/1e7).toFixed(2)+"Cr" : Math.abs(v)>=1e5 ? "₹"+(v/1e5).toFixed(2)+"L" : "₹"+Math.round(v).toLocaleString("en-IN"));
+const fmtSign = v => v==null||isNaN(v) ? "–" : (v>=0?"+":"")+fmtCr(v);
+const fmtPct = (v,d=1) => v==null||isNaN(v) ? "–" : (v>=0?"+":"")+v.toFixed(d)+"%";
+const fmtPctRaw = (v,d=1) => v==null||isNaN(v) ? "–" : v.toFixed(d)+"%";
+const fmtNum = (v,d=2) => v==null||isNaN(v) ? "–" : v.toFixed(d);
+const fmtX = (v) => v==null||isNaN(v) ? "–" : v.toFixed(2)+"×";
+const cls = v => v==null||isNaN(v) ? "" : (v>=0?"up":"down");
+const cvar = n => getComputedStyle(document.documentElement).getPropertyValue(n).trim();
 
-// hero lede — counts derived from the data so they can't drift
-const nScreens = D.list_order.filter(k=>k!=="univest_old" && k!=="stocks_current").length;
-$("#lede").innerHTML =
-  `<b>${nScreens} six7 fundamental screens</b> — the top-N cuts and verdict bands — set against the live `+
-  `<b>Univest + six7 Hybrid</b> watchlist and the legacy <b>Univest Old</b> base. One monthly `+
-  `<b>Timed-HODL</b> engine, <b>${D.horizons.length} horizons</b>, benchmarked against NIFTY 50 &amp; Midcap 100.`;
-
-// footer — engine assumptions as scannable facts + a quiet provenance line
-$("#engineMeta").innerHTML = [
-  ["Salary", "₹22,000/mo · 2010"], ["Invested", "25%"], ["Annual raise", "+10%"],
-  ["Slippage", "5 bps"], ["Risk-free", "6%"],
-].map(([k,v])=>mi(k,v)).join("");
-const hzShort = D.horizons.map(h=>HZ_SHORT[h.key]||h.label).join(" / ");
-$("#footnote").innerHTML =
-  `Snapshot <b>${D.snapshot_date}</b> <span class="sep">·</span> ${(D.universe||0).toLocaleString()} stocks scored `+
-  `<span class="sep">·</span> Horizons <b>${hzShort}</b> <span class="sep">·</span> generated by <b>backtest_six7.py</b>`;
-
-/* ── horizon segmented ── */
-const hSeg = $("#horizonSeg");
-D.horizons.forEach((h,i)=>{
-  const b=document.createElement("button");
-  b.textContent = h.label.replace("·","").trim().replace("Full  ~16y","Full");
-  b.dataset.h=h.key; b.setAttribute("aria-pressed", h.key===HZ);
-  b.onclick=()=>{HZ=h.key; paintSeg(hSeg,"h",HZ); renderBoard();};
-  hSeg.appendChild(b);
-});
-function paintSeg(seg,attr,val){[...seg.children].forEach(b=>b.setAttribute("aria-pressed", b.dataset[attr]===val));}
-$("#sortSeg").querySelectorAll("button").forEach(b=>{
-  b.onclick=()=>{SORT=b.dataset.sort; paintSeg($("#sortSeg"),"sort",SORT); renderBoard();};
-});
-
-/* ── leaderboard ── */
-function sortVal(r){
-  if(SORT==="final") return r.timed.final||0;
-  if(SORT==="xirr") return r.timed.xirr??-999;
-  if(SORT==="sharpe") return r.timed.sharpe??-999;
-  if(SORT==="maxdd") return r.timed.maxdd??-999; // less negative = better
-  return r.timed.final||0;
-}
-function renderBoard(){
-  const rows = (D.comparison[HZ]||[]).slice();
-  rows.sort((a,b)=>sortVal(b)-sortVal(a));
-  const live = rows.filter(r=>!r.benchmark);                 // indices don't compete for "best"
-  const bestFinal = Math.max(...live.map(r=>r.timed.final||0));
-  const tb = $("#boardBody"); tb.innerHTML="";
-  rows.forEach((r)=>{
-    const tr=document.createElement("tr");
-    const best = (r.timed.final||0)===bestFinal && !r.benchmark;
-    if(r.benchmark) tr.className="old";                      // dimmed slate reference
-    else if(best) tr.className="best";
-    else if(UNI[r.key]) tr.className="uni";
-    const w = Math.max(2,(r.timed.final||0)/bestFinal*100);
-    let tags="";
-    if(best) tags+=`<span class="tag crown">★ best</span>`;
-    else if(r.key==="stocks_current") tags+=`<span class="tag uni">live</span>`;
-    else if(r.key==="univest_old") tags+=`<span class="tag uni">legacy</span>`;
-    else if(r.benchmark) tags+=`<span class="tag">index</span>`;
-    tr.innerHTML=`
-      <td><div class="name-cell"><span>${r.label}</span>${tags}</div></td>
-      <td>${r.n??"–"}</td>
-      <td style="color:var(--paper-dim)">${moneyHZ(r.invested)}</td>
-      <td>${moneyHZ(r.timed.final)}</td>
-      <td class="barcell"><span class="bar" style="width:${w}%"></span></td>
-      <td>${fmtX(r.timed.final, r.invested)}</td>
-      <td class="${signCls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td>
-      <td class="${signCls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
-      <td>${fmt2(r.timed.sharpe)}</td>
-      <td>${fmt2(r.timed.sortino)}</td>
-      <td class="val-neg">${fmtPct(r.timed.maxdd)}</td>
-      <td style="color:var(--slate)">${moneyHZ(r.sip.final)}</td>`;
-    tb.appendChild(tr);
-  });
-  const hz=D.horizons.find(h=>h.key===HZ);
-  const invAny=(rows.find(r=>!r.benchmark)||{}).invested;
-  $("#hzMeta").innerHTML =
-    mi("Period", periodPretty(hz&&hz.period)) +
-    mi("Invested / list", moneyHZ(invAny), true) +
-    mi("Contribution", (hz&&hz.contrib)||"—") +
-    mi("Engine", "Timed HODL");
-  $("#hzLegend").innerHTML =
-    `<span class="sym">×</span> final ÷ invested <span class="sep">·</span> `+
-    `<b>Return</b> total growth <span class="sep">·</span> `+
-    `<b>XIRR</b> annualised <span class="sep">·</span> `+
-    `<b>NIFTY</b> rows — the same money SIP'd into the index`;
+/* ── horizon slicing of a time series ── */
+function sliceTS(dates, values, years){
+  if(years==null) return {d:dates, v:values};
+  const last = new Date(dates[dates.length-1]);
+  const cut = new Date(last); cut.setFullYear(cut.getFullYear()-years);
+  const d=[], v=[];
+  for(let i=0;i<dates.length;i++){ if(new Date(dates[i])>=cut){ d.push(dates[i]); v.push(values[i]); } }
+  return d.length?{d,v}:{d:dates.slice(-2),v:values.slice(-2)};
 }
 
-/* ── inspect chips ── */
-const chipWrap=$("#listChips");
-D.list_order.forEach(k=>{
-  const m=D.meta[k]; if(!D.curves[k]) return;
-  const c=document.createElement("button");
-  c.className="chip"; c.dataset.k=k; c.setAttribute("aria-pressed",k===LIST);
-  c.innerHTML=`${m.label}<span class="ct">${m.count??""}</span>`;
-  c.onclick=()=>{LIST=k; [...chipWrap.children].forEach(x=>x.setAttribute("aria-pressed",x.dataset.k===k)); renderInspect();};
-  chipWrap.appendChild(c);
-});
-
-/* ── SVG helpers ── */
+/* ════════════════ SVG chart kit ════════════════ */
 const NS="http://www.w3.org/2000/svg";
-const el=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a)e.setAttribute(k,a[k]); return e;};
-function ts(d){return new Date(d).getTime();}
+const E=(n,a)=>{const e=document.createElementNS(NS,n); for(const k in a) e.setAttribute(k,a[k]); return e;};
+const ts=d=>new Date(d).getTime();
 
-function lineChart(svg, series, opts){
-  svg.innerHTML="";
-  const W=720, H=opts.h, P={l:46,r:12,t:12,b:22};
-  const all=[].concat(...series.map(s=>s.pts.v));
-  let ymin=opts.ymin!=null?opts.ymin:Math.min(...all), ymax=opts.ymax!=null?opts.ymax:Math.max(...all);
-  if(ymin===ymax)ymax=ymin+1;
-  const xs=[].concat(...series.map(s=>s.pts.d.map(ts)));
-  const xmin=Math.min(...xs), xmax=Math.max(...xs);
-  const X=t=>P.l+(t-xmin)/(xmax-xmin)*(W-P.l-P.r);
+/* multi-series time line/area with optional hover crosshair */
+function lineChart(host, series, opts={}){
+  // series: [{name,color,d:[],v:[],width,dash,fill,hideTip}]
+  const W=760, H=opts.h||300, P={l:opts.padL??48,r:14,t:14,b:24};
+  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:"none"});
+  const allv=[].concat(...series.map(s=>s.v));
+  let ymin=opts.ymin!=null?opts.ymin:Math.min(...allv);
+  let ymax=opts.ymax!=null?opts.ymax:Math.max(...allv);
+  if(ymin===ymax) ymax=ymin+1;
+  const allt=[].concat(...series.map(s=>s.d.map(ts)));
+  const xmin=Math.min(...allt), xmax=Math.max(...allt);
+  const X=t=>P.l+(t-xmin)/(xmax-xmin||1)*(W-P.l-P.r);
   const Y=v=>P.t+(1-(v-ymin)/(ymax-ymin))*(H-P.t-P.b);
-  // gridlines
-  const g=el("g",{class:"grid"}); const ax=el("g",{class:"axis"});
-  const ticks=opts.yticks||4;
+  const yfmt=opts.yfmt||(v=>v);
+  // gridlines + y labels
+  const g=E("g",{class:"axis"}); const ticks=opts.yticks||4;
   for(let i=0;i<=ticks;i++){
-    const v=ymin+(ymax-ymin)*i/ticks, y=Y(v);
-    g.appendChild(el("line",{x1:P.l,y1:y,x2:W-P.r,y2:y}));
-    const t=el("text",{x:P.l-8,y:y+3,"text-anchor":"end"}); t.textContent=opts.yfmt(v); ax.appendChild(t);
+    const val=ymin+(ymax-ymin)*i/ticks, y=Y(val);
+    svg.appendChild(E("line",{class:(opts.zeroAt!=null&&Math.abs(val-opts.zeroAt)<1e-9)?"zeroline":"gridline",x1:P.l,y1:y,x2:W-P.r,y2:y}));
+    const t=E("text",{x:P.l-8,y:y+3,"text-anchor":"end"}); t.textContent=yfmt(val); g.appendChild(t);
   }
-  // x year labels
-  const y0=new Date(xmin).getFullYear(), y1=new Date(xmax).getFullYear();
-  const stepY=Math.max(1,Math.ceil((y1-y0)/8));
-  for(let yr=y0; yr<=y1; yr+=stepY){
-    const x=X(new Date(yr+"-01-01").getTime());
-    if(x<P.l-2||x>W) continue;
-    const t=el("text",{x:x,y:H-6,"text-anchor":"middle"}); t.textContent="'"+String(yr).slice(2); ax.appendChild(t);
+  // x year/month ticks
+  const span=(xmax-xmin)/3.156e10; // years
+  const y0=new Date(xmin), y1=new Date(xmax);
+  const labels=[];
+  if(span<=2.2){ // months
+    let d=new Date(y0.getFullYear(),y0.getMonth(),1);
+    const step=span<=1.1?2:3;
+    while(d<=y1){ labels.push([d.getTime(), (d.getMonth()===0?"'"+String(d.getFullYear()).slice(2):["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][d.getMonth()])]); d=new Date(d.getFullYear(),d.getMonth()+step,1); }
+  } else {
+    const stepY=Math.max(1,Math.ceil(span/8));
+    for(let yr=y0.getFullYear(); yr<=y1.getFullYear(); yr+=stepY) labels.push([new Date(yr,0,1).getTime(),"'"+String(yr).slice(2)]);
   }
-  svg.appendChild(g); svg.appendChild(ax);
-  // area under first series
-  if(opts.fill){
-    const s=series[0]; let d=`M ${X(ts(s.pts.d[0]))} ${Y(s.pts.v[0])}`;
-    s.pts.d.forEach((dd,i)=>d+=` L ${X(ts(dd))} ${Y(s.pts.v[i])}`);
-    d+=` L ${X(ts(s.pts.d[s.pts.d.length-1]))} ${Y(ymin)} L ${X(ts(s.pts.d[0]))} ${Y(ymin)} Z`;
-    const grad=el("linearGradient",{id:"fillg",x1:0,y1:0,x2:0,y2:1});
-    grad.appendChild(el("stop",{offset:"0%","stop-color":series[0].color,"stop-opacity":.22}));
-    grad.appendChild(el("stop",{offset:"100%","stop-color":series[0].color,"stop-opacity":0}));
+  labels.forEach(([t,lab])=>{const x=X(t); if(x<P.l-2||x>W+2)return; const tx=E("text",{x,y:H-6,"text-anchor":"middle"}); tx.textContent=lab; g.appendChild(tx);});
+  svg.appendChild(g);
+  // area fill (first fillable series)
+  series.forEach(s=>{
+    if(!s.fill) return;
+    let d=`M ${X(ts(s.d[0]))} ${Y(s.v[0])}`;
+    s.d.forEach((dd,i)=>d+=` L ${X(ts(dd))} ${Y(s.v[i])}`);
+    const baseY = opts.zeroAt!=null?Y(opts.zeroAt):Y(ymin);
+    d+=` L ${X(ts(s.d[s.d.length-1]))} ${baseY} L ${X(ts(s.d[0]))} ${baseY} Z`;
+    const gid="fg"+Math.random().toString(36).slice(2,7);
+    const grad=E("linearGradient",{id:gid,x1:0,y1:0,x2:0,y2:1});
+    grad.appendChild(E("stop",{offset:"0%","stop-color":s.color,"stop-opacity":.22}));
+    grad.appendChild(E("stop",{offset:"100%","stop-color":s.color,"stop-opacity":0}));
     svg.appendChild(grad);
-    svg.appendChild(el("path",{d,fill:"url(#fillg)",stroke:"none"}));
-  }
+    svg.appendChild(E("path",{d,fill:`url(#${gid})`,stroke:"none"}));
+  });
   // lines
   series.forEach((s,si)=>{
-    let d=`M ${X(ts(s.pts.d[0]))} ${Y(s.pts.v[0])}`;
-    s.pts.d.forEach((dd,i)=>{ if(i) d+=` L ${X(ts(dd))} ${Y(s.pts.v[i])}`; });
-    const p=el("path",{d,fill:"none",stroke:s.color,"stroke-width":s.w||2,
-      "stroke-linejoin":"round","stroke-linecap":"round"});
+    if(!s.d.length) return;
+    let d=`M ${X(ts(s.d[0]))} ${Y(s.v[0])}`;
+    s.d.forEach((dd,i)=>{ if(i) d+=` L ${X(ts(dd))} ${Y(s.v[i])}`; });
+    const p=E("path",{d,fill:"none",stroke:s.color,"stroke-width":s.width||2,"stroke-linejoin":"round","stroke-linecap":"round"});
     if(s.dash) p.setAttribute("stroke-dasharray",s.dash);
-    if(opts.animate){ const len=p.getTotalLength?2600:2600; p.classList.add("draw"); p.style.setProperty("--len",2600); p.style.animationDelay=(si*.12)+"s"; }
+    if(opts.draw && !s.dash){ p.classList.add("draw"); p.style.setProperty("--len",2400); p.style.animationDelay=(si*.1)+"s"; }
     svg.appendChild(p);
   });
-  return {X,Y,xmin,xmax,P,W,H};
+  host.innerHTML=""; host.appendChild(svg);
+  // hover
+  if(opts.hover!==false){
+    const tip=elh(`<div class="tip"></div>`); host.appendChild(tip);
+    const cross=E("line",{class:"crosshair",x1:0,y1:P.t,x2:0,y2:H-P.b,opacity:0}); svg.appendChild(cross);
+    const dots=series.map(s=>{const c=E("circle",{r:3.5,fill:s.color,stroke:cvar("--surface"),"stroke-width":1.5,opacity:0}); svg.appendChild(c); return c;});
+    const base=series[0];
+    const move=e=>{
+      const pt=e.touches?e.touches[0]:e; const rect=svg.getBoundingClientRect();
+      const px=(pt.clientX-rect.left)/rect.width*W;
+      const t=xmin+(px-P.l)/(W-P.l-P.r)*(xmax-xmin);
+      let bi=0,bd=1e18; base.d.forEach((dd,i)=>{const dist=Math.abs(ts(dd)-t); if(dist<bd){bd=dist;bi=i;}});
+      const xx=X(ts(base.d[bi]));
+      cross.setAttribute("x1",xx); cross.setAttribute("x2",xx); cross.setAttribute("opacity",1);
+      let rows="";
+      series.forEach((s,si)=>{
+        const v=s.v[bi]; const ok=v!=null && !isNaN(v);
+        dots[si].setAttribute("cx",xx); dots[si].setAttribute("cy",Y(ok?v:ymin)); dots[si].setAttribute("opacity",ok?1:0);
+        if(!s.hideTip) rows+=`<div class="r"><span><i style="background:${s.color}"></i>${s.name}</span><b>${(opts.tipFmt||yfmt)(v)}</b></div>`;
+      });
+      tip.innerHTML=`<div class="d">${base.d[bi]}</div>${rows}`; tip.style.opacity=1;
+      let tx=px/W*rect.width+14; if(tx>rect.width-160)tx-=174;
+      tip.style.left=tx+"px"; tip.style.top="8px";
+    };
+    svg.addEventListener("mousemove",move); svg.addEventListener("touchmove",move,{passive:true});
+    const hide=()=>{tip.style.opacity=0; cross.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0));};
+    svg.addEventListener("mouseleave",hide); svg.addEventListener("touchend",hide);
+  }
+  return svg;
 }
 
-/* equity hover */
-let hoverGeo=null, hoverSeries=null;
-function attachHover(svg, geo, series){
-  hoverGeo=geo; hoverSeries=series;
-  const tip=$("#equityTip");
-  const cross=el("line",{class:"crosshair",x1:0,y1:geo.P.t,x2:0,y2:geo.H-geo.P.b,opacity:0});
-  svg.appendChild(cross);
-  const dots=series.map(s=>{const c=el("circle",{r:3.5,fill:s.color,opacity:0,stroke:"#0a0b0d","stroke-width":1.5}); svg.appendChild(c); return c;});
-  svg.onmousemove=e=>{
-    const rect=svg.getBoundingClientRect();
-    const px=(e.clientX-rect.left)/rect.width*geo.W;
-    const t=geo.xmin+(px-geo.P.l)/(geo.W-geo.P.l-geo.P.r)*(geo.xmax-geo.xmin);
-    const base=series[0].pts;
-    let bi=0,bd=1e18; base.d.forEach((dd,i)=>{const dist=Math.abs(ts(dd)-t); if(dist<bd){bd=dist;bi=i;}});
-    const xx=geo.X(ts(base.d[bi]));
-    cross.setAttribute("x1",xx); cross.setAttribute("x2",xx); cross.setAttribute("opacity",1);
-    let rows="";
-    series.forEach((s,si)=>{
-      const v=s.pts.v[bi]!=null?s.pts.v[bi]:null;
-      dots[si].setAttribute("cx",xx); dots[si].setAttribute("cy",geo.Y(v!=null?v:s.pts.v[bi]||0)); dots[si].setAttribute("opacity",v!=null?1:0);
-      rows+=`<div class="row"><span><i class="legend-dot" style="background:${s.color}"></i>${s.name}</span><b>${fmtCr(v)}</b></div>`;
+/* bar chart: vertical/horizontal, optional grouped */
+function barChart(host, {labels, datasets, horizontal=false, h=300, yfmt=v=>v, valFmt}){
+  const W=760, H=h, P={l:horizontal?96:48,r:14,t:12,b:horizontal?20:46};
+  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,preserveAspectRatio:"none"});
+  const allv=[].concat(...datasets.map(d=>d.values.filter(v=>v!=null)));
+  let vmin=Math.min(0,...allv), vmax=Math.max(0,...allv); if(vmin===vmax)vmax=vmin+1;
+  const n=labels.length, ng=datasets.length;
+  if(horizontal){
+    const X=v=>P.l+(v-vmin)/(vmax-vmin)*(W-P.l-P.r);
+    const band=(H-P.t-P.b)/n, bh=Math.min(20, band*0.62/ng);
+    const g=E("g",{class:"axis"});
+    [0,.25,.5,.75,1].forEach(f=>{const val=vmin+(vmax-vmin)*f, x=X(val);
+      svg.appendChild(E("line",{class:val===0?"zeroline":"gridline",x1:x,y1:P.t,x2:x,y2:H-P.b}));
+      const t=E("text",{x,y:H-6,"text-anchor":"middle"}); t.textContent=yfmt(val); g.appendChild(t);});
+    labels.forEach((lab,i)=>{
+      const yc=P.t+band*i+band/2;
+      const t=E("text",{x:P.l-8,y:yc+3,"text-anchor":"end"}); t.textContent=lab; g.appendChild(t);
+      datasets.forEach((ds,j)=>{
+        const v=ds.values[i]; if(v==null)return;
+        const x0=X(Math.min(0,v)), x1=X(Math.max(0,v));
+        const col=typeof ds.color==="function"?ds.color(v,i):ds.color;
+        svg.appendChild(E("rect",{x:x0,y:yc-bh*ng/2+bh*j,width:Math.max(1,x1-x0),height:bh*0.88,rx:2,fill:col}));
+      });
     });
-    tip.innerHTML=`<div style="color:var(--muted);margin-bottom:5px">${base.d[bi]}</div>${rows}`;
-    tip.style.opacity=1;
-    let tx=e.clientX-rect.left+14; if(tx>rect.width-150)tx=e.clientX-rect.left-150;
-    tip.style.left=tx+"px"; tip.style.top=(e.clientY-rect.top-10)+"px";
-  };
-  svg.onmouseleave=()=>{tip.style.opacity=0; cross.setAttribute("opacity",0); dots.forEach(d=>d.setAttribute("opacity",0));};
+    svg.appendChild(g);
+  } else {
+    const Y=v=>P.t+(1-(v-vmin)/(vmax-vmin))*(H-P.t-P.b);
+    const band=(W-P.l-P.r)/n, bw=Math.min(40, band*0.7/ng);
+    const g=E("g",{class:"axis"});
+    for(let i=0;i<=4;i++){const val=vmin+(vmax-vmin)*i/4, y=Y(val);
+      svg.appendChild(E("line",{class:val===0?"zeroline":"gridline",x1:P.l,y1:y,x2:W-P.r,y2:y}));
+      const t=E("text",{x:P.l-8,y:y+3,"text-anchor":"end"}); t.textContent=yfmt(val); g.appendChild(t);}
+    labels.forEach((lab,i)=>{
+      const xc=P.l+band*i+band/2;
+      if(n<=16 || i%Math.ceil(n/16)===0){const t=E("text",{x:xc,y:H-6,"text-anchor":"middle"}); t.textContent=lab; g.appendChild(t);}
+      datasets.forEach((ds,j)=>{
+        const v=ds.values[i]; if(v==null)return;
+        const y0=Y(Math.max(0,v)), y1=Y(Math.min(0,v));
+        const col=typeof ds.color==="function"?ds.color(v,i):ds.color;
+        svg.appendChild(E("rect",{x:xc-bw*ng/2+bw*j,y:y0,width:bw*0.86,height:Math.max(1,y1-y0),rx:2,fill:col}));
+      });
+    });
+    svg.appendChild(g);
+  }
+  host.innerHTML=""; host.appendChild(svg);
+  return svg;
 }
 
-/* ── inspect render ── */
-function renderInspect(){
-  const c=D.curves[LIST], m=D.meta[LIST];
-  $("#curveTitle").textContent=`${m.label} — equity curve`;
-  $("#curveBlurb").textContent=`${m.blurb} · ${c.summary.n_stocks} of ${m.count||c.summary.n_stocks} with price history`;
-  const COL={"Timed HODL":"var(--gold)","SIP":"var(--teal)","NIFTY 50":"var(--slate)"};
-  const eqSeries=["Timed HODL","SIP","NIFTY 50"].filter(k=>c.equity[k]).map(k=>({
-    name:k, color:getCss(COL[k]), pts:c.equity[k], w:k==="Timed HODL"?2.6:1.8, dash:k==="NIFTY 50"?"5 4":null
-  }));
-  const geo=lineChart($("#equityChart"),eqSeries,{h:300,fill:true,ymin:0,yfmt:v=>"₹"+(v/1e5).toFixed(0)+"L",animate:true});
-  attachHover($("#equityChart"),geo,eqSeries);
+/* donut */
+function donut(host, {labels, values, colors}){
+  const total=values.reduce((a,b)=>a+b,0); const W=260,H=260,cx=130,cy=130,r=104,ir=64;
+  const svg=E("svg",{class:"chart",viewBox:`0 0 ${W} ${H}`,style:"max-width:260px;margin:0 auto"});
+  let a0=-Math.PI/2;
+  values.forEach((v,i)=>{
+    const a1=a0+(v/total)*2*Math.PI;
+    const large=(a1-a0)>Math.PI?1:0;
+    const p=[cx+r*Math.cos(a0),cy+r*Math.sin(a0),cx+r*Math.cos(a1),cy+r*Math.sin(a1),
+             cx+ir*Math.cos(a1),cy+ir*Math.sin(a1),cx+ir*Math.cos(a0),cy+ir*Math.sin(a0)];
+    const d=`M ${p[0]} ${p[1]} A ${r} ${r} 0 ${large} 1 ${p[2]} ${p[3]} L ${p[4]} ${p[5]} A ${ir} ${ir} 0 ${large} 0 ${p[6]} ${p[7]} Z`;
+    const path=E("path",{d,fill:colors[i%colors.length],stroke:cvar("--surface"),"stroke-width":2});
+    const tt=E("title"); tt.textContent=`${labels[i]}: ${fmtCr(v)} (${(v/total*100).toFixed(1)}%)`; path.appendChild(tt);
+    svg.appendChild(path); a0=a1;
+  });
+  host.innerHTML=""; host.appendChild(svg);
+}
+
+/* ════════════════ helpers for series colours ════════════════ */
+const SERIES_COL = {
+  "Your Strategy (Timed HODL)":"--accent", "Timed HODL":"--accent",
+  "SIP on Your Stocks":"--sip", "SIP":"--sip",
+  "Timed Entry+Exit":"--bench", "SIP on NIFTY 50":"--bench", "NIFTY 50":"--bench",
+};
+function seriesColor(name){ return cvar(SERIES_COL[name]||"--ink-dim"); }
+const ALLOC_COLORS = ["--accent","--sip","--up","--bench","--down"].map(cvar)
+  .concat(["oklch(0.72 0.10 320)","oklch(0.78 0.11 140)","oklch(0.74 0.09 30)","oklch(0.70 0.08 280)","oklch(0.76 0.10 190)","oklch(0.66 0.04 250)"]);
+
+/* tile builder */
+function tile(k, v, sub, vc){ return `<div class="tile"><div class="k">${k}</div><div class="v ${vc||''}">${v}</div>${sub?`<div class="sub">${sub}</div>`:""}</div>`; }
+function sechead(title, lede, asof){ return `<div class="sec-head"><div><h1>${title}</h1>${lede?`<p class="lede">${lede}</p>`:""}</div>${asof?`<div class="asof">${asof}</div>`:""}</div>`; }
+
+/* ════════════════ OVERVIEW ════════════════ */
+function renderOverview(){
+  const el=$("#panel-overview"); const p=S.portfolio, h=p.horizon[HZ]||p.horizon.All;
+  const bm=S.backtest&&S.backtest.horizon_metrics;
+  const tcell=bm&&bm.cells["Timed HODL|"+HZ], scell=bm&&bm.cells["SIP|"+HZ], ncell=bm&&bm.cells["NIFTY 50|"+HZ];
+  const su=p.summary;
+  const hz = HZ==="All" ? "all time" : ("the last "+HZ);
+  let html = `
+  <div class="hero">
+    <div>
+      <div class="big">${fmtCr(su.total_value)}</div>
+      <div class="pnl ${cls(su.total_pnl)}">${fmtSign(su.total_pnl)} &nbsp;·&nbsp; ${fmtPct(su.total_ret)} all-time</div>
+      <p class="meta">${su.count} holdings accumulated since 2010 on ₹${(su.total_invested/1e5).toFixed(2)}L of dip buys. The strategy only ever buys and holds.</p>
+    </div>
+    <div class="card">
+      <h3>Portfolio value</h3>
+      <div class="csub">Reconstructed NAV · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <div class="chart-host" id="ov_nav"></div>
+    </div>
+  </div>`;
+  html += `<div class="tiles">`;
+  html += tile(`Portfolio return · ${HZ}`, fmtPct(h.ret), h.xirr!=null?`${fmtPct(h.xirr)} annualised`:"", cls(h.ret));
+  if(tcell) html += tile(`Strategy XIRR · ${HZ}`, fmtPctRaw(tcell.xirr), `Timed HODL, gated backtest`, tcell.xirr>=0?"up":"down");
+  if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP XIRR`);
+  if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP XIRR`);
+  if(tcell) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(tcell.maxdd), `peak to trough`, "down");
+  if(tcell) html += tile(`Cash drag · ${HZ}`, fmtPctRaw(tcell.cash), `avg idle cash`);
+  html += `</div>`;
+  if(tcell&&scell&&ncell){
+    html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Over ${hz}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(tcell.xirr)}</b> annualised, against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b>. Your live book is ${fmtPct(h.ret)} over the same window (${fmtPct(h.xirr)} annualised).</p></div>`;
+  }
+  el.innerHTML=html;
+  const nav=p.nav, sl=sliceTS(nav.dates,nav.value,HZ_YEARS[HZ]), si=sliceTS(nav.dates,nav.invested,HZ_YEARS[HZ]);
+  lineChart($("#ov_nav"), [
+    {name:"Portfolio value", color:cvar("--accent"), d:sl.d, v:sl.v, width:2.4, fill:true},
+    {name:"Invested", color:cvar("--ink-mute"), d:si.d, v:si.v, width:1.3, dash:"4 4"},
+  ], {h:230, ymin:0, yfmt:v=>fmtCr(v), tipFmt:v=>fmtCr(v), draw:true, padL:54});
+}
+
+/* ════════════════ PORTFOLIO ════════════════ */
+let PF_SORT={col:"value",dir:-1};
+function renderPortfolio(){
+  const el=$("#panel-portfolio"); const p=S.portfolio, su=p.summary, h=p.horizon[HZ]||p.horizon.All;
+  el.innerHTML = sechead("Portfolio",
+    "The simulated Timed HODL book valued live. Cards and the equity curve scope to the horizon; the holdings table is your current position.",
+    `book as of <b>${S.generated_at}</b><br>${su.count} holdings`) + `
+    <div class="tiles" style="margin-bottom:16px">
+      ${tile("Current value", fmtCr(su.total_value))}
+      ${tile("Total P&amp;L", fmtSign(su.total_pnl), fmtPct(su.total_ret)+" all-time", cls(su.total_pnl))}
+      ${tile(`Return · ${HZ}`, fmtPct(h.ret), h.xirr!=null?fmtPct(h.xirr)+" annualised":"", cls(h.ret))}
+      ${tile("Invested", fmtCr(su.total_invested))}
+      ${tile("Winners / Losers", `<span class="up">${su.winners}</span> <span style="color:var(--ink-mute)">/</span> <span class="down">${su.losers}</span>`)}
+      ${tile("Best / Worst", `<span class="up" style="font-size:1.05rem">${su.best_stock} ${fmtPct(su.best_ret,0)}</span><br><span class="down" style="font-size:1.05rem">${su.worst_stock} ${fmtPct(su.worst_ret,0)}</span>`)}
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Portfolio value vs invested</h3>
+      <div class="csub">Reconstructed daily NAV · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <div class="legend"><span><i style="background:var(--accent)"></i>Market value</span><span style="color:var(--ink-mute)"><i class="dash"></i>Invested</span></div>
+      <div class="chart-host" id="pf_nav"></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px" id="pf_charts">
+      <div class="card"><h3>Allocation</h3><div class="csub">Current value, top holdings</div>
+        <div class="chart-host" id="pf_alloc"></div><div id="pf_alloc_leg" class="legend" style="justify-content:center"></div></div>
+      <div class="card"><h3>P&amp;L by stock</h3><div class="csub">Realised + unrealised, live prices</div>
+        <div class="chart-host" id="pf_pnl"></div></div>
+    </div>
+    <div class="controls"><input id="pf_q" placeholder="Filter stocks…" oninput="pfFilter()"></div>
+    <div class="table-wrap"><table id="pf_tbl"><thead><tr>
+      ${["stock|Stock","avg_price|Avg","cmp|CMP","shares|Shares","invested|Invested","value|Value","pnl|P&amp;L","ret|Return","weight|Weight"].map(c=>{const[k,l]=c.split("|");return `<th data-col="${k}" onclick="pfSort('${k}')">${l}</th>`}).join("")}
+    </tr></thead><tbody id="pf_body"></tbody></table></div>`;
+
+  const nav=p.nav, sl=sliceTS(nav.dates,nav.value,HZ_YEARS[HZ]), si=sliceTS(nav.dates,nav.invested,HZ_YEARS[HZ]);
+  lineChart($("#pf_nav"),[
+    {name:"Market value",color:cvar("--accent"),d:sl.d,v:sl.v,width:2.4,fill:true},
+    {name:"Invested",color:cvar("--ink-mute"),d:si.d,v:si.v,width:1.3,dash:"4 4"},
+  ],{h:260,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
+  donut($("#pf_alloc"),{labels:p.alloc.labels,values:p.alloc.values,colors:ALLOC_COLORS});
+  $("#pf_alloc_leg").innerHTML=p.alloc.labels.map((l,i)=>`<span><i style="background:${ALLOC_COLORS[i%ALLOC_COLORS.length]};border-radius:50%;width:9px;height:9px"></i>${l}</span>`).join("");
+  const top=p.pnl.labels.map((s,i)=>[s,p.pnl.values[i]]).slice(-22);
+  barChart($("#pf_pnl"),{labels:top.map(t=>t[0]),datasets:[{values:top.map(t=>t[1]),color:v=>v>=0?cvar("--up"):cvar("--down")}],horizontal:true,h:360,yfmt:v=>fmtCr(v)});
+  pfRender();
+}
+function pfRender(){
+  const q=($("#pf_q")?.value||"").toLowerCase();
+  let rows=S.portfolio.rows.filter(r=>r.stock.toLowerCase().includes(q));
+  const {col,dir}=PF_SORT;
+  rows.sort((a,b)=> col==="stock" ? -dir*a.stock.localeCompare(b.stock) : dir*(a[col]-b[col]));
+  const maxw=Math.max(...S.portfolio.rows.map(r=>r.weight));
+  let ti=0,tv=0,html="";
+  rows.forEach(r=>{ ti+=r.invested; tv+=r.value;
+    html+=`<tr>
+      <td><span class="stocklink" onclick="stockModal('${r.stock}')">${r.stock}</span></td>
+      <td>₹${r.avg_price.toFixed(2)}</td><td>₹${r.cmp.toFixed(2)}</td><td>${r.shares.toFixed(1)}</td>
+      <td>${fmtCr(r.invested)}</td><td>${fmtCr(r.value)}</td>
+      <td class="${cls(r.pnl)}">${fmtSign(r.pnl)}</td><td class="${cls(r.ret)}">${fmtPct(r.ret)}</td>
+      <td><span class="wbar">${r.weight.toFixed(1)}%<i style="width:${(r.weight/maxw*46).toFixed(0)}px;background:${r.pnl>=0?'var(--up)':'var(--down)'}"></i></span></td></tr>`; });
+  const tp=tv-ti;
+  html+=`<tr class="total"><td>TOTAL (${rows.length})</td><td></td><td></td><td></td><td>${fmtCr(ti)}</td><td>${fmtCr(tv)}</td><td class="${cls(tp)}">${fmtSign(tp)}</td><td class="${cls(tp)}">${fmtPct(tp/ti*100)}</td><td>100%</td></tr>`;
+  $("#pf_body").innerHTML=html;
+  document.querySelectorAll("#pf_tbl th").forEach(th=>th.classList.toggle("sorted",th.dataset.col===col));
+}
+function pfSort(c){ PF_SORT = {col:c, dir: PF_SORT.col===c?-PF_SORT.dir:(c==="stock"?-1:-1)}; pfRender(); }
+function pfFilter(){ pfRender(); }
+function stockModal(stock){
+  const r=S.portfolio.rows.find(d=>d.stock===stock); if(!r)return;
+  $("#mTitle").textContent=r.stock;
+  $("#mSub").innerHTML=`${r.num_buys} buys · ${r.first_buy} → ${r.last_buy} · avg ₹${r.avg_price.toFixed(2)} · CMP ₹${r.cmp.toFixed(2)} · <span class="${cls(r.pnl)}">${fmtSign(r.pnl)} (${fmtPct(r.ret)})</span>`;
+  $("#mBody").innerHTML=`<div class="table-wrap" style="border:none"><table><thead><tr><th>Date</th><th>Price</th><th>Shares</th><th>Amount</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td>₹${t.price.toFixed(2)}</td><td>${t.shares.toFixed(1)}</td><td>${fmtCr(t.amount)}</td></tr>`).join("")}</tbody></table></div>`;
+  $("#overlay").classList.add("active");
+}
+function closeModal(){ $("#overlay").classList.remove("active"); }
+$("#overlay").addEventListener("click",e=>{ if(e.target.id==="overlay") closeModal(); });
+document.addEventListener("keydown",e=>{ if(e.key==="Escape") closeModal(); });
+
+/* ════════════════ BACKTEST ════════════════ */
+function renderBacktest(){
+  const el=$("#panel-backtest"); const b=S.backtest;
+  if(!b){ el.innerHTML=sechead("Backtest","No backtest data found."); return; }
+  const a=b.assumptions, bm=b.horizon_metrics, c=bm.cells;
+  const t=c["Timed HODL|"+HZ]||{};
+  el.innerHTML = sechead("Backtest",
+    `Timed HODL vs equal-weight SIP vs a NIFTY 50 SIP, on the live ${a&&a.years?Math.round(a.years)+"-year":""} salary-investing model. Metric cards and the comparison scope to ${HZ}; equity and drawdown are windowed.`,
+    `${a?a.start_date+" → "+a.end_date:""}<br>gate ${bm.gated?"on":"off"} · ${bm.contribution||""}`) + `
+    <div class="tiles" style="margin-bottom:16px">
+      ${tile(`Final value · ${HZ}`, fmtCr(t.final_value), "Timed HODL", "up")}
+      ${tile("Multiple", fmtX(t.mult), "final ÷ invested")}
+      ${tile("XIRR", fmtPctRaw(t.xirr), "annualised", t.xirr>=0?"up":"down")}
+      ${tile("Sharpe / Sortino", `${fmtNum(t.sharpe)} <small>/ ${fmtNum(t.sortino)}</small>`)}
+      ${tile("Max drawdown", fmtPctRaw(t.maxdd), `${t.maxdd_days??"–"} days`, "down")}
+      ${tile("Volatility / Cash", `${fmtPctRaw(t.vol)} <small>/ ${fmtPctRaw(t.cash)}</small>`)}
+    </div>
+    <div class="card" style="margin-bottom:16px">
+      <h3>Equity curves</h3><div class="csub">Portfolio value · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <div class="legend" id="bt_eqleg"></div>
+      <div class="chart-host" id="bt_eq"></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px">
+      <div class="card"><h3>Drawdowns</h3><div class="csub">% below each strategy's peak</div><div class="chart-host" id="bt_dd"></div></div>
+      <div class="card"><h3>Comparison · ${HZ}</h3><div class="csub">Best per row in <span style="color:var(--accent)">amber</span></div>
+        <div class="table-wrap" style="border:none" id="bt_cmp"></div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr; margin-bottom:16px">
+      <div class="card"><h3>Cash utilisation</h3><div class="csub">% of portfolio deployed · windowed</div><div class="chart-host" id="bt_cash"></div></div>
+      <div class="card"><h3>Rolling alpha vs SIP</h3><div class="csub">Full backtest · positive = outperforming</div><div class="chart-host" id="bt_alpha"></div></div>
+    </div>
+    <div class="grid" style="grid-template-columns:1fr 1fr">
+      <div class="card"><h3>Regime returns</h3><div class="csub">Full backtest · NAV-based, by market condition</div><div class="chart-host" id="bt_reg"></div></div>
+      <div class="card"><h3>Buy distribution</h3><div class="csub">Full backtest · most-bought names</div><div class="chart-host" id="bt_buy"></div></div>
+    </div>`;
+
+  // equity
+  const eqNames=Object.keys(b.equity);
+  const eqSeries=eqNames.map(n=>{const s=sliceTS(b.equity[n].dates,b.equity[n].values,HZ_YEARS[HZ]);
+    return {name:n.replace("Your Strategy (Timed HODL)","Timed HODL").replace("SIP on Your Stocks","SIP").replace("SIP on NIFTY 50","NIFTY 50"),
+      color:seriesColor(n), d:s.d, v:s.v, width:n.includes("Timed HODL")?2.6:1.6, dash:n.includes("NIFTY")?"5 4":null};});
+  $("#bt_eqleg").innerHTML=eqSeries.map(s=>`<span><i style="background:${s.color}" class="${s.dash?'dash':''}"></i>${s.name}</span>`).join("");
+  lineChart($("#bt_eq"),eqSeries,{h:280,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
   // drawdown
-  const ddSeries=["Timed HODL","SIP"].filter(k=>c.drawdowns[k]).map(k=>({
-    name:k,color:getCss(k==="Timed HODL"?"var(--gold)":"var(--teal)"),pts:c.drawdowns[k],w:k==="Timed HODL"?2.2:1.6
-  }));
-  const ddMin=Math.min(...[].concat(...ddSeries.map(s=>s.pts.v)));
-  lineChart($("#ddChart"),ddSeries,{h:180,ymin:Math.floor(ddMin/10)*10,ymax:2,yticks:3,yfmt:v=>v.toFixed(0)+"%",fill:true});
-  // metric cards — read from the full-horizon comparison row (NAV-based, same
-  // numbers as the leaderboard) so the whole site is internally consistent.
-  const frow=(D.comparison.full||[]).find(r=>r.key===LIST)||{timed:{},sip:{},nifty:{}};
-  const t=frow.timed, s=frow.sip, nf=frow.nifty||{};
-  const cards=[
-    ["Final value", fmtCr(t.final), ""],
-    ["XIRR", fmtPct(t.xirr), "annualised"],
-    ["Sharpe", fmt2(t.sharpe), "NAV"],
-    ["Sortino", fmt2(t.sortino), "NAV"],
-    ["Max drawdown", fmtPct(t.maxdd), "NAV peak→trough"],
-    ["Volatility", fmtPct(t.vol), "NAV, annualised"],
-  ];
-  $("#metricCards").innerHTML=cards.map(([k,v,sub])=>
-    `<div class="metric"><div class="k">${k}</div><div class="v">${v} ${sub?`<small>${sub}</small>`:""}</div></div>`).join("");
-  const su=c.summary;
-  $("#factline").innerHTML=
-    `<b>Invested</b> ${fmtCr(c.invested)} &nbsp;·&nbsp; <b>vs SIP</b> ${fmtCr(s.final)} (${fmtPct(s.xirr)}) &nbsp;·&nbsp; <b>vs NIFTY</b> ${fmtCr(nf.final)} (${fmtPct(nf.xirr)})<br>`+
-    `<b>Cash drag</b> ${su.cash_pct}% &nbsp;·&nbsp; <b>Bought</b> ${su.n_stocks_bought}/${su.n_stocks} &nbsp;·&nbsp; <b>Signals</b> ${su.n_signals} &nbsp;·&nbsp; <b>Fallback buys</b> ${su.n_fallback}`;
+  const ddNames=Object.keys(b.drawdowns);
+  const ddSeries=ddNames.map(n=>{const s=sliceTS(b.drawdowns[n].dates,b.drawdowns[n].values,HZ_YEARS[HZ]);
+    return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:n.includes("Timed HODL")?2:1.4,fill:n.includes("Timed HODL")};});
+  lineChart($("#bt_dd"),ddSeries,{h:240,ymax:2,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
+  // comparison table
+  renderBtCmp(c);
+  // cash util (windowed)
+  const cuNames=Object.keys(b.cash_util);
+  const cuSeries=cuNames.map(n=>{const s=sliceTS(b.cash_util[n].dates,b.cash_util[n].values,HZ_YEARS[HZ]);
+    return {name:n,color:seriesColor(n),d:s.d,v:s.v,width:1.6,fill:n.includes("Timed HODL")};});
+  lineChart($("#bt_cash"),cuSeries,{h:240,ymin:0,ymax:105,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(0)+"%",padL:42});
+  // rolling alpha (full)
+  const alNames=Object.keys(b.rolling_alpha);
+  if(alNames.length){
+    const alSeries=alNames.map((k,i)=>({name:k+" α ("+b.rolling_alpha[k].pct_win+"% wins)",color:i===0?cvar("--up"):cvar("--sip"),
+      d:b.rolling_alpha[k].dates,v:b.rolling_alpha[k].values,width:1.4,fill:i===0}));
+    lineChart($("#bt_alpha"),alSeries,{h:240,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
+  } else $("#bt_alpha").innerHTML=`<p class="csub">No rolling-alpha series.</p>`;
+  // regime grouped bars
+  barChart($("#bt_reg"),{labels:b.regimes.map(r=>r.regime),
+    datasets:b.regime_strategies.map(n=>({color:seriesColor(n),values:b.regimes.map(r=>r[n]??null)})),h:260,yfmt:v=>v+"%"});
+  // buy distribution (full, top 22)
+  const bd=b.buy_distribution.slice(0,22).reverse();
+  barChart($("#bt_buy"),{labels:bd.map(d=>d[0]),datasets:[{values:bd.map(d=>d[1]),color:cvar("--accent")}],horizontal:true,h:360,yfmt:v=>v});
 }
-function getCss(v){ if(v.startsWith("var(")){return getComputedStyle(document.documentElement).getPropertyValue(v.slice(4,-1)).trim();} return v;}
+function renderBtCmp(c){
+  const strd=["Timed HODL","SIP","NIFTY 50"], short={"Timed HODL":"Timed","SIP":"SIP","NIFTY 50":"NIFTY"};
+  const rows=[["XIRR",x=>x.xirr,"pct","max"],["Multiple",x=>x.mult,"x","max"],["Sharpe",x=>x.sharpe,"n","max"],
+    ["Sortino",x=>x.sortino,"n","max"],["Max DD",x=>x.maxdd,"pct","max"],["Volatility",x=>x.vol,"pct","min"]];
+  const ff={pct:v=>v==null?"–":v.toFixed(1)+"%",x:v=>v==null?"–":v.toFixed(2)+"×",n:v=>v==null?"–":v.toFixed(2)};
+  let h=`<table><thead><tr><th></th>${strd.map(s=>`<th>${short[s]}</th>`).join("")}</tr></thead><tbody>`;
+  rows.forEach(([lab,fn,fmt,best])=>{
+    const vals=strd.map(s=>c[s+"|"+HZ]?fn(c[s+"|"+HZ]):null);
+    const nums=vals.filter(v=>v!=null);
+    const bv=nums.length>1?(best==="max"?Math.max(...nums):Math.min(...nums)):null;
+    h+=`<tr><td>${lab}</td>${vals.map(v=>`<td class="${v===bv&&v!=null?'cell-best':''}">${ff[fmt](v)}</td>`).join("")}</tr>`;
+  });
+  h+=`</tbody></table>`; $("#bt_cmp").innerHTML=h;
+}
 
-renderBoard();
-renderInspect();
+/* ════════════════ SCREENS (six7) ════════════════ */
+let SCR_SORT="final", SCR_LIST=null;
+function renderScreens(){
+  const el=$("#panel-screens");
+  if(!SIX){ el.innerHTML=sechead("Screens","six7 data (data.js) not found."); return; }
+  const hk=SIX_MAP[HZ];
+  el.innerHTML = sechead("Screens · six7",
+    "Which fundamental screen would have compounded best? Each list run through the same Timed HODL engine. The leaderboard scopes to the horizon; inspect shows full history.",
+    `scan <b>${SIX.snapshot_date}</b><br>${(SIX.universe||0).toLocaleString()} stocks scored`) + `
+    <div class="controls"><span class="hz-label" style="display:inline">Rank by</span>
+      <span class="seg sm" id="scrSort">
+        ${[["final","Final ₹"],["xirr","XIRR"],["sharpe","Sharpe"],["maxdd","Drawdown"]].map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===SCR_SORT}" onclick="scrSetSort('${k}')">${l}</button>`).join("")}
+      </span></div>
+    <div class="table-wrap" style="margin-bottom:22px"><table id="scr_tbl"><thead><tr>
+      <th>List</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th><th>SIP final</th>
+    </tr></thead><tbody id="scr_body"></tbody></table></div>
+    <div class="sec-head" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">Full-horizon equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
+    <div class="chips" id="scr_chips" style="margin-bottom:16px"></div>
+    <div class="grid" style="grid-template-columns:1.5fr 1fr">
+      <div class="card"><h3 id="scr_ctitle">Equity curve</h3><div class="csub" id="scr_cblurb"></div>
+        <div class="legend"><span><i style="background:var(--accent)"></i>Timed HODL</span><span><i style="background:var(--sip)"></i>SIP</span><span style="color:var(--bench)"><i class="dash"></i>NIFTY 50</span></div>
+        <div class="chart-host" id="scr_eq"></div>
+        <h3 style="margin-top:18px">Drawdown</h3><div class="chart-host" id="scr_dd"></div></div>
+      <div class="card"><h3>Full horizon</h3><div class="csub" id="scr_minfo"></div>
+        <div class="tiles" id="scr_metrics" style="grid-template-columns:1fr 1fr; margin-top:10px"></div></div>
+    </div>`;
+  renderScrBoard();
+  // chips
+  const cw=$("#scr_chips"); const lists=SIX.list_order.filter(k=>SIX.curves[k]);
+  if(!SCR_LIST||!SIX.curves[SCR_LIST]) SCR_LIST=lists.find(k=>k==="stocks_current")||lists[0];
+  cw.innerHTML=lists.map(k=>{const m=SIX.meta[k]; return `<button class="chip" data-k="${k}" aria-pressed="${k===SCR_LIST}" onclick="scrPick('${k}')">${m.label}<span class="ct">${m.count??""}</span></button>`}).join("");
+  renderScrInspect();
+}
+function scrSetSort(k){ SCR_SORT=k; document.querySelectorAll("#scrSort button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrBoard(); }
+function scrPick(k){ SCR_LIST=k; document.querySelectorAll("#scr_chips .chip").forEach(b=>b.setAttribute("aria-pressed",b.dataset.k===k)); renderScrInspect(); }
+function renderScrBoard(){
+  const hk=SIX_MAP[HZ]; const rows=(SIX.comparison[hk]||[]).slice();
+  const sv=r=>SCR_SORT==="final"?(r.timed.final||0):SCR_SORT==="xirr"?(r.timed.xirr??-999):SCR_SORT==="sharpe"?(r.timed.sharpe??-999):(r.timed.maxdd??-999);
+  rows.sort((a,b)=>sv(b)-sv(a));
+  const live=rows.filter(r=>!r.benchmark); const bestF=Math.max(...live.map(r=>r.timed.final||0));
+  $("#scr_body").innerHTML=rows.map(r=>{
+    const best=(r.timed.final||0)===bestF&&!r.benchmark;
+    let tags=""; if(best)tags=`<span class="tag crown">★ best</span>`; else if(r.key==="stocks_current")tags=`<span class="tag live">live</span>`; else if(r.key==="univest_old")tags=`<span class="tag">legacy</span>`; else if(r.benchmark)tags=`<span class="tag">index</span>`;
+    return `<tr class="${best?'best':r.key==='stocks_current'?'cur':''}">
+      <td>${r.label} ${tags}</td><td>${r.n??"–"}</td><td style="color:var(--ink-dim)">${fmtCr(r.invested)}</td>
+      <td>${fmtCr(r.timed.final)}</td><td>${fmtX(r.timed.final/r.invested)}</td>
+      <td class="${cls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td><td class="${cls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
+      <td>${fmtNum(r.timed.sharpe)}</td><td class="down">${fmtPctRaw(r.timed.maxdd)}</td>
+      <td style="color:var(--bench)">${fmtCr(r.sip.final)}</td></tr>`;
+  }).join("");
+}
+function renderScrInspect(){
+  const k=SCR_LIST, c=SIX.curves[k], m=SIX.meta[k];
+  $("#scr_ctitle").textContent=`${m.label} equity curve`;
+  $("#scr_cblurb").textContent=`${m.blurb||""} · ${c.summary.n_stocks} priced`;
+  const COL={"Timed HODL":"--accent","SIP":"--sip","NIFTY 50":"--bench"};
+  const eq=["Timed HODL","SIP","NIFTY 50"].filter(n=>c.equity[n]).map(n=>({name:n,color:cvar(COL[n]),d:c.equity[n].d,v:c.equity[n].v,width:n==="Timed HODL"?2.4:1.5,dash:n==="NIFTY 50"?"5 4":null}));
+  lineChart($("#scr_eq"),eq,{h:240,ymin:0,yfmt:v=>"₹"+(v/1e5).toFixed(0)+"L",tipFmt:v=>fmtCr(v),draw:true,padL:50});
+  const dd=["Timed HODL","SIP"].filter(n=>c.drawdowns[n]).map(n=>({name:n,color:cvar(COL[n]),d:c.drawdowns[n].d,v:c.drawdowns[n].v,width:n==="Timed HODL"?2:1.4,fill:n==="Timed HODL"}));
+  lineChart($("#scr_dd"),dd,{h:170,ymax:2,zeroAt:0,yfmt:v=>v.toFixed(0)+"%",tipFmt:v=>v==null?"–":v.toFixed(1)+"%",padL:42});
+  const frow=(SIX.comparison.full||[]).find(r=>r.key===k)||{timed:{}}; const t=frow.timed;
+  $("#scr_minfo").innerHTML=`Invested ${fmtCr(c.invested)} · bought ${c.summary.n_stocks_bought}/${c.summary.n_stocks}`;
+  $("#scr_metrics").innerHTML=[
+    ["Final",fmtCr(t.final)],["XIRR",fmtPctRaw(t.xirr)],["Sharpe",fmtNum(t.sharpe)],["Sortino",fmtNum(t.sortino)],
+    ["Max DD",fmtPctRaw(t.maxdd)],["Volatility",fmtPctRaw(t.vol)],
+  ].map(([k2,v])=>tile(k2,v)).join("");
+}
+
+/* ════════════════ ITERATIONS ════════════════ */
+function renderIterations(){
+  const el=$("#panel-iterations"); const it=S.iterations||[];
+  if(it.length<2){ el.innerHTML=sechead("Iterations","Only one run on file: iterations appear once a second backtest run exists."); return; }
+  const grid=S.horizons_grid; const gh=GRID_MAP[HZ]; const dv=(grid&&grid.default_variant)||"bb60";
+  el.innerHTML = sechead("Iterations",
+    "How each watchlist version would have performed. The comparison scopes to the horizon (bb-60 signals); the equity overlay is full history.",
+    `${grid?grid.contribution:""}<br>to <b>${grid?grid.end_date:S.end_date}</b>`) + `
+    <div class="table-wrap" style="margin-bottom:20px"><table><thead><tr><th></th>${it.map(i=>`<th${i.is_current?' class="sorted"':''}>${i.label}</th>`).join("")}</tr></thead><tbody id="it_body"></tbody></table></div>
+    <div class="card"><h3>Timed HODL equity across iterations</h3><div class="csub">Full history, anchored to the current run's dates</div>
+      <div class="legend" id="it_leg"></div><div class="chart-host" id="it_eq"></div></div>`;
+  // table: full-period rows from iterations + horizon rows from grid
+  const wlKeyFor=i=> i.is_current?"Current":(grid.watchlists.find(w=>!w.is_current&&w.label!=="Current")||{}).key;
+  const gridCell=(i,metric)=>{ // map iteration -> grid watchlist by is_current / order
+    const wls=grid.watchlists; let wkey;
+    if(i.is_current) wkey=(wls.find(w=>w.is_current)||{}).key;
+    else { const idx=it.indexOf(i); wkey=(wls.filter(w=>!w.is_current)[idx-1]||{}).key; }
+    const cell=grid.cells[`${wkey}|${dv}|${gh}`]; return cell?cell[metric]:null;
+  };
+  const rows=[
+    ["Watchlist size", i=>i.watchlist, "max", v=>v??"–"],
+    ["Stocks with data", i=>i.n_stocks, null, v=>v??"–"],
+    [`XIRR · ${HZ}`, i=>gridCell(i,"xirr"), "max", v=>v==null?"–":v.toFixed(1)+"%"],
+    [`Multiple · ${HZ}`, i=>gridCell(i,"mult"), "max", v=>v==null?"–":v.toFixed(2)+"×"],
+    [`Max DD · ${HZ}`, i=>gridCell(i,"maxdd"), "max", v=>v==null?"–":v.toFixed(1)+"%"],
+    ["Final (full)", i=>i.final_value, "max", v=>v==null?"–":fmtCr(v)],
+    ["Sharpe (full)", i=>i.sharpe, "max", v=>v==null?"–":v.toFixed(2)],
+    ["Sortino (full)", i=>i.sortino, "max", v=>v==null?"–":v.toFixed(2)],
+    ["Cash drag (full)", i=>i.cash_pct, "min", v=>v==null?"–":v.toFixed(1)+"%"],
+  ];
+  let h="";
+  rows.forEach(([lab,fn,best,ff])=>{
+    const vals=it.map(fn); const nums=vals.filter(v=>v!=null&&!isNaN(v));
+    const bv=best&&nums.length>1?(best==="max"?Math.max(...nums):Math.min(...nums)):null;
+    h+=`<tr><td>${lab}</td>${vals.map(v=>`<td class="${v===bv&&v!=null?'cell-best':''}">${ff(v)}</td>`).join("")}</tr>`;
+  });
+  $("#it_body").innerHTML=h;
+  // overlay equity
+  const base=(it[0].equity&&it[0].equity.dates)||[];
+  const pal=[cvar("--accent"),cvar("--sip"),cvar("--up"),cvar("--down"),cvar("--bench")];
+  const series=it.map((i,idx)=>{const map={}; (i.equity.dates||[]).forEach((d,j)=>map[d]=i.equity.values[j]);
+    return {name:i.label,color:pal[idx%pal.length],d:base,v:base.map(d=>d in map?map[d]:null),width:i.is_current?2.4:1.5,dash:i.is_current?null:"5 4"};});
+  $("#it_leg").innerHTML=series.map(s=>`<span><i style="background:${s.color}" class="${s.dash?'dash':''}"></i>${s.name}</span>`).join("");
+  lineChart($("#it_eq"),series,{h:300,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
+}
+
+/* ════════════════ shell ════════════════ */
+const RENDER={overview:renderOverview,portfolio:renderPortfolio,backtest:renderBacktest,screens:renderScreens,iterations:renderIterations};
+function show(sec){
+  SEC=sec;
+  document.querySelectorAll(".panel").forEach(p=>p.classList.remove("active"));
+  $("#panel-"+sec).classList.add("active");
+  document.querySelectorAll("#nav button").forEach(b=>b.setAttribute("aria-current",b.dataset.s===sec));
+  if(location.hash!=="#"+sec) history.replaceState(null,"","#"+sec);
+  RENDER[sec]();
+  window.scrollTo({top:0,behavior:"instant"});
+}
+function setHz(h){ HZ=h; document.querySelectorAll("#hzSeg button").forEach(b=>b.setAttribute("aria-pressed",b.dataset.h===h)); RENDER[SEC](); }
+
+// build nav + horizon control
+$("#nav").innerHTML=SECTIONS.map(([k,l])=>`<button data-s="${k}" onclick="show('${k}')">${l}</button>`).join("");
+$("#hzSeg").innerHTML=HORIZONS.map(h=>`<button data-h="${h}" aria-pressed="${h===HZ}" onclick="setHz('${h}')">${h}</button>`).join("");
+$("#footmeta").innerHTML=`Built ${S.generated_at} · run ${S.current_run} · data to ${S.end_date||"n/a"} · `+
+  `Strategy Timed HODL (V4 idle-cash fallback, bb-60, midline gate) · <a href="https://github.com/0xCaretaker/Dip-Mafia">source</a>`;
+
+const start=(location.hash||"#overview").slice(1);
+show(SECTIONS.some(s=>s[0]===start)?start:"overview");
+window.addEventListener("hashchange",()=>{const s=location.hash.slice(1); if(s&&s!==SEC&&SECTIONS.some(x=>x[0]===s)) show(s);});
 </script>
 </body>
 </html>
