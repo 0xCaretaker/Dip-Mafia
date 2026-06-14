@@ -284,6 +284,14 @@ const SIX_MAP  = {"1Y":"1y","3Y":"3y","5Y":"5y","10Y":"10y","All":"full"};
 const GRID_MAP = {"1Y":"1y","3Y":"3y","5Y":"5y","10Y":"10y","All":"Full"};
 let HZ = "All", SEC = "overview";
 
+/* active per-horizon portfolio book (fresh sim that started HZ ago) */
+function PH(){
+  const b=(S.portfolio&&S.portfolio.byHorizon)||{};
+  return b[HZ]||b.All||{summary:{},rows:[],alloc:{labels:[],values:[]},
+    pnl:{labels:[],values:[]},nav:{dates:[],value:[],invested:[]}};
+}
+const hzPhrase = ()=> HZ==="All" ? "all time" : "the last "+HZ;
+
 const SECTIONS = [
   ["overview","Overview"], ["portfolio","Portfolio"], ["backtest","Backtest"],
   ["screens","Screens"], ["iterations","Iterations"],
@@ -486,61 +494,62 @@ function sechead(title, lede, asof){ return `<div class="sec-head"><div><h1>${ti
 
 /* ════════════════ OVERVIEW ════════════════ */
 function renderOverview(){
-  const el=$("#panel-overview"); const p=S.portfolio, h=p.horizon[HZ]||p.horizon.All;
+  const el=$("#panel-overview"); const pf=PH(), su=pf.summary, nav=pf.nav;
   const bm=S.backtest&&S.backtest.horizon_metrics;
   const tcell=bm&&bm.cells["Timed HODL|"+HZ], scell=bm&&bm.cells["SIP|"+HZ], ncell=bm&&bm.cells["NIFTY 50|"+HZ];
-  const su=p.summary;
-  const hz = HZ==="All" ? "all time" : ("the last "+HZ);
+  const hz = hzPhrase();
+  const since = HZ==="All" ? "since 2010" : "over "+hz;
   let html = `
   <div class="hero">
     <div>
       <div class="big">${fmtCr(su.total_value)}</div>
-      <div class="pnl ${cls(su.total_pnl)}">${fmtSign(su.total_pnl)} &nbsp;·&nbsp; ${fmtPct(su.total_ret)} all-time</div>
-      <p class="meta">${su.count} holdings accumulated since 2010 on ₹${(su.total_invested/1e5).toFixed(2)}L of dip buys. The strategy only ever buys and holds.</p>
+      <div class="pnl ${cls(su.total_pnl)}">${fmtSign(su.total_pnl)} &nbsp;·&nbsp; ${fmtPct(su.total_ret)} over ${hz}</div>
+      <p class="meta">${su.count} holdings accumulated ${since} on ₹${(su.total_invested/1e5).toFixed(2)}L of dip buys, valued at the data-date close. ${HZ==="All"?"The full book.":"A fresh book that started investing "+HZ+" ago."} The strategy only ever buys and holds.</p>
     </div>
     <div class="card">
       <h3>Portfolio value</h3>
-      <div class="csub">Reconstructed NAV · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <div class="csub">${HZ==="All"?"Full-history book":"Fresh sim started "+HZ+" ago"} · grows from contributions</div>
       <div class="chart-host" id="ov_nav"></div>
     </div>
   </div>`;
   html += `<div class="tiles">`;
-  html += tile(`Portfolio return · ${HZ}`, fmtPct(h.ret), h.xirr!=null?`${fmtPct(h.xirr)} annualised`:"", cls(h.ret));
-  if(tcell) html += tile(`Strategy XIRR · ${HZ}`, fmtPctRaw(tcell.xirr), `Timed HODL, gated backtest`, tcell.xirr>=0?"up":"down");
+  html += tile(`Portfolio return · ${HZ}`, fmtPct(su.total_ret), su.xirr!=null?`${fmtPctRaw(su.xirr)} annualised`:"", cls(su.total_ret));
   if(scell) html += tile(`vs SIP · ${HZ}`, fmtPctRaw(scell.xirr), `equal-weight SIP XIRR`);
   if(ncell) html += tile(`vs NIFTY 50 · ${HZ}`, fmtPctRaw(ncell.xirr), `index SIP XIRR`);
-  if(tcell) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(tcell.maxdd), `peak to trough`, "down");
+  if(su.max_drawdown!=null) html += tile(`Max drawdown · ${HZ}`, fmtPctRaw(su.max_drawdown), `peak to trough`, "down");
   if(tcell) html += tile(`Cash drag · ${HZ}`, fmtPctRaw(tcell.cash), `avg idle cash`);
+  html += tile(`Invested · ${HZ}`, fmtCr(su.total_invested), `contributed capital`);
   html += `</div>`;
-  if(tcell&&scell&&ncell){
-    html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Over ${hz}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(tcell.xirr)}</b> annualised, against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b>. Your live book is ${fmtPct(h.ret)} over the same window (${fmtPct(h.xirr)} annualised).</p></div>`;
+  if(su.xirr!=null&&scell&&ncell){
+    html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Starting ${HZ==="All"?"in 2010":HZ+" ago"}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(su.xirr)}</b> annualised (${fmtPct(su.total_ret)} total), against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b> over the same window.</p></div>`;
   }
   el.innerHTML=html;
-  const nav=p.nav, sl=sliceTS(nav.dates,nav.value,HZ_YEARS[HZ]), si=sliceTS(nav.dates,nav.invested,HZ_YEARS[HZ]);
   lineChart($("#ov_nav"), [
-    {name:"Portfolio value", color:cvar("--accent"), d:sl.d, v:sl.v, width:2.4, fill:true},
-    {name:"Invested", color:cvar("--ink-mute"), d:si.d, v:si.v, width:1.3, dash:"4 4"},
+    {name:"Portfolio value", color:cvar("--accent"), d:nav.dates, v:nav.value, width:2.4, fill:true},
+    {name:"Invested", color:cvar("--ink-mute"), d:nav.dates, v:nav.invested, width:1.3, dash:"4 4"},
   ], {h:230, ymin:0, yfmt:v=>fmtCr(v), tipFmt:v=>fmtCr(v), draw:true, padL:54});
 }
 
 /* ════════════════ PORTFOLIO ════════════════ */
 let PF_SORT={col:"value",dir:-1};
 function renderPortfolio(){
-  const el=$("#panel-portfolio"); const p=S.portfolio, su=p.summary, h=p.horizon[HZ]||p.horizon.All;
-  el.innerHTML = sechead("Portfolio",
-    "The simulated Timed HODL book valued live. Cards and the equity curve scope to the horizon; the holdings table is your current position.",
-    `book as of <b>${S.generated_at}</b><br>${su.count} holdings`) + `
+  const el=$("#panel-portfolio"); const pf=PH(), su=pf.summary, nav=pf.nav;
+  const lede = HZ==="All"
+    ? "The full Timed HODL book since 2010, valued at the data-date close."
+    : `A fresh Timed HODL book that started investing ${HZ} ago, valued at the data-date close. Cards, curve and holdings all scope to this window.`;
+  el.innerHTML = sechead("Portfolio", lede,
+    `valued at <b>${S.end_date||S.generated_at}</b><br>${su.count} holdings · ${HZ}`) + `
     <div class="tiles" style="margin-bottom:16px">
-      ${tile("Current value", fmtCr(su.total_value))}
-      ${tile("Total P&amp;L", fmtSign(su.total_pnl), fmtPct(su.total_ret)+" all-time", cls(su.total_pnl))}
-      ${tile(`Return · ${HZ}`, fmtPct(h.ret), h.xirr!=null?fmtPct(h.xirr)+" annualised":"", cls(h.ret))}
-      ${tile("Invested", fmtCr(su.total_invested))}
+      ${tile(`Book value · ${HZ}`, fmtCr(su.total_value))}
+      ${tile(`P&amp;L · ${HZ}`, fmtSign(su.total_pnl), fmtPct(su.total_ret)+" over "+hzPhrase(), cls(su.total_pnl))}
+      ${tile(`XIRR · ${HZ}`, su.xirr!=null?fmtPctRaw(su.xirr):"–", "annualised", cls(su.xirr))}
+      ${tile(`Invested · ${HZ}`, fmtCr(su.total_invested))}
       ${tile("Winners / Losers", `<span class="up">${su.winners}</span> <span style="color:var(--ink-mute)">/</span> <span class="down">${su.losers}</span>`)}
       ${tile("Best / Worst", `<span class="up" style="font-size:1.05rem">${su.best_stock} ${fmtPct(su.best_ret,0)}</span><br><span class="down" style="font-size:1.05rem">${su.worst_stock} ${fmtPct(su.worst_ret,0)}</span>`)}
     </div>
     <div class="card" style="margin-bottom:16px">
       <h3>Portfolio value vs invested</h3>
-      <div class="csub">Reconstructed daily NAV · windowed to ${HZ==="All"?"full history":HZ}</div>
+      <div class="csub">${HZ==="All"?"Full-history book":"Fresh sim started "+HZ+" ago"} · daily NAV from ₹0</div>
       <div class="legend"><span><i style="background:var(--accent)"></i>Market value</span><span style="color:var(--ink-mute)"><i class="dash"></i>Invested</span></div>
       <div class="chart-host" id="pf_nav"></div>
     </div>
@@ -555,23 +564,23 @@ function renderPortfolio(){
       ${["stock|Stock","avg_price|Avg","cmp|CMP","shares|Shares","invested|Invested","value|Value","pnl|P&amp;L","ret|Return","weight|Weight"].map(c=>{const[k,l]=c.split("|");return `<th data-col="${k}" onclick="pfSort('${k}')">${l}</th>`}).join("")}
     </tr></thead><tbody id="pf_body"></tbody></table></div>`;
 
-  const nav=p.nav, sl=sliceTS(nav.dates,nav.value,HZ_YEARS[HZ]), si=sliceTS(nav.dates,nav.invested,HZ_YEARS[HZ]);
   lineChart($("#pf_nav"),[
-    {name:"Market value",color:cvar("--accent"),d:sl.d,v:sl.v,width:2.4,fill:true},
-    {name:"Invested",color:cvar("--ink-mute"),d:si.d,v:si.v,width:1.3,dash:"4 4"},
+    {name:"Market value",color:cvar("--accent"),d:nav.dates,v:nav.value,width:2.4,fill:true},
+    {name:"Invested",color:cvar("--ink-mute"),d:nav.dates,v:nav.invested,width:1.3,dash:"4 4"},
   ],{h:260,ymin:0,yfmt:v=>fmtCr(v),tipFmt:v=>fmtCr(v),draw:true,padL:54});
-  donut($("#pf_alloc"),{labels:p.alloc.labels,values:p.alloc.values,colors:ALLOC_COLORS});
-  $("#pf_alloc_leg").innerHTML=p.alloc.labels.map((l,i)=>`<span><i style="background:${ALLOC_COLORS[i%ALLOC_COLORS.length]};border-radius:50%;width:9px;height:9px"></i>${l}</span>`).join("");
-  const top=p.pnl.labels.map((s,i)=>[s,p.pnl.values[i]]).slice(-22);
+  donut($("#pf_alloc"),{labels:pf.alloc.labels,values:pf.alloc.values,colors:ALLOC_COLORS});
+  $("#pf_alloc_leg").innerHTML=pf.alloc.labels.map((l,i)=>`<span><i style="background:${ALLOC_COLORS[i%ALLOC_COLORS.length]};border-radius:50%;width:9px;height:9px"></i>${l}</span>`).join("");
+  const top=pf.pnl.labels.map((s,i)=>[s,pf.pnl.values[i]]).slice(-22);
   barChart($("#pf_pnl"),{labels:top.map(t=>t[0]),datasets:[{values:top.map(t=>t[1]),color:v=>v>=0?cvar("--up"):cvar("--down")}],horizontal:true,h:360,yfmt:v=>fmtCr(v)});
   pfRender();
 }
 function pfRender(){
+  const allrows=PH().rows;
   const q=($("#pf_q")?.value||"").toLowerCase();
-  let rows=S.portfolio.rows.filter(r=>r.stock.toLowerCase().includes(q));
+  let rows=allrows.filter(r=>r.stock.toLowerCase().includes(q));
   const {col,dir}=PF_SORT;
   rows.sort((a,b)=> col==="stock" ? -dir*a.stock.localeCompare(b.stock) : dir*(a[col]-b[col]));
-  const maxw=Math.max(...S.portfolio.rows.map(r=>r.weight));
+  const maxw=allrows.length?Math.max(...allrows.map(r=>r.weight)):1;
   let ti=0,tv=0,html="";
   rows.forEach(r=>{ ti+=r.invested; tv+=r.value;
     html+=`<tr>
@@ -588,7 +597,7 @@ function pfRender(){
 function pfSort(c){ PF_SORT = {col:c, dir: PF_SORT.col===c?-PF_SORT.dir:(c==="stock"?-1:-1)}; pfRender(); }
 function pfFilter(){ pfRender(); }
 function stockModal(stock){
-  const r=S.portfolio.rows.find(d=>d.stock===stock); if(!r)return;
+  const r=PH().rows.find(d=>d.stock===stock); if(!r)return;
   $("#mTitle").textContent=r.stock;
   $("#mSub").innerHTML=`${r.num_buys} buys · ${r.first_buy} → ${r.last_buy} · avg ₹${r.avg_price.toFixed(2)} · CMP ₹${r.cmp.toFixed(2)} · <span class="${cls(r.pnl)}">${fmtSign(r.pnl)} (${fmtPct(r.ret)})</span>`;
   $("#mBody").innerHTML=`<div class="table-wrap" style="border:none"><table><thead><tr><th>Date</th><th>Price</th><th>Shares</th><th>Amount</th></tr></thead><tbody>${r.trades.map(t=>`<tr><td>${t.date}</td><td>₹${t.price.toFixed(2)}</td><td>${t.shares.toFixed(1)}</td><td>${fmtCr(t.amount)}</td></tr>`).join("")}</tbody></table></div>`;
@@ -606,9 +615,9 @@ function horizonCutoff(refDate){
   const c=new Date(refDate); c.setFullYear(c.getFullYear()-yrs); return c;
 }
 function buyDistForHorizon(n=22){
-  const cut=horizonCutoff(S.portfolio.nav.dates[S.portfolio.nav.dates.length-1]);
+  // PH().rows is already a fresh windowed book, so buy counts are window-scoped.
   const counts={};
-  S.portfolio.rows.forEach(r=>r.trades.forEach(t=>{ if(!cut||new Date(t.date)>=cut) counts[r.stock]=(counts[r.stock]||0)+1; }));
+  PH().rows.forEach(r=>{ counts[r.stock]=(counts[r.stock]||0)+(r.num_buys||(r.trades?r.trades.length:0)); });
   return Object.entries(counts).filter(e=>e[1]>0).sort((a,b)=>b[1]-a[1]).slice(0,n);
 }
 

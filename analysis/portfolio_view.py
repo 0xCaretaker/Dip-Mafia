@@ -8,47 +8,40 @@ app (designed separately):
     docs/strat_data.js   ->   window.STRAT_DATA = { portfolio, backtest,
                                                      iterations, horizons_grid }
 
-It no longer generates any HTML. The portfolio block now includes a
-*reconstructed daily NAV curve* (shares-held-over-time x historical close) so
-the Portfolio section can show a real equity curve and true 1Y/3Y/5Y/10Y/All
-returns - not just an all-time snapshot.
+It no longer generates any HTML, and it no longer reconstructs a single lifetime
+book from ``trades.csv``. The Portfolio + Overview sections are now **fresh,
+self-contained per-horizon simulations**: the ``5Y`` view is the Timed HODL book
+you would hold if you had started investing 5 years ago (NAV from ~₹0), valued at
+the data-date close. Those per-horizon books are produced upstream by
+``horizon_compare.py`` (``strategy_horizons.portfolios``); this script just
+reshapes them into ``window.STRAT_DATA.portfolio.byHorizon[<HZ>]`` (summary,
+rows, alloc, pnl, nav), so every section answers to the one global horizon control.
 
 Reads (from the newest run subfolder under backtest_output/, via run_paths):
-  - <current run>/trades.csv          holdings + buy history (Timed HODL rows)
   - <current run>/dashboard_data.json  backtest results (from backtest.py)
-  - <current run>/horizons.json        per-horizon strategy + watchlist metrics
-  - backtest_output/six7/_price_cache.pkl   historical daily close (NAV rebuild)
+  - <current run>/horizons.json        per-horizon strategy + portfolio + grid
 
-Run: python3 analysis/portfolio_view.py   (from the repo root)
+Run: python3 analysis/portfolio_view.py   (from the repo root, after
+     backtest.py and horizon_compare.py)
 Output: docs/strat_data.js
 """
 
 import json
 import os
-import pickle
-import warnings
 from datetime import datetime
 
-import numpy as np
-import pandas as pd
-import yfinance as yf
-
 import run_paths
-import backtest as bt   # compute_xirr / download_batch
-
-warnings.filterwarnings("ignore")
 
 CURRENT_RUN = run_paths.current_run() or run_paths.BASE
-TRADES_CSV = os.path.join(CURRENT_RUN, "trades.csv")
 BACKTEST_JSON = os.path.join(CURRENT_RUN, "dashboard_data.json")
 HORIZONS_JSON = os.path.join(CURRENT_RUN, "horizons.json")
-PRICE_CACHE = os.path.join(run_paths.SIX7, "_price_cache.pkl")
-STRATEGY = "Timed HODL"
 TIMED_KEY = "Your Strategy (Timed HODL)"
 DOCS_DIR = "docs"
 
 # Global horizon set shared with the frontend. (label, years; None = full history)
 HORIZONS = [("1Y", 1), ("3Y", 3), ("5Y", 5), ("10Y", 10), ("All", None)]
+# strategy_horizons keys -> dashboard horizon labels
+HZ_LABEL = {"1y": "1Y", "3y": "3Y", "5y": "5Y", "10y": "10Y", "Full": "All"}
 
 
 # ─── Iteration history (old vs new watchlist) ────────────────────────────────
@@ -110,249 +103,18 @@ def load_iterations(current_data):
     return iters
 
 
-# ─── Portfolio holdings ──────────────────────────────────────────────────────
+# ─── Portfolio (fresh per-horizon books) ─────────────────────────────────────
 
-def load_holdings():
-    df = pd.read_csv(TRADES_CSV, parse_dates=["date"])
-    df = df[df["strategy"] == STRATEGY].copy()
-    df["shares"] = df["amount"] / df["price"]
+def build_portfolio(horizons):
+    """Reshape strategy_horizons.portfolios into byHorizon[<HZ>] blocks.
 
-    holdings = df.groupby("stock").agg(
-        total_invested=("amount", "sum"),
-        total_shares=("shares", "sum"),
-        num_buys=("amount", "count"),
-        first_buy=("date", "min"),
-        last_buy=("date", "max"),
-    ).reset_index()
-    holdings["avg_price"] = holdings["total_invested"] / holdings["total_shares"]
-
-    trades_by_stock = {}
-    for stock, group in df.groupby("stock"):
-        trades_by_stock[stock] = group[["date", "price", "amount"]].to_dict("records")
-
-    return holdings, trades_by_stock, df
-
-
-def fetch_current_prices(stocks):
-    tickers = [f"{s}.NS" for s in stocks]
-    data = yf.download(tickers, period="5d", interval="1d", progress=False)
-    prices = {}
-    for stock in stocks:
-        ticker = f"{stock}.NS"
-        try:
-            if isinstance(data.columns, pd.MultiIndex):
-                col = data["Close"][ticker].dropna()
-            else:
-                col = data["Close"].dropna()
-            prices[stock] = float(col.iloc[-1])
-        except (KeyError, IndexError):
-            prices[stock] = np.nan
-    return prices
-
-
-def build_portfolio(holdings, prices):
-    holdings["current_price"] = holdings["stock"].map(prices)
-    holdings["current_value"] = holdings["total_shares"] * holdings["current_price"]
-    holdings["pnl"] = holdings["current_value"] - holdings["total_invested"]
-    holdings["return_pct"] = (holdings["pnl"] / holdings["total_invested"]) * 100
-    holdings["weight_pct"] = (holdings["current_value"] / holdings["current_value"].sum()) * 100
-    return holdings.sort_values("current_value", ascending=False).reset_index(drop=True)
-
-
-def build_portfolio_json(p, trades_by_stock):
-    total_invested = p["total_invested"].sum()
-    total_value = p["current_value"].sum()
-    total_pnl = total_value - total_invested
-    total_ret = (total_pnl / total_invested) * 100
-    winners = int((p["pnl"] > 0).sum())
-    losers = int((p["pnl"] <= 0).sum())
-    best = p.loc[p["return_pct"].idxmax()]
-    worst = p.loc[p["return_pct"].idxmin()]
-
-    rows = []
-    for _, r in p.iterrows():
-        stock = r["stock"]
-        trades = trades_by_stock.get(stock, [])
-        trade_list = []
-        for t in trades:
-            d = t["date"].strftime("%Y-%m-%d") if hasattr(t["date"], "strftime") else str(t["date"])[:10]
-            trade_list.append({"date": d, "price": round(float(t["price"]), 2),
-                               "shares": round(t["amount"] / t["price"], 2),
-                               "amount": round(float(t["amount"]))})
-        rows.append({
-            "stock": stock,
-            "avg_price": round(r["avg_price"], 2),
-            "cmp": round(r["current_price"], 2),
-            "shares": round(r["total_shares"], 1),
-            "invested": round(r["total_invested"]),
-            "value": round(r["current_value"]),
-            "pnl": round(r["pnl"]),
-            "ret": round(r["return_pct"], 1),
-            "weight": round(r["weight_pct"], 1),
-            "num_buys": int(r["num_buys"]),
-            "first_buy": r["first_buy"].strftime("%Y-%m-%d"),
-            "last_buy": r["last_buy"].strftime("%Y-%m-%d"),
-            "trades": trade_list,
-        })
-
-    top_n = 10
-    alloc_labels = list(p.head(top_n)["stock"])
-    alloc_values = [float(v) for v in p.head(top_n)["current_value"].round(0)]
-    if len(p) > top_n:
-        alloc_labels.append("Others")
-        alloc_values.append(float(round(p.iloc[top_n:]["current_value"].sum())))
-
-    pnl_sorted = p.sort_values("pnl", ascending=True)
-
-    return {
-        "rows": rows,
-        "summary": {
-            "total_invested": round(total_invested),
-            "total_value": round(total_value),
-            "total_pnl": round(total_pnl),
-            "total_ret": round(total_ret, 1),
-            "winners": winners,
-            "losers": losers,
-            "best_stock": best["stock"],
-            "best_ret": round(best["return_pct"]),
-            "worst_stock": worst["stock"],
-            "worst_ret": round(worst["return_pct"]),
-            "count": len(p),
-        },
-        "alloc": {"labels": alloc_labels, "values": alloc_values},
-        "pnl": {"labels": list(pnl_sorted["stock"]),
-                "values": [float(v) for v in pnl_sorted["pnl"].round(0)]},
-    }
-
-
-# ─── Portfolio NAV reconstruction ────────────────────────────────────────────
-
-def load_price_history(stocks):
-    """Daily Close per bare symbol: six7 cache first, then download the rest."""
-    hist = {}
-    if os.path.isfile(PRICE_CACHE):
-        raw = pickle.load(open(PRICE_CACHE, "rb")).get("stock_dfs", {})
-        for ksym, df in raw.items():
-            bare = ksym[:-3] if ksym.endswith(".NS") else ksym
-            if bare in stocks and "Close" in df:
-                s = df["Close"].dropna()
-                if not s.empty:
-                    hist[bare] = s
-    missing = [s for s in stocks if s not in hist]
-    if missing:
-        print(f"  NAV: {len(missing)} symbols not cached, downloading...")
-        cfg = {"start": "2010-01-01", "end": str(pd.Timestamp.now().date())}
-        try:
-            for sym, df in bt.download_batch(missing, cfg).items():
-                if "Close" in df:
-                    s = df["Close"].dropna()
-                    if not s.empty:
-                        hist[sym] = s
-        except Exception as e:
-            print(f"  NAV: download failed for {len(missing)} symbols ({e})")
-    return hist
-
-
-def build_portfolio_nav(df, prices):
-    """Daily portfolio market value + cumulative invested, reconstructed from the
-    Timed HODL buy ledger and historical close. A live 'today' endpoint is
-    appended so the curve ends at the same current value the summary cards show.
-
-    Returns (nav_dict, df_with_dates) where nav_dict = {dates, value, invested}.
-    """
-    stocks = sorted(df["stock"].unique())
-    hist = load_price_history(stocks)
-    first_buy = df["date"].min()
-
-    # Master trading-day index: union of all holdings' price dates from first buy.
-    idx = sorted({d for s in hist.values() for d in s.index if d >= first_buy})
-    if not idx:
-        return None
-    index = pd.DatetimeIndex(idx)
-
-    total_value = pd.Series(0.0, index=index)
-    for stock, g in df.groupby("stock"):
-        if stock not in hist:
-            continue
-        close = hist[stock].reindex(index).ffill()
-        shares_by_date = g.groupby("date")["shares"].sum().sort_index().cumsum()
-        held = shares_by_date.reindex(index, method="ffill").fillna(0.0)
-        total_value = total_value.add((held * close).fillna(0.0), fill_value=0.0)
-
-    invested = (df.groupby("date")["amount"].sum().sort_index().cumsum()
-                .reindex(index, method="ffill").fillna(0.0))
-
-    dates = [d.strftime("%Y-%m-%d") for d in index]
-    value = [round(float(v)) for v in total_value.values]
-    inv = [round(float(v)) for v in invested.values]
-
-    # Append a live endpoint (today) valued at current prices, so NAV-last ==
-    # the summary's current value. Only count holdings with a live price.
-    today = pd.Timestamp.now().normalize()
-    if today > index[-1]:
-        cur_val = 0.0
-        for stock, g in df.groupby("stock"):
-            px = prices.get(stock)
-            if px is not None and not (isinstance(px, float) and np.isnan(px)):
-                cur_val += g["shares"].sum() * px
-        dates.append(today.strftime("%Y-%m-%d"))
-        value.append(round(float(cur_val)))
-        inv.append(inv[-1])
-
-    return {"dates": dates, "value": value, "invested": inv}
-
-
-def portfolio_horizons(nav, df):
-    """Per-horizon portfolio performance from the reconstructed NAV.
-
-    For each window we measure the money-weighted return (XIRR) on the capital at
-    work: the opening market value plus every buy inside the window, against the
-    closing value. ``ret`` is the simple profit over that deployed capital.
-    """
-    if not nav:
-        return {}
-    d = pd.to_datetime(nav["dates"])
-    val = pd.Series(nav["value"], index=d)
-    inv = pd.Series(nav["invested"], index=d)
-    end_dt = d[-1]
-    v_now = float(val.iloc[-1])
-    buys = df[["date", "amount"]].copy()
-
-    out = {}
-    for label, yrs in HORIZONS:
-        start = d[0] if yrs is None else end_dt - pd.DateOffset(years=yrs)
-        if start <= d[0]:
-            start, v_then, inv_then = d[0], 0.0, 0.0
-        else:
-            prior = val.index[val.index <= start]
-            if len(prior) == 0:
-                v_then = inv_then = 0.0
-            else:
-                at = prior[-1]
-                v_then = float(val.loc[at]); inv_then = float(inv.loc[at])
-        win_buys = buys[(buys["date"] > start) & (buys["date"] <= end_dt)]
-        contrib = float(win_buys["amount"].sum())
-        if yrs is None:                       # All: capital = full invested basis
-            capital = float(inv.iloc[-1])
-        else:
-            capital = v_then + contrib
-        pnl = v_now - capital
-        ret = round(pnl / capital * 100, 1) if capital > 0 else None
-
-        cfs = []
-        if v_then > 0:
-            cfs.append((start, -v_then))
-        for _, b in win_buys.iterrows():
-            cfs.append((b["date"], -float(b["amount"])))
-        xirr = None
-        if cfs:
-            x = bt.compute_xirr(cfs, v_now, end_dt)
-            xirr = None if (x is None or (isinstance(x, float) and np.isnan(x))) else round(float(x), 1)
-
-        out[label] = {"ret": ret, "value": round(v_now), "invested": round(capital),
-                      "pnl": round(pnl), "xirr": xirr,
-                      "start": start.strftime("%Y-%m-%d"), "end": end_dt.strftime("%Y-%m-%d")}
-    return out
+    Each block is a complete, self-contained book (summary, rows, alloc, pnl,
+    nav) for a fresh simulation that started ``HZ`` ago, valued at the data-date
+    close. ``All`` is the full-history sim (== the lifetime book)."""
+    sh = (horizons or {}).get("strategy_horizons") or {}
+    src = sh.get("portfolios") or {}
+    by_h = {HZ_LABEL.get(k, k): v for k, v in src.items()}
+    return {"byHorizon": by_h, "asof": (horizons or {}).get("end_date")}
 
 
 # ─── Backtest reshape ────────────────────────────────────────────────────────
@@ -363,14 +125,13 @@ def reshape_backtest(backtest_data, horizons):
     if not backtest_data:
         return None
     sh = (horizons or {}).get("strategy_horizons") or {}
-    label_map = {"1y": "1Y", "3y": "3Y", "5y": "5Y", "10y": "10Y", "Full": "All"}
     cells = {}
     for k, v in (sh.get("cells") or {}).items():
         strat, hl = k.rsplit("|", 1)
-        cells[f"{strat}|{label_map.get(hl, hl)}"] = v
-    curves = {label_map.get(hl, hl): c for hl, c in (sh.get("curves") or {}).items()}
+        cells[f"{strat}|{HZ_LABEL.get(hl, hl)}"] = v
+    curves = {HZ_LABEL.get(hl, hl): c for hl, c in (sh.get("curves") or {}).items()}
     backtest_data["horizon_metrics"] = {
-        "horizons": [label_map.get(h, h) for h in (sh.get("horizons") or [])],
+        "horizons": [HZ_LABEL.get(h, h) for h in (sh.get("horizons") or [])],
         "strategies": sh.get("strategies") or ["Timed HODL", "SIP", "NIFTY 50"],
         "metrics": sh.get("metrics") or [],
         "cells": cells,
@@ -384,28 +145,23 @@ def reshape_backtest(backtest_data, horizons):
 # ─── Main ────────────────────────────────────────────────────────────────────
 
 def main():
-    print("Loading trades...")
-    holdings, trades_by_stock, df = load_holdings()
-    print(f"Found {len(holdings)} stocks in {STRATEGY} strategy")
+    horizons = None
+    try:
+        with open(HORIZONS_JSON) as f:
+            horizons = json.load(f)
+        print(f"  Loaded horizons.json ({len(horizons.get('cells', {}))} grid cells)")
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("  No horizons.json (run horizon_compare.py first)")
 
-    print("Fetching current prices...")
-    prices = fetch_current_prices(holdings["stock"].tolist())
-
-    portfolio = build_portfolio(holdings, prices)
-    valid = portfolio.dropna(subset=["current_price"])
-    skipped = portfolio[portfolio["current_price"].isna()]
-    if len(skipped):
-        print(f"  Skipped {len(skipped)} stocks (no price data): {', '.join(skipped['stock'])}")
-
-    portfolio_data = build_portfolio_json(valid, trades_by_stock)
-
-    print("Reconstructing portfolio NAV...")
-    nav = build_portfolio_nav(df, prices)
-    portfolio_data["nav"] = nav
-    portfolio_data["horizon"] = portfolio_horizons(nav, df)
-    if nav:
-        print(f"  NAV: {len(nav['dates'])} daily points, "
-              f"{nav['dates'][0]} → {nav['dates'][-1]}")
+    portfolio_data = build_portfolio(horizons)
+    bh = portfolio_data["byHorizon"]
+    if bh:
+        allp = bh.get("All") or next(iter(bh.values()))
+        print(f"  Portfolio: {len(bh)} horizons; All = "
+              f"{allp['summary']['count']} holdings, "
+              f"value {allp['summary']['total_value']:,}")
+    else:
+        print("  Portfolio: no per-horizon books (strategy_horizons.portfolios missing)")
 
     backtest_data = None
     try:
@@ -415,22 +171,15 @@ def main():
     except FileNotFoundError:
         print(f"  No backtest data ({BACKTEST_JSON})")
 
-    horizons = None
-    try:
-        with open(HORIZONS_JSON) as f:
-            horizons = json.load(f)
-        print(f"  Loaded horizons.json ({len(horizons.get('cells', {}))} grid cells)")
-    except (FileNotFoundError, json.JSONDecodeError):
-        print("  No horizons.json (run horizon_compare.py first)")
-
     backtest_data = reshape_backtest(backtest_data, horizons)
     iterations = load_iterations(json.load(open(BACKTEST_JSON)) if os.path.isfile(BACKTEST_JSON) else None)
     n_arch = max(0, len(iterations) - 1)
     if n_arch:
         print(f"  Iterations: current + {n_arch} archived run(s)")
 
-    # Iterations grid: drop strategy_horizons (its curves now live in
-    # backtest.horizon_metrics) so the payload doesn't carry them twice.
+    # Iterations grid: drop strategy_horizons (its curves + per-horizon books now
+    # live in backtest.horizon_metrics / portfolio.byHorizon) so the payload
+    # doesn't carry them twice.
     grid = None
     if horizons:
         grid = {k: v for k, v in horizons.items() if k != "strategy_horizons"}
