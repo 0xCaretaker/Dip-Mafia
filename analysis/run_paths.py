@@ -9,9 +9,12 @@ All runs live in dated, self-describing subfolders of ``backtest_output/``:
       six7/                  <- six7 almanac outputs (*.pkl caches git-ignored)
       dashboard.html
 
-The "current" run is simply the newest one: highest ``meta.json`` date, ties
-broken by folder name (descending). six7/ has no top-level dashboard_data.json,
-so it is never mistaken for a run.
+The "current" run is simply the newest one: highest ``meta.json`` date, then
+newest ``meta.json`` ``generated_at`` (wall-clock), ties finally broken by folder
+name (descending). The ``generated_at`` key matters when two runs share a data
+date but differ in watchlist (e.g. ``50sym`` vs ``75sym``), where folder name
+alone would wrongly pick the larger symbol count. six7/ has no top-level
+dashboard_data.json, so it is never mistaken for a run.
 
 Every consumer (backtest.py, portfolio_view.py, horizon_compare.py,
 backtest_six7.py) imports this module so the layout is defined in exactly one
@@ -51,7 +54,9 @@ def list_runs():
 
     A run is any direct subdirectory of ``BASE`` containing a top-level
     ``dashboard_data.json``. Returned as ``[(dir, meta_dict), ...]`` sorted by
-    ``(meta.date, basename)`` descending.
+    ``(meta.date, meta.generated_at, basename)`` descending. ``generated_at`` is
+    a wall-clock stamp (empty for legacy runs that predate it), so a freshly
+    generated run wins a same-data-date tie regardless of its symbol count.
     """
     runs = []
     for d in glob.glob(os.path.join(BASE, "*")):
@@ -60,7 +65,9 @@ def list_runs():
         if not os.path.isfile(os.path.join(d, "dashboard_data.json")):
             continue
         runs.append((d, _meta(d)))
-    runs.sort(key=lambda x: (str(x[1].get("date", "")), os.path.basename(x[0])),
+    runs.sort(key=lambda x: (str(x[1].get("date", "")),
+                             str(x[1].get("generated_at", "")),
+                             os.path.basename(x[0])),
               reverse=True)
     return runs
 

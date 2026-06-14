@@ -14,6 +14,7 @@ import sys
 import json
 import shutil
 import warnings
+from datetime import datetime, timezone
 import numpy as np
 import pandas as pd
 import yfinance as yf
@@ -1102,6 +1103,9 @@ def main():
             "label": f"{n_watch}-symbol, bb-{cfg['bb_lookback']}",
             "watchlist_size": n_watch,
             "bb_lookback": cfg["bb_lookback"],
+            # wall-clock generation time: breaks "current run" ties when two runs
+            # share a data date but differ in watchlist (e.g. 50sym vs 75sym).
+            "generated_at": datetime.now(timezone.utc).isoformat(),
         }, f, indent=2)
     try:
         shutil.copy("stocks.txt", os.path.join(OUTPUT_DIR, "stocks.txt"))
