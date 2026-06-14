@@ -159,6 +159,102 @@ def _downsample(series, n=170):
             "values": [round(float(s.iloc[i]), 2) for i in idx]}
 
 
+def _cum_invested(index, monthly):
+    """Cumulative contributed capital aligned to a sim's date index."""
+    contribs = sorted((v["date"], v["amount"]) for v in monthly.values())
+    out, running, ci = [], 0.0, 0
+    for dt in index:
+        while ci < len(contribs) and contribs[ci][0] <= dt:
+            running += contribs[ci][1]; ci += 1
+        out.append(running)
+    return pd.Series(out, index=index)
+
+
+def _horizon_portfolio(buy_log, win, monthly, value_series, metrics, slippage_bps):
+    """Per-horizon portfolio payload from a windowed Timed HODL buy_log.
+
+    Holdings are valued at each stock's last close in the window (the data-date
+    close), so every horizon is a fresh 'started N years ago' book valued at one
+    consistent as-of. Returns {summary, rows, alloc, pnl, nav}.
+    """
+    close = {}
+    for s, df in win.items():
+        c = df["Close"].dropna()
+        if not c.empty:
+            close[s] = float(c.iloc[-1])
+
+    agg = {}
+    for b in buy_log:
+        s = b["stock"]
+        a = agg.setdefault(s, {"shares": 0.0, "invested": 0.0, "n": 0,
+                               "first": None, "last": None, "trades": []})
+        sh = b["amount"] / (b["price"] * (1 + slippage_bps / 10000))
+        a["shares"] += sh; a["invested"] += b["amount"]; a["n"] += 1
+        d = b["date"]
+        a["first"] = d if a["first"] is None or d < a["first"] else a["first"]
+        a["last"] = d if a["last"] is None or d > a["last"] else a["last"]
+        a["trades"].append({"date": d.strftime("%Y-%m-%d"), "price": round(b["price"], 2),
+                            "shares": round(sh, 2), "amount": round(b["amount"])})
+
+    rows = []
+    for s, a in agg.items():
+        cp = close.get(s)
+        if cp is None or a["shares"] <= 0:
+            continue
+        value = a["shares"] * cp
+        rows.append({
+            "stock": s, "avg_price": round(a["invested"] / a["shares"], 2),
+            "cmp": round(cp, 2), "shares": round(a["shares"], 1),
+            "invested": round(a["invested"]), "value": round(value),
+            "pnl": round(value - a["invested"]),
+            "ret": round((value - a["invested"]) / a["invested"] * 100, 1) if a["invested"] else None,
+            "weight": 0.0, "num_buys": a["n"],
+            "first_buy": a["first"].strftime("%Y-%m-%d"), "last_buy": a["last"].strftime("%Y-%m-%d"),
+            "trades": a["trades"], "_v": value,
+        })
+    rows.sort(key=lambda r: r["_v"], reverse=True)
+    held_val = sum(r["_v"] for r in rows)
+    for r in rows:
+        r["weight"] = round(r["_v"] / held_val * 100, 1) if held_val else 0.0
+        del r["_v"]
+
+    invested = sum(v["amount"] for v in monthly.values())
+    value = float(value_series.iloc[-1])          # incl. residual cash (NAV close)
+    winners = sum(1 for r in rows if r["pnl"] > 0)
+    best = max(rows, key=lambda r: r["ret"]) if rows else None
+    worst = min(rows, key=lambda r: r["ret"]) if rows else None
+    summary = {
+        "total_invested": round(invested), "total_value": round(value),
+        "total_pnl": round(value - invested),
+        "total_ret": round((value - invested) / invested * 100, 1) if invested else None,
+        "xirr": round(metrics["xirr"], 1), "max_drawdown": round(metrics["max_drawdown"], 1),
+        "winners": winners, "losers": len(rows) - winners,
+        "best_stock": best["stock"] if best else None,
+        "best_ret": round(best["ret"]) if best else None,
+        "worst_stock": worst["stock"] if worst else None,
+        "worst_ret": round(worst["ret"]) if worst else None,
+        "count": len(rows),
+    }
+
+    top_n = 10
+    alloc_labels = [r["stock"] for r in rows[:top_n]]
+    alloc_values = [float(r["value"]) for r in rows[:top_n]]
+    if len(rows) > top_n:
+        alloc_labels.append("Others")
+        alloc_values.append(float(sum(r["value"] for r in rows[top_n:])))
+    pnl_sorted = sorted(rows, key=lambda r: r["pnl"])
+
+    v_ds = _downsample(value_series)
+    i_ds = _downsample(_cum_invested(value_series.index, monthly))
+    nav = {"dates": v_ds["dates"], "value": v_ds["values"], "invested": i_ds["values"]}
+
+    return {"summary": summary, "rows": rows,
+            "alloc": {"labels": alloc_labels, "values": alloc_values},
+            "pnl": {"labels": [r["stock"] for r in pnl_sorted],
+                    "values": [float(r["pnl"]) for r in pnl_sorted]},
+            "nav": nav}
+
+
 def _load_nifty():
     """^NSEI close series, full history to END (single-ticker download)."""
     try:
@@ -196,7 +292,7 @@ def strategy_horizons(data, symbols, sig, end_dt):
     prev_gate = bt.BUY_REQUIRE_BELOW_MID
     bt.BUY_REQUIRE_BELOW_MID = True
     nifty = _load_nifty()
-    cells, curves = {}, {}
+    cells, curves, portfolios = {}, {}, {}
     for hl, yr in HORIZONS:
         win, syms, monthly, hstart = _window_monthly(data, symbols, bb, scfg, end_dt, yr)
         if win is None:
@@ -214,12 +310,15 @@ def strategy_horizons(data, symbols, sig, end_dt):
             }
 
         # Timed HODL (gate per backtest default + V4 fallback defaults)
-        tsim, tcf, _bl, _idle = bt.simulate_timed_hodl(win, syms, monthly, bb, bb_mid, imp,
+        tsim, tcf, tbl, _idle = bt.simulate_timed_hodl(win, syms, monthly, bb, bb_mid, imp,
                                                        slippage_bps=scfg["slippage_bps"])
         tm = bt.compute_metrics(tsim["portfolio"], "T", tcf)
         tot = tsim["portfolio"].replace(0, np.nan)
         cash_series = (tsim["cash"] / tot * 100).fillna(100)
         cells[f"Timed HODL|{hl}"] = _cell(tm, round(float(cash_series.mean()), 1))
+        # Per-horizon portfolio (fresh windowed book valued at the data-date close)
+        portfolios[hl] = _horizon_portfolio(tbl, win, monthly, tsim["portfolio"], tm,
+                                            scfg["slippage_bps"])
         # SIP
         ssim, scf = bt.simulate_sip(win, syms, monthly, scfg["slippage_bps"])
         sm = bt.compute_metrics(ssim["portfolio"], "S", scf)
@@ -247,6 +346,7 @@ def strategy_horizons(data, symbols, sig, end_dt):
         "metrics": STRAT_METRICS,
         "cells": cells,
         "curves": curves,
+        "portfolios": portfolios,
     }
 
 

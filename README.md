@@ -239,7 +239,7 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── analysis/              # research/backtest tooling (run from the repo root)
 │   ├── backtest.py        # portfolio backtest - Timed HODL (V4 fallback + midline + bb-60)
 │   ├── horizon_compare.py # 1y/3y/5y/10y/Full horizon grids for the dashboard
-│   ├── portfolio_view.py  # emits docs/strat_data.js (portfolio NAV + backtest + iterations)
+│   ├── portfolio_view.py  # emits docs/strat_data.js (per-horizon portfolio books + backtest + iterations)
 │   ├── backtest_six7.py   # six7 almanac: lists × horizons (same Timed HODL strategy)
 │   ├── build_web.py       # assembles docs/data.js for the Screens section
 │   └── run_paths.py       # backtest_output/ layout helper
