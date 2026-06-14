@@ -184,6 +184,8 @@ td.sparkcell{text-align:left; padding-top:4px; padding-bottom:4px}
 .sparkna{color:var(--ink-mute)}
 thead th.nosort{cursor:default}
 thead th.nosort:hover{color:var(--ink-mute)}
+tr.it-spark .spark{margin:0 auto}
+tr.it-spark td{border-bottom:1px solid var(--line-2)}
 
 .controls{display:flex; gap:10px; margin-bottom:14px; flex-wrap:wrap; align-items:center}
 .controls input{background:var(--surface); border:1px solid var(--line); border-radius:var(--r-sm);
@@ -998,7 +1000,11 @@ function renderIterations(){
     ["Sortino (full)", i=>i.sortino, "max", v=>v==null?"–":v.toFixed(2)],
     ["Cash drag (full)", i=>i.cash_pct, "min", v=>v==null?"–":v.toFixed(1)+"%"],
   ];
-  let h="";
+  // Trend row: each iteration's Timed HODL equity as a sparkline, scoped to the horizon
+  let h=`<tr class="it-spark"><td>Trend · ${HZ}</td>${it.map(i=>{
+    const sv=i.equity&&i.equity.values?sliceTS(i.equity.dates,i.equity.values,HZ_YEARS[HZ]).v:null;
+    return `<td class="sparkcell">${sv&&sv.length>1?sparkline(sv,140,30):'<span class="sparkna">–</span>'}</td>`;
+  }).join("")}</tr>`;
   rows.forEach(([lab,fn,best,ff])=>{
     const vals=it.map(fn); const nums=vals.filter(v=>v!=null&&!isNaN(v));
     const bv=best&&nums.length>1?(best==="max"?Math.max(...nums):Math.min(...nums)):null;
