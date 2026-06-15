@@ -72,7 +72,7 @@ backtest_output/
   six7/                      six7 almanac outputs (results tracked; *.pkl caches git-ignored)
 ```
 
-There is **no separate archive folder**. The "current" run is simply the newest subfolder - `run_paths.current_run()` returns the one with the highest `meta.json` date (ties broken by folder name); `run_paths.archived_runs()` returns the rest. `portfolio_view.py`, `horizon_compare.py`, and `backtest_six7.py` all resolve paths through `run_paths` - never hard-code `backtest_output/...`.
+There is **no separate archive folder**. The "current" run is simply the newest subfolder - `run_paths.current_run()` returns the one with the highest `meta.json` date, then newest `meta.json` `generated_at` (wall-clock), folder name last (so a freshly generated run wins a same-data-date tie even when its symbol count sorts lower, e.g. `50sym` vs `75sym`); `run_paths.archived_runs()` returns the rest. `portfolio_view.py`, `horizon_compare.py`, and `backtest_six7.py` all resolve paths through `run_paths` - never hard-code `backtest_output/...`.
 
 ## Re-running the strat backtest (iteration workflow)
 

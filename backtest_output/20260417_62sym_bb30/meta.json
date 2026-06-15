@@ -3,5 +3,6 @@
   "label": "Prev watchlist (62-symbol, bb-30)",
   "watchlist_size": 62,
   "bb_lookback": 30,
-  "note": "Previous stocks.txt (commit 88bb51a). Superseded by the 75-symbol list with bb-lookback 60."
+  "note": "Previous stocks.txt (commit 88bb51a). Superseded by the 75-symbol list with bb-lookback 60.",
+  "generated_at": "2026-06-14T06:27:19.756990+00:00"
 }
