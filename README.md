@@ -6,7 +6,7 @@
 >
 > **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
-> The watchlist in `stocks.txt` is curated via a separate fundamental analysis tool (not included in this repo), this bot handles the technical timing layer on top of that fundamental filter.
+> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. This bot handles the technical timing layer on top of that fundamental filter.
 
 ### [Join the Telegram channel to receive live signals](https://t.me/dipmafia)
 
@@ -16,7 +16,7 @@
 
 ```
 ┌─────────────────────────────────────┐
-│         stocks.txt (watchlist)      │
+│  six7.txt ∪ holdings.txt (watchlist) │
 └──────────────┬──────────────────────┘
                ▼
 ┌─────────────────────────────────────┐
@@ -107,12 +107,18 @@ Go to **Settings > Secrets and variables > Actions** and add:
 
 ### 2. Edit your watchlist
 
-`stocks.txt`, one NSE symbol per line, without `.NS`:
+The bot signals on the union of two files, one NSE symbol per line, without `.NS`:
+
+- `six7.txt` - the Top 50 watchlist (overwritten by the external six7 mirror)
+- `holdings.txt` - stocks you already hold (so they keep getting signals)
+
 ```
 RELIANCE
 TCS
 INFY
 ```
+
+`stocks.txt` is a **derived** file (the `six7.txt` ∪ `holdings.txt` union) used only by the backtest/dashboard tooling - regenerate it with `python3 watchlist.py` after editing either list.
 
 ### 3. Done
 
@@ -239,7 +245,10 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── bot.py                 # live entry: orchestrator, Telegram sender, sentiment
 ├── macd_signals.py        # Standard + Impulse MACD (standalone capable)
 ├── bollinger_signals.py   # 200-period Bollinger Bands (standalone capable)
-├── stocks.txt             # watchlist
+├── watchlist.py           # two-list loader; regenerates stocks.txt
+├── six7.txt               # source list: six7 Top 50 (mirror target)
+├── holdings.txt           # source list: stocks you already hold
+├── stocks.txt             # DERIVED union (six7 ∪ holdings); analysis input only
 ├── analysis/              # research/backtest tooling (run from the repo root)
 │   ├── backtest.py        # portfolio backtest - Timed HODL (V4 fallback + midline + bb-60)
 │   ├── horizon_compare.py # 1y/3y/5y/10y/Full horizon grids for the dashboard
@@ -249,7 +258,7 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 │   └── run_paths.py       # backtest_output/ layout helper
 ├── pine/                  # TradingView ports (indicator + strategy)
 ├── notes/                 # STRATEGY_COMPARISON.md, context.md, specs/
-├── tests/                 # test_bb_position.py
+├── tests/                 # test_bb_position.py, test_watchlist.py
 ├── backtest_output/       # dated run subfolders + six7/ almanac
 ├── docs/                  # GitHub Pages: index.html (unified dashboard) + data.js + strat_data.js
 ├── requirements.txt       # yfinance, requests
