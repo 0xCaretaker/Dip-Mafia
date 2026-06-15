@@ -13,6 +13,11 @@ on:
     - cron: '3 3,5,7,9 * * 1-5'  # Target: 08:33/10:33/12:33/14:33 IST, weekdays
     - cron: '3 5 * * 0,6'        # Target: 10:33 IST weekend summary
   workflow_dispatch:
+    inputs:
+      force:
+        description: "Post signals even if unchanged since the last run"
+        type: boolean
+        default: true
 
 jobs:
   run:
@@ -41,6 +46,9 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          # Manual dispatch defaults force=true; scheduled runs leave it empty
+          # so the dedup hash still suppresses unchanged signals.
+          DIP_MAFIA_FORCE: ${{ inputs.force }}
         run: python bot.py
 
       - name: Save signal cache
