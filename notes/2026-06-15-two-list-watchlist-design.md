@@ -10,7 +10,7 @@ The live bot reads a single `stocks.txt`. An external six7 scorer (separate repo
 auto-mirrors the NSE Top 50 into `stocks.txt` on every scan, **overwriting it**.
 That means any stock the user actually holds but which is not in the current Top 50
 silently stops getting signals. Measured on 2026-06-15: of 54 Kite holdings, only
-2 (`BSE`, `OBEROIRLTY`) are in the current Top 50 — so 52 real positions would lose
+2 (`BSE`, `OBEROIRLTY`) are in the current Top 50 - so 52 real positions would lose
 coverage on the next mirror.
 
 The user never sells (core product invariant), so they need signals on their actual
@@ -20,9 +20,9 @@ book *and* on the Top 50 watchlist, with the Telegram message distinguishing the
 
 Split the single watchlist into two source files and signal on their union:
 
-- `holdings.txt` — the user's real Zerodha book (hand-synced from the
+- `holdings.txt` - the user's real Zerodha book (hand-synced from the
   Portfolio-Analyzer Kite export). Stable; not touched by the mirror.
-- `six7.txt` — the six7 Top 50 (the external mirror is repointed here).
+- `six7.txt` - the six7 Top 50 (the external mirror is repointed here).
 
 Both feed signals. The Telegram message tags each row by class so the user can tell
 a Top 50 name from a holding-they-own-but-isn't-in-the-Top-50.
@@ -36,14 +36,14 @@ a Top 50 name from a holding-they-own-but-isn't-in-the-Top-50.
   a holding not in the current Top 50.
 - **stocks.txt fate:** keep it as a generated `holdings ∪ six7` union; analysis
   tooling is untouched.
-- **Telegram legend:** explicit tag on every row — `⭐` six7 / `💼` holding —
+- **Telegram legend:** explicit tag on every row - `⭐` six7 / `💼` holding -
   placed before the dip-position emoji. Plus a legend line.
 - **holdings seed:** fresh pull via the Portfolio-Analyzer tool (interactive Kite
   login run by the user), then copied into this repo.
 
 ## Design
 
-### 1. `watchlist.py` (new, repo root) — single source of truth
+### 1. `watchlist.py` (new, repo root) - single source of truth
 
 ```python
 load_watchlist() -> (symbols, six7_set, holdings_set)
@@ -62,7 +62,7 @@ regenerate_stocks_txt()   # also runnable as: python3 watchlist.py
 - Writes the sorted union to `stocks.txt` for the analysis/backtest tooling.
 
 Rationale: one place owns reading, normalization, dedup, classification, and the
-derived-file regeneration — instead of duplicating the read across `bot.py`.
+derived-file regeneration - instead of duplicating the read across `bot.py`.
 
 ### 2. `bot.py`
 
@@ -81,7 +81,7 @@ derived-file regeneration — instead of duplicating the read across `bot.py`.
 
 - `six7.txt` ← current `stocks.txt` (the 50 Top names).
 - `holdings.txt` ← `~/claude/Portfolio-Analyzer/data/holdings.txt` (fresh Kite
-  export), stored raw — the loader normalizes at read time.
+  export), stored raw - the loader normalizes at read time.
 - `stocks.txt` ← regenerated union (~100 symbols), replacing the current 50.
 
 ### 4. Docs
@@ -97,7 +97,7 @@ derived-file regeneration — instead of duplicating the read across `bot.py`.
 - `tests/test_watchlist.py`: dedup, suffix normalization, six7-wins classification,
   union sorting, missing-file tolerance.
 - Manual: `python3 bot.py` with no `TELEGRAM_TOKEN` builds and prints the tagged
-  message without sending — confirm `⭐`/`💼` tags and legend render.
+  message without sending - confirm `⭐`/`💼` tags and legend render.
 
 ## Out of scope (follow-ups, not coded here)
 

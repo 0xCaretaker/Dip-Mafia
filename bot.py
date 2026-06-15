@@ -8,6 +8,7 @@ import yfinance as yf
 
 from macd_signals import process_both_signals, colored_output
 from bollinger_signals import process_bollinger_signals
+from watchlist import load_watchlist
 
 
 # =========================
@@ -99,7 +100,7 @@ def get_index_moves():
 # =========================
 # Telegram sender (Filtered by Bollinger Bands)
 # =========================
-def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_moves):
+def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_moves, six7_set):
     TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
     TELEGRAM_CHAT_IDS = os.environ.get("TELEGRAM_CHAT_IDS", "").split(",")
     if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_IDS[0]:
@@ -227,8 +228,9 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
             padded_stock = stock.ljust(max_len)
             price_str = f"{price:.2f}".rjust(price_width)
             pos_prefix = f"{position} " if position else ""
+            cls = "⭐" if stock in six7_set else "💼"   # Top 50 vs your holding
             combined_lines.append(
-                f"{emoji[action]} {pos_prefix}`{padded_stock} ₹{price_str}`"
+                f"{emoji[action]} {cls} {pos_prefix}`{padded_stock} ₹{price_str}`"
             )
 
         if total > 0:
@@ -258,6 +260,7 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         combined_lines.append(divider)
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
+        combined_lines.append("_⭐ Top 50 · 💼 your holding_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
         combined_lines.append("")
@@ -334,14 +337,15 @@ def main():
     print("UTC Time:", now_utc.strftime('%Y-%m-%d %H:%M:%S'))
     print("IST Time:", now_ist.strftime('%Y-%m-%d %H:%M:%S'))
 
-    try:
-        with open("stocks.txt", "r") as f:
-            stocks = [line.strip() for line in f if line.strip()]
-    except FileNotFoundError:
-        print("Error: stocks.txt file not found.")
+    symbols, six7_set, holdings_set = load_watchlist()
+    if not symbols:
+        print("Error: no symbols found in six7.txt / holdings.txt")
         return
 
-    stocks = [s + ".NS" for s in stocks]
+    print(f"Watchlist: {len(symbols)} symbols "
+          f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
+
+    stocks = [s + ".NS" for s in symbols]
     intervals = ["1d"]
 
     index_moves = get_index_moves()
@@ -447,7 +451,7 @@ def main():
             print(f"\n  Sentiment: {mood}")
 
     print()
-    send_bulk_telegram_message(all_interval_signals, bollinger_results, index_moves)
+    send_bulk_telegram_message(all_interval_signals, bollinger_results, index_moves, six7_set)
 
 
 if __name__ == "__main__":
