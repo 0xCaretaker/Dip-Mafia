@@ -1,0 +1,49 @@
+name: Regenerate derived stocks.txt
+
+# stocks.txt is the six7.txt ∪ holdings.txt union read by the backtest/dashboard
+# tooling (the live bot reads the two source lists directly via watchlist.py).
+# Whenever a source list changes - six7.txt (pushed by the external six7 mirror)
+# or holdings.txt (edited by hand) - rebuild the derived union so main stays
+# coherent. The commit only touches stocks.txt, which is NOT in the path filter,
+# so this never re-triggers itself.
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - six7.txt
+      - holdings.txt
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: regen-stocks
+  cancel-in-progress: false
+
+jobs:
+  regen:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Regenerate stocks.txt from the two source lists
+        run: python3 watchlist.py
+
+      - name: Commit if the union changed
+        run: |
+          if git diff --quiet -- stocks.txt; then
+            echo "stocks.txt already up to date — nothing to commit"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add stocks.txt
+          git commit -m "Regenerate derived stocks.txt (six7.txt ∪ holdings.txt)"
+          git push
