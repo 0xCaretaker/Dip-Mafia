@@ -305,9 +305,15 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
     print(final_message)
     print("=" * 60)
 
-    if current_hash == prev_hash:
+    # Manual runs (the six7 "Run Dip Mafia" button / workflow_dispatch) set
+    # DIP_MAFIA_FORCE to post the current signals even if unchanged - otherwise
+    # the dedup hash would silently suppress an on-demand trigger.
+    force = os.environ.get("DIP_MAFIA_FORCE", "").strip().lower() in ("1", "true", "yes")
+    if current_hash == prev_hash and not force:
         print("⏭️  Skipping Telegram: signals unchanged from last run")
         return
+    if force and current_hash == prev_hash:
+        print("🔔 Force-send: posting despite unchanged signals")
 
     with open(hash_file, "w") as f:
         f.write(current_hash)
