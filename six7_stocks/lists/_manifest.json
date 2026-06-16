@@ -1,8 +1,8 @@
 {
-  "generated_at": "2026-06-03T08:44:27.316471+00:00",
-  "source_snapshot": "snapshot_20260601.json",
-  "snapshot_generated_at": "2026-06-01T09:48:58.180395+00:00",
-  "universe_scanned": 5762,
+  "generated_at": "2026-06-16T20:45:49.505855+00:00",
+  "source_snapshot": "snapshot_20260616.json",
+  "snapshot_generated_at": "2026-06-16T19:48:16.324103+00:00",
+  "universe_scanned": 5773,
   "definitions": {
     "top10/30/50/100": "ranked by 0-10 composite within the 6+ criteria universe; ties -> criteria count -> market cap",
     "strong_buy": "composite >= 8.0 AND (score >= 6 OR perfect) -- site 'Strong' segment",
@@ -24,16 +24,16 @@
       "count": 100
     },
     "strong_buy": {
-      "count": 84
+      "count": 88
     },
     "buy_plus": {
-      "count": 198
+      "count": 205
     },
     "six_plus": {
-      "count": 198
+      "count": 205
     },
     "perfect7": {
-      "count": 21
+      "count": 18
     }
   }
 }

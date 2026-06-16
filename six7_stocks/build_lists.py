@@ -28,7 +28,7 @@ import os
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SNAPSHOT = os.path.join(HERE, "snapshot_20260601.json")
+SNAPSHOT = os.path.join(HERE, "snapshot_20260616.json")
 LISTS_DIR = os.path.join(HERE, "lists")
 
 DEFAULT_MIN = 6          # site default criteria floor (scan mode)
