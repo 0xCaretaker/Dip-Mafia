@@ -1,36 +1,34 @@
 # Roadmap
 
-## ⏳ Session handoff (2026-06-15) — continue on another desktop
+## ⏳ Session handoff (2026-06-17)
 
-Everything below shipped this session is **merged to GitHub** on both repos. Pick up here.
+### Shipped today (merged)
+- **Run Dip Mafia button wired up end-to-end** (six7 prod): six7 `/api/notify` now falls back to
+  `GITHUB_TOKEN` if `DIPMAFIA_DISPATCH_TOKEN` is unset (single PAT covers `/api/scan` + notify).
+  A dedicated fine-grained PAT (Dip-Mafia Actions R/W) is set as `DIPMAFIA_DISPATCH_TOKEN` in Vercel,
+  the broad `GITHUB_TOKEN` stays for scan. Button verified: `{"dispatched": true}`.
+- **Discord mirror** (Dip-Mafia): `send_discord_message()` ships the Telegram payload to a Discord
+  channel via webhook (opt-in via `DISCORD_WEBHOOK_URL` repo secret). MarkdownV2 → Discord conversion
+  strips `\\(`/`\\.` escapes and promotes `*X*` → `**X**`. Prepends `@here` with explicit
+  `allowed_mentions` so the ping actually fires. Splits on blank lines to stay under Discord's 2000-char cap.
+- **README / button copy**: README now lists both Telegram + Discord invites; the six7 button tooltip
+  and toast text mention both channels.
 
-### The ONE pending action (required for the Telegram button to work)
-The six7 site's new **🩸 Run Dip Mafia** button dispatches Dip-Mafia's `dip-mafia.yml`,
-but the six7 Vercel function needs a token to do it:
-- [ ] Create a **fine-grained PAT** with **Actions: Read and write** on `0xCaretaker/Dip-Mafia`.
-- [ ] Add it to **Vercel → six7 project → Settings → Environment Variables** as
-      **`DIPMAFIA_DISPATCH_TOKEN`** (optional `DIPMAFIA_REPO` overrides the default slug).
-- [ ] **Redeploy six7** (Vercel applies new env vars on the next deploy). That same redeploy
-      also makes the floor-0.5 financials scoring + updated sub-score copy live on the dashboard.
-- [ ] Test: press the button → `dip-mafia.yml` runs with `force=true` → signals post to Telegram (~1-2 min).
-- Until the token is set, the button toasts "Telegram dispatch not configured" (a clean 502). Doc: `six7/docs/DEPLOY-VERCEL.md`.
+### Carried forward from 2026-06-15
+- **Two-list watchlist** (Dip-Mafia #26), **auto-regen** (#27), **mirror → six7.txt** (six7 #9),
+  **financials floor-0.5** (six7 #10), **force-send** (Dip-Mafia #28), **🩸 button** (six7 #11),
+  six7 WIP (six7 #12).
 
-### Shipped this session (merged)
-- **Two-list watchlist** (Dip-Mafia #26): bot signals on `six7.txt` ∪ `holdings.txt` via `watchlist.py`;
-  Telegram tags `⭐` Top 50 / `💼` holding. `stocks.txt` is now a derived union.
-- **Auto-regen** (Dip-Mafia #27): `regen-stocks.yml` rebuilds `stocks.txt` when a source list changes.
-- **Mirror → six7.txt** (six7 #9): the six7 scorer now writes `six7.txt`, not `stocks.txt`.
-- **Financials scoring fix** (six7 #10, **live**): FCF/D-E floored at neutral 0.5 for Financials
-  (reward good values, no free ROE-only pillar). Top-50 financials 10→3. Applied via a web-scan run.
-- **Force-send** (Dip-Mafia #28): `DIP_MAFIA_FORCE` / `dip-mafia.yml` `force` input so manual runs post even if unchanged.
-- **Run Dip Mafia button** (six7 #11): `POST /api/notify` + the dashboard button.
-- six7 WIP preserved (six7 #12): dispatch follow-redirects + `ruff.toml`.
-
-### Other open follow-ups
-- [ ] **Almanac lockstep**: `HODL-bot/six7_stocks/build_lists.py` reads a *baked* snapshot — re-save it
-      from the redeployed six7 API + re-run so its lists reflect the new financials scoring (almanac only, not the live bot).
-- [ ] Rerun the strat backtest/dashboards — the research universe grew 50→~100 (two-list union).
-- [ ] Offered but not built: put the Dip Mafia button on another page; add a confirmation dialog before it fires.
+### Open follow-ups
+- [ ] **Auto-delete Discord posts after 24h**: webhooks can `DELETE /webhooks/{id}/{token}/messages/{msg_id}`,
+      but only if we persist each message ID. Needs (a) capture-and-store on send, (b) a scheduled
+      cleanup workflow that sweeps entries older than 24h. ~30 lines + a state file. Deferred.
+- [ ] **Optional Verdict tightening**: live bot keeps `REQUIRE_CLOSE_BELOW_MIDLINE=False` so Watch names
+      that recovered above the 200-SMA (e.g. MOTILALOFS) still render. Flip to True to match the backtest's
+      stricter gate; needs a call on whether to lose those alerts.
+- [ ] Optional UX: button on another page; confirmation dialog before dispatch.
+- [ ] **Rotate the Discord webhook** — the URL was pasted in chat during setup. Delete + recreate the
+      webhook in Discord → Integrations, then `gh secret set DISCORD_WEBHOOK_URL --repo 0xCaretaker/Dip-Mafia --body "<new>"`.
 
 ### Not on GitHub (local only — back up before wiping)
 - `six7/.claude/` (settings.json + skills/) is personal Claude config, gitignored/untracked by repo convention — it will NOT survive a workspace wipe.
