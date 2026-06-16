@@ -373,9 +373,14 @@ def send_discord_message(final_message):
     if buf:
         chunks.append(buf)
 
-    for chunk in chunks:
+    for i, chunk in enumerate(chunks):
+        content = f"@here\n{chunk}" if i == 0 else chunk
         try:
-            r = requests.post(url, json={"content": chunk}, timeout=10)
+            r = requests.post(
+                url,
+                json={"content": content, "allowed_mentions": {"parse": ["everyone"]}},
+                timeout=10,
+            )
             r.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Discord Error: {e}")
