@@ -2,7 +2,7 @@
 
 **Dip Mafia** (formerly HODL-bot) is an automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram and Discord, fully automated via GitHub Actions.
 
-> **Philosophy**: Buy the crash, hold forever. This bot watches 70+ fundamentally screened NSE stocks and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits, just long entries at high-conviction dips.
+> **Philosophy**: Buy the crash, hold forever. This bot watches 100+ NSE stocks (six7 Top 50 ∪ your real holdings) and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits, just long entries at high-conviction dips.
 >
 > **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
@@ -142,7 +142,7 @@ python bot.py
 
 ## Backtest
 
-A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget, the point of 60+ stocks is that something is always dipping, keeping cash deployed.
+A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget — the point of 50+ stocks is that something is always dipping, keeping cash deployed.
 
 ### Run it
 
@@ -155,7 +155,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 
 ### Latest Results (50 stocks, 2010–2026)
 
-> Run as of 2026-04-17 against `six7.txt` alone — the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (backtest only — the live bot stays ungated so all Buy/Watch alerts come through), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
+> Run as of 2026-04-17 against `six7.txt` alone — the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` — aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -204,7 +204,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 - **Both strategies crush NIFTY 50 by ~4.6x** — stock picking matters more than timing, and the six7 Top 50 sets the fundamental quality bar (every name is a Strong Buy).
 - **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close — the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
 - **Drawdown is structurally better** — -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
-- **Backtest is gated, the live bot is not** — `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest only; the Telegram bot stays ungated.
+- **Backtest gate and live bot gate are aligned** — both `BUY_REQUIRE_BELOW_MID` (backtest) and `REQUIRE_CLOSE_BELOW_MIDLINE` (bot) are True, so the Telegram + Discord posts drop Watch names that recovered above the 200-SMA. What you see is what the backtest would actually buy.
 - **Cash drag low at 1.3%**, longest idle stretch 21 trading days, V4 fallback deploying across any below-midline name when signals dry up.
 - **Real returns easily beat inflation** — 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
 - **Entry+Exit is worse than just holding** — XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
