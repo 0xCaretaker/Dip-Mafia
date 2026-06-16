@@ -41,7 +41,7 @@ import matplotlib.ticker as mticker
 import backtest as bt
 import run_paths
 
-LISTS_DIR = "six7_stocks/lists"
+LISTS_DIR = "analysis/six7_stocks/lists"
 STOCKS_TXT = "stocks.txt"
 OUT_DIR = run_paths.SIX7
 OLD_DASHBOARD = os.path.join(run_paths.current_run() or run_paths.BASE, "dashboard_data.json")

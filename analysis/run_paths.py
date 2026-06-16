@@ -7,7 +7,6 @@ All runs live in dated, self-describing subfolders of ``backtest_output/``:
       20260417_75sym_bb60/   <- a run (dashboard_data.json, *.png, meta.json, ...)
       20260417_62sym_bb30/   <- an earlier run
       six7/                  <- six7 almanac outputs (*.pkl caches git-ignored)
-      dashboard.html
 
 The "current" run is simply the newest one: highest ``meta.json`` date, then
 newest ``meta.json`` ``generated_at`` (wall-clock), ties finally broken by folder

@@ -2,7 +2,7 @@
 """Assemble the static dashboard data (docs/data.js) from the six7 backtest output.
 
 Reads:
-  six7_stocks/lists/_manifest.json          - list counts + definitions + snapshot date
+  analysis/six7_stocks/lists/_manifest.json - list counts + definitions + snapshot date
   backtest_output/six7/comparison_<h>.json  - per-horizon metrics (raw numbers)
   backtest_output/six7/<list>/dashboard_data.json - full-horizon curves + metrics
 
@@ -113,10 +113,10 @@ def build_curve(curve):
 
 
 def main():
-    manifest = json.load(open(os.path.join("six7_stocks", "lists", "_manifest.json")))
+    manifest = json.load(open(os.path.join("analysis", "six7_stocks", "lists", "_manifest.json")))
     counts = {k: v["count"] for k, v in manifest["lists"].items()}
     # the two watchlists aren't in the six7 manifest - count their files directly
-    for key, path in [("univest_old", os.path.join("six7_stocks", "lists", "univest_old.txt")),
+    for key, path in [("univest_old", os.path.join("analysis", "six7_stocks", "lists", "univest_old.txt")),
                       ("stocks_current", "stocks.txt")]:
         if os.path.isfile(path):
             counts[key] = sum(1 for ln in open(path) if ln.strip())

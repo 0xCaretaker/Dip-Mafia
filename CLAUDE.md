@@ -25,10 +25,11 @@ six7.txt  holdings.txt                           the two source lists (six7 Top 
 stocks.txt                                        DERIVED union (six7 ∪ holdings); analysis input only
 analysis/   backtest.py  horizon_compare.py  portfolio_view.py  backtest_six7.py
             build_web.py  run_paths.py         research/backtest tooling
+            six7_stocks/                        almanac source lists + build_lists.py
 pine/       dip_mafia*.pine                     standalone TradingView ports (+ README)
 notes/      STRATEGY_COMPARISON.md  context.md  TODO.md
 tests/      test_bb_position.py  test_watchlist.py
-backtest_output/   dated run subfolders + six7/   docs/   six7_stocks/
+backtest_output/   dated run subfolders + six7/   docs/
 ```
 
 **Run `analysis/` scripts from the repo root** (e.g. `python3 analysis/backtest.py`) - they use paths relative to the working directory (`backtest_output/`, `stocks.txt`, `docs/`). `analysis/backtest.py` adds the repo root to `sys.path` so it can import the root-level `macd_signals`.
@@ -99,7 +100,7 @@ The unified dashboard (`docs/index.html`) has five horizon-aware sections (Overv
 
 ## Rebuilding the six7 almanac
 
-The six7 almanac (`docs/`, published on GitHub Pages) compares the screener lists in `six7_stocks/lists/` plus the live watchlist, running **Timed HODL vs SIP** across 1y/3y/5y/10y/Full horizons. `analysis/backtest_six7.py` does *not* define its own strategy - it deep-copies `bt.CONFIG` (so `bb_lookback=60`) and calls `bt.simulate_timed_hodl`, which honors `BUY_REQUIRE_BELOW_MID` and the V4 idle-cash fallback by default. **So the almanac's "Timed" numbers are the same V4 + midline + bb-60 strategy as the strat dashboard** - whenever that strategy or `stocks.txt` changes, the almanac is stale until rebuilt:
+The six7 almanac (`docs/`, published on GitHub Pages) compares the screener lists in `analysis/six7_stocks/lists/` plus the live watchlist, running **Timed HODL vs SIP** across 1y/3y/5y/10y/Full horizons. `analysis/backtest_six7.py` does *not* define its own strategy - it deep-copies `bt.CONFIG` (so `bb_lookback=60`) and calls `bt.simulate_timed_hodl`, which honors `BUY_REQUIRE_BELOW_MID` and the V4 idle-cash fallback by default. **So the almanac's "Timed" numbers are the same V4 + midline + bb-60 strategy as the strat dashboard** - whenever that strategy or `stocks.txt` changes, the almanac is stale until rebuilt:
 
 1. **Recompute** `python3 analysis/backtest_six7.py` (from the repo root) → writes `backtest_output/six7/` (per-list 8-chart suites + `comparison_<h>.{csv,json,png}`). Reuses `backtest_output/six7/_price_cache.pkl` when the ticker-union + `END` match; otherwise it re-downloads and rewrites the cache. `END` is pinned in the script for reproducibility.
 2. **Rebuild the web data** `python3 analysis/build_web.py` → assembles `docs/data.js` (`window.SIX7_DATA`) from the comparison JSON, which the GitHub Pages almanac reads.
