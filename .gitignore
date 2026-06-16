@@ -8,7 +8,7 @@ __pycache__/
 # six7 backtest now lives under backtest_output/six7/. Results (csv/json/png)
 # are tracked; only the large regenerable price/midcap caches are ignored.
 backtest_output/six7/*.pkl
-six7_stocks/snapshot_*.json
+analysis/six7_stocks/snapshot_*.json
 
 # Claude Code local tooling / skills (not part of the project).
 # Ignore the contents but let git descend so the agents/ deliverable can be tracked.
