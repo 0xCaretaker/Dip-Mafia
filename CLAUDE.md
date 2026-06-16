@@ -61,7 +61,7 @@ Long-only signals for NSE stocks from the two-list watchlist (`six7.txt` ∪ `ho
 
 **Bollinger is the filter, not a co-equal signal.** If you add or change signals, preserve the invariant that MACD lines in Telegram are gated by the Bollinger filter `{Buy, Watch}` (via `passes_bollinger_gate`). Console output prints full Bollinger results separately.
 
-**Live bot vs backtest gate (intentional divergence).** `bot.py` `REQUIRE_CLOSE_BELOW_MIDLINE = False` - the live Telegram bot shows the **full** Buy/Watch universe (no midline filter) so no alerts are suppressed. The **backtest** runs tighter: `backtest.py` `BUY_REQUIRE_BELOW_MID = True` adds the close-below-200-SMA requirement to Timed HODL buys (better recent-horizon returns; see `notes/STRATEGY_COMPARISON.md`). So the backtest models a stricter strategy than the bot signals, on purpose. `passes_bollinger_gate` in `bot.py` still supports the gate if the flag is flipped True.
+**Live bot and backtest gates aligned (2026-06-17).** `bot.py` `REQUIRE_CLOSE_BELOW_MIDLINE = True` matches `backtest.py` `BUY_REQUIRE_BELOW_MID = True`: both require close < BB midline (200-SMA) on top of the lower-band touch + MACD. The live Telegram bot's Verdict and sentiment now drop Watch names that recovered above their midline (band position ⏬/🔽 only), so what gets posted matches what the backtest would actually buy. Set the flag False in `bot.py` to revert to the looser awareness view (any lower-band touch within 60 bars). See `notes/STRATEGY_COMPARISON.md`.
 
 **MarkdownV2 escaping.** Any dynamic text inserted into the Telegram message must go through `escape_md`, the special-char set is broad (`.`, `-`, `!`, `(`, `)` etc. all require escaping) and unescaped output will cause Telegram to reject the message.
 
@@ -96,7 +96,7 @@ The unified dashboard (`docs/index.html`) has five horizon-aware sections (Overv
 
 **bb-60 is the default lookback** (live `bollinger_signals.py` and `backtest.py` CONFIG `bb_lookback=60`); horizon comparisons list it first and label it the default.
 
-`BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y - see `notes/STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.
+`BUY_REQUIRE_BELOW_MID` in `backtest.py` (**default True**, matching the live bot's `REQUIRE_CLOSE_BELOW_MIDLINE = True`): a Timed HODL signal buy also requires close < BB midline. Adds returns over 1/3/5y horizons, ~neutral over the full 16y - see `notes/STRATEGY_COMPARISON.md`. Set False to model the plain BB(touch)+MACD gate.
 
 ## Rebuilding the six7 almanac
 

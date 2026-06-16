@@ -57,7 +57,7 @@
 | **Gate** | Bollinger Bands (200, 2σ) | Buy | Price at or below lower band today |
 | | | Watch | Touched lower band in last 60 days |
 | | | Hold | No recent lower band interaction, **filtered out** |
-| | | _midline gate_ | **Backtest only**: Buy/Watch must also be below the 200-SMA midline (`BUY_REQUIRE_BELOW_MID`). The live bot sends all Buy/Watch (`REQUIRE_CLOSE_BELOW_MIDLINE=False`) |
+| | | _midline gate_ | Buy/Watch must also be below the 200-SMA midline. Live bot: `REQUIRE_CLOSE_BELOW_MIDLINE=True` (matches the backtest's `BUY_REQUIRE_BELOW_MID`). Set False to revert to the looser awareness view. |
 | **Signal** | Standard MACD (12/26/9) | Buy/Sell | Crossover on current bar |
 | | Impulse MACD (LazyBear) | Buy/Sell | SMMA + ZLEMA crossover on current bar |
 | | Both | Hold / Wait for Buy | Between crossovers |

@@ -14,14 +14,13 @@ from watchlist import load_watchlist
 # =========================
 # Bollinger buy gate
 # =========================
-# Intentionally OFF for the live bot: notifications show the FULL Bollinger
-# Buy/Watch universe (lower-band touch within 60 bars + MACD), so nothing is
-# filtered out of Telegram. The midline gate lives ONLY in the backtest
-# (backtest.py BUY_REQUIRE_BELOW_MID=True), which models a tighter strategy; the
-# bot deliberately stays looser for awareness. If set True here, the Verdict and
-# sentiment would also require close < BB midline (band position ⏬/🔽), dropping
-# Watch names that recovered above their 200-SMA. See notes/STRATEGY_COMPARISON.md.
-REQUIRE_CLOSE_BELOW_MIDLINE = False
+# ON to match the backtest's stricter gate: notifications drop Watch names
+# that recovered above the BB midline (200-SMA) so the Verdict and sentiment
+# reflect names still in a deep-dip posture (band position ⏬/🔽) rather than
+# ones that already mean-reverted. Set False to fall back to the looser
+# "any lower-band touch within 60 bars + MACD" view. See
+# notes/STRATEGY_COMPARISON.md and backtest.py BUY_REQUIRE_BELOW_MID.
+REQUIRE_CLOSE_BELOW_MIDLINE = True
 _BELOW_MID_POSITIONS = {"⏬", "🔽"}
 
 

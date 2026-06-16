@@ -1,11 +1,5 @@
 # Roadmap
 
-## Open follow-ups
-
-- [ ] **Optional Verdict tightening**: live bot keeps `REQUIRE_CLOSE_BELOW_MIDLINE=False` so Watch names
-      that recovered above the 200-SMA (e.g. MOTILALOFS) still render. Flip to True to match the backtest's
-      stricter gate; needs a call on whether to lose those alerts.
-
 ## Not on GitHub (local only — back up before wiping)
 - `six7/.claude/` (settings.json + skills/) is personal Claude config, gitignored/untracked by repo convention — it will NOT survive a workspace wipe.
 - `holdings.txt` is committed, but is a manual Kite snapshot — refresh via Portfolio-Analyzer when needed (`cp …/data/holdings.txt ./holdings.txt && python3 watchlist.py`).
