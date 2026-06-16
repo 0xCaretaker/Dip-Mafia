@@ -46,6 +46,7 @@ jobs:
         env:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
+          DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
           # Manual dispatch defaults force=true; scheduled runs leave it empty
           # so the dedup hash still suppresses unchanged signals.
           DIP_MAFIA_FORCE: ${{ inputs.force }}

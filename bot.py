@@ -332,6 +332,56 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         except requests.exceptions.RequestException as e:
             print(f"Telegram Error: {e}")
 
+    send_discord_message(final_message)
+
+
+def _md_v2_to_discord(text: str) -> str:
+    """Render the same payload for Discord.
+
+    Telegram MarkdownV2 escapes literals (`\\.`, `\\(`, `\\+`, …) which Discord
+    shows as backslashes, and uses `*X*` for bold where Discord wants `**X**`
+    (single-star is italic). Strip the escapes and promote single-star spans.
+    `_X_` italic and backtick monospace already render correctly.
+    """
+    plain = re.sub(r'\\(.)', r'\1', text)
+    plain = re.sub(r'(?<!\*)\*([^*\n]+?)\*(?!\*)', r'**\1**', plain)
+    return plain
+
+
+def send_discord_message(final_message):
+    """Mirror the signal post to a Discord channel via webhook (opt-in).
+
+    Set DISCORD_WEBHOOK_URL to enable; no-op otherwise. Discord caps a single
+    message at 2000 chars, so longer posts are split on blank lines.
+    """
+    url = os.environ.get("DISCORD_WEBHOOK_URL", "").strip()
+    if not url:
+        return
+
+    body = _md_v2_to_discord(final_message)
+    LIMIT = 1900  # leave headroom under Discord's 2000-char cap
+    chunks = []
+    buf = ""
+    for para in body.split("\n\n"):
+        candidate = f"{buf}\n\n{para}" if buf else para
+        if len(candidate) <= LIMIT:
+            buf = candidate
+        else:
+            if buf:
+                chunks.append(buf)
+            buf = para[:LIMIT]
+    if buf:
+        chunks.append(buf)
+
+    for chunk in chunks:
+        try:
+            r = requests.post(url, json={"content": chunk}, timeout=10)
+            r.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Discord Error: {e}")
+            return
+    print(f"📤 Sent to Discord ({len(chunks)} message{'s' if len(chunks) != 1 else ''})")
+
 
 # =========================
 # Main logic
