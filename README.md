@@ -154,75 +154,75 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 
 ### Latest Results (50 stocks, 2010–2026)
 
-> Run as of 2026-06-03 (from the recalculated six7 almanac's live-watchlist run, `backtest_output/six7/stocks_current/`) against the 50-symbol `stocks.txt` - the **six7 Top 50** (highest 50 by 0-10 Fundamental Score), adopted 2026-06-15 (see `notes/2026-06-15-portfolio-council-verdict.md`); 47 had enough history for the 200-bar Bollinger warmup. 60-bar Bollinger watch window, **midline buy gate** (matches the live bot), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`).
+> Run as of 2026-04-17 against `six7.txt` alone — the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (backtest only — the live bot stays ungated so all Buy/Watch alerts come through), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
   INVESTMENT ASSUMPTIONS
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-  Period:             2010-01-04 → 2026-06-03 (16.4 years)
+  Period:             2010-01-04 → 2026-04-17 (16.3 years)
   Starting salary:    ₹22,000/month → ₹101,089/month (10% annual hike)
   Monthly SIP:        ₹5,500 → ₹25,272 (25% of salary)
-  Total invested:     ₹25.2L (inflation-adjusted: ₹9.7L in 2010 rupees)
+  Total invested:     ₹24.7L (inflation-adjusted: ₹9.6L in 2010 rupees)
   Inflation (6%/yr):  ₹1 in 2010 = ₹2.6 today
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════
-  RESULTS - 47 stocks, ₹25.2L invested
+  RESULTS - 46 stocks, ₹24.7L invested
 ════════════════════════════════════════════════════════════════════════════════════════════════════
                             Your Strategy (Timed HODL)     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
-  Final Value                              ₹268.7L                ₹261.2L                 ₹45.4L                 ₹50.9L
-  Inflation-Adj Value                      ₹103.4L                ₹100.5L                 ₹17.5L                 ₹19.6L
-  Wealth Multiple                            10.7x                  10.4x                   1.8x                   2.0x
-  Real Multiple (infl-adj)                    4.1x                   4.0x                   0.7x                   0.8x
-  XIRR                                       30.1%                  29.8%                   8.7%                  10.3%
-  Real XIRR (minus 6% infl)                  24.1%                  23.8%                   2.7%                   4.3%
-  Sharpe                                      1.39                   1.37                   0.97                   1.12
-  Sortino                                     3.31                   3.18                   2.08                   3.36
-  Max Drawdown                              -40.1%                 -43.5%                 -56.2%                 -37.3%
-  Max DD Duration                         480 days               283 days               519 days               183 days
-  Volatility                                 37.8%                  38.5%                  46.2%                  37.6%
+  Final Value                              ₹238.6L                ₹221.2L                 ₹76.3L                 ₹52.3L
+  Inflation-Adj Value                       ₹92.4L                 ₹85.7L                 ₹29.5L                 ₹20.2L
+  Wealth Multiple                             9.6x                   8.9x                   3.1x                   2.1x
+  Real Multiple (infl-adj)                    3.7x                   3.4x                   1.2x                   0.8x
+  XIRR                                       29.2%                  28.3%                  15.8%                  10.9%
+  Real XIRR (minus 6% infl)                  23.2%                  22.3%                   9.8%                   4.9%
+  Sharpe                                      1.38                   1.35                   1.06                   1.13
+  Sortino                                     3.40                   3.41                   2.30                   3.40
+  Max Drawdown                              -41.3%                 -45.0%                 -57.9%                 -37.3%
+  Max DD Duration                         639 days               698 days               653 days               183 days
+  Volatility                                 38.0%                  38.4%                  45.6%                  37.7%
 
-  Buy signals fired on 182 days across 45/47 stocks
-  Cash drag (Your Strategy): 1.4%   ·   longest idle: 21 trading days (~1 month)   ·   639 fallback buys
+  Buy signals fired on 181 days across 46/46 stocks
+  Cash drag (Your Strategy): 1.3%   ·   longest idle: 21 trading days (~1 month)   ·   502 fallback buys
 ```
 
 ### Key Findings
 
 | Metric | Your Strategy | SIP (same stocks) | NIFTY 50 SIP |
 |---|---|---|---|
-| Final Value | ₹269L | ₹261L | ₹51L |
-| Inflation-Adjusted | ₹103L | ₹101L | ₹20L |
-| XIRR | **30.1%** | 29.8% | 10.3% |
-| Real XIRR (−6% inflation) | **24.1%** | 23.8% | 4.3% |
-| Sharpe | **1.39** | 1.37 | 1.12 |
-| Sortino | **3.31** | 3.18 | 3.36 |
-| Max Drawdown | **-40%** | -44% | -37% |
-| Volatility | 37.8% | 38.5% | 37.6% |
+| Final Value | ₹239L | ₹221L | ₹52L |
+| Inflation-Adjusted | ₹92L | ₹86L | ₹20L |
+| XIRR | **29.2%** | 28.3% | 10.9% |
+| Real XIRR (−6% inflation) | **23.2%** | 22.3% | 4.9% |
+| Sharpe | **1.38** | 1.35 | 1.13 |
+| Sortino | 3.40 | 3.41 | 3.40 |
+| Max Drawdown | **-41%** | -45% | -37% |
+| Volatility | 38.0% | 38.4% | 37.7% |
 
-- **Both strategies crush NIFTY 50 by ~5x**, stock picking matters more than timing - and the six7 Top 50 lifts the book's quality (every name is a Strong Buy) versus the prior mixed 75-name watchlist
-- **Timed HODL now edges plain SIP at every horizon** (and across the full run), where the older watchlist trailed SIP at 3y/5y - a tighter, higher-quality universe gives the dip-timing more to work with
-- **Lower drawdown too** - max drawdown improved from -51% to -40% versus the 75-name book
-- **Backtest is gated, the live bot is not** (by design) - `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest (better 1/3/5y returns, ~neutral over 16y); the Telegram bot stays ungated so all Buy/Watch alerts come through
-- **Cash drag stays low at 1.4%**, longest idle stretch 21 trading days, with the V4 fallback deploying across the Top 50 below-midline pool
-- **Real returns beat inflation easily**, 24.1% real XIRR for Timed HODL vs 4.3% for NIFTY 50
-- **Entry+Exit is terrible**, selling on MACD Sell destroys compounding
+- **Both strategies crush NIFTY 50 by ~4.6x** — stock picking matters more than timing, and the six7 Top 50 sets the fundamental quality bar (every name is a Strong Buy).
+- **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close — the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
+- **Drawdown is structurally better** — -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
+- **Backtest is gated, the live bot is not** — `BUY_REQUIRE_BELOW_MID` adds the close-below-200-SMA rule to the backtest only; the Telegram bot stays ungated.
+- **Cash drag low at 1.3%**, longest idle stretch 21 trading days, V4 fallback deploying across any below-midline name when signals dry up.
+- **Real returns easily beat inflation** — 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
+- **Entry+Exit is worse than just holding** — XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
 
-> The backtest is current-screen hindsight (the Top 50 is today's fundamental screen run backward - survivorship/look-ahead biased), so treat the levels as relative, not predictive. See the council verdict note for the honest forward expectation.
+> The backtest is current-screen hindsight (today's Top 50 run backward — survivorship/look-ahead biased), so treat the levels as relative, not predictive.
 
-### Returns by horizon (live watchlist)
+### Returns by horizon (six7.txt alone)
 
-The summary table above is the full ~16-year run. Recent trailing-window XIRR for the same `stocks.txt`:
+The summary table above is the full ~16-year run. Recent trailing-window XIRR for the same 50-symbol list:
 
 | Horizon | Timed HODL | SIP (same stocks) | NIFTY 50 |
 |---|---|---|---|
-| 1 year | **40.2%** | 23.4% | -10.2% |
-| 3 years | **34.3%** | 33.2% | 1.4% |
-| 5 years | **44.0%** | 42.8% | 5.9% |
-| 10 years | **40.2%** | 38.9% | 9.8% |
-| Full (~16y) | **30.1%** | 29.8% | 10.3% |
+| 1 year | **30.4%** | 18.3% | -4.6% |
+| 3 years | **34.7%** | 32.4% | 4.2% |
+| 5 years | 42.3% | **43.8%** | 7.5% |
+| 10 years | **39.0%** | 37.9% | 10.9% |
+| Full (~16y) | **29.1%** | 28.2% | 10.9% |
 
-> Every horizon is a fresh windowed sim on the salary model (₹22k/mo from 2010, +10%/yr, 25% invested), calendar-anchored then restricted to the window, so Full reproduces the headline above. With the Top 50 watchlist, Timed HODL beats plain SIP at every horizon, most strongly in the down year (1y: NIFTY -10%, Timed +40% deploying into the dip).
+> Each horizon is a fresh windowed sim on the salary model (₹22k/mo from 2010, +10%/yr, 25% invested), calendar-anchored then restricted to the window. Timed HODL's edge concentrates in the recent down year (1y: NIFTY −4.6%, Timed +30.4% deploying into the dip) and over the long run; SIP narrowly wins the 5y window because the midline gate sat out a stretch of the post-2020 uptrend.
 
 ### Charts
 
