@@ -46,7 +46,7 @@
 └──────────────┬──────────────────────┘
                ▼
 ┌─────────────────────────────────────┐
-│     Telegram (if signals changed)  │
+│  Telegram + Discord (if changed)   │
 └─────────────────────────────────────┘
 ```
 
@@ -66,7 +66,7 @@
 
 ### Deduplication
 
-Signals are hashed each run. If unchanged from the previous run, Telegram notifications are skipped, no spam during sideways markets.
+Signals are hashed each run. If unchanged from the previous run, notifications to both Telegram and Discord are skipped, no spam during sideways markets. The `force=true` workflow input (and the six7 dashboard's 🩸 button) bypasses the dedup for manual runs.
 
 ## Sample Output
 
@@ -106,6 +106,7 @@ Go to **Settings > Secrets and variables > Actions** and add:
 |---|---|
 | `TELEGRAM_TOKEN` | Your bot token from [@BotFather](https://t.me/BotFather) |
 | `TELEGRAM_CHAT_IDS` | Comma-separated chat IDs |
+| `DISCORD_WEBHOOK_URL` | _Optional_. Discord channel webhook (Server → Integrations → Webhooks → New Webhook → Copy URL). Posts mirror the Telegram payload with an `@here` ping. |
 
 ### 2. Edit your watchlist
 
