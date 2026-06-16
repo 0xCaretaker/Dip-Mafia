@@ -2,16 +2,9 @@
 
 ## Open follow-ups
 
-- [ ] **Auto-delete Discord posts after 24h**: webhooks can `DELETE /webhooks/{id}/{token}/messages/{msg_id}`,
-      but only if we persist each message ID. Needs (a) capture-and-store on send, (b) a scheduled
-      cleanup workflow that sweeps entries older than 24h. ~30 lines + a state file. Deferred.
 - [ ] **Optional Verdict tightening**: live bot keeps `REQUIRE_CLOSE_BELOW_MIDLINE=False` so Watch names
       that recovered above the 200-SMA (e.g. MOTILALOFS) still render. Flip to True to match the backtest's
       stricter gate; needs a call on whether to lose those alerts.
-- [ ] **Rotate the Discord webhook** — the URL was pasted in chat during setup (2026-06-17). Delete +
-      recreate the webhook in Discord → Integrations, then
-      `gh secret set DISCORD_WEBHOOK_URL --repo 0xCaretaker/Dip-Mafia --body "<new>"`.
-- [ ] Optional UX: 🩸 button on another page; confirmation dialog before dispatch.
 
 ## Not on GitHub (local only — back up before wiping)
 - `six7/.claude/` (settings.json + skills/) is personal Claude config, gitignored/untracked by repo convention — it will NOT survive a workspace wipe.
