@@ -86,6 +86,22 @@ def test_latest_trading_date_none_on_empty_and_error():
         bot.yf = saved
 
 
+def test_should_reuse_matrix():
+    cache = {"data_date": "2026-06-17", "watchlist_signature": "sig", "message_md": "m"}
+    # all match, reuse enabled -> True
+    assert bot.should_reuse(True, "2026-06-17", "sig", cache) is True
+    # reuse disabled -> never
+    assert bot.should_reuse(False, "2026-06-17", "sig", cache) is False
+    # data date moved -> recompute
+    assert bot.should_reuse(True, "2026-06-18", "sig", cache) is False
+    # watchlist changed -> recompute
+    assert bot.should_reuse(True, "2026-06-17", "other", cache) is False
+    # no cache -> recompute
+    assert bot.should_reuse(True, "2026-06-17", "sig", None) is False
+    # probe failed (None) -> recompute
+    assert bot.should_reuse(True, None, "sig", cache) is False
+
+
 if __name__ == "__main__":
     test_build_message_renders_without_io()
     test_watchlist_signature_distinguishes_membership()
@@ -93,4 +109,5 @@ if __name__ == "__main__":
     test_read_cache_malformed_returns_none()
     test_latest_trading_date_parses_last_bar()
     test_latest_trading_date_none_on_empty_and_error()
-    print("✓ build_message + signature + cache + probe tests passed")
+    test_should_reuse_matrix()
+    print("✓ build_message + signature + cache + probe + reuse tests passed")

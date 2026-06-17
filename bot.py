@@ -97,6 +97,15 @@ def write_cache(path, data_date, watchlist_sig, message_md):
         )
 
 
+def should_reuse(reuse_enabled, probe_date, current_sig, cache):
+    """True only when a scan-triggered run can safely re-send the cached post."""
+    return bool(
+        reuse_enabled and probe_date and cache
+        and cache.get("data_date") == probe_date
+        and cache.get("watchlist_signature") == current_sig
+    )
+
+
 # =========================
 # Market-hours guard (IST)
 # =========================
@@ -434,6 +443,24 @@ def main():
     print(f"Watchlist: {len(symbols)} symbols "
           f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
 
+    # Scan-scoped reuse: only a run dispatched by the six7 scan sets
+    # REUSE_IF_UNCHANGED. When the watchlist and the trading date both match the
+    # cached post, re-send it instead of downloading the full universe. Cron and
+    # the manual button leave the flag false and always recompute.
+    reuse_enabled = os.environ.get("REUSE_IF_UNCHANGED", "").lower() in ("1", "true", "yes")
+    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                              ".cache", "last_post.json")
+    current_sig = watchlist_signature(symbols, six7_set)
+    probe_date = latest_trading_date() if reuse_enabled else None
+
+    if reuse_enabled:
+        cached = read_cache(cache_path)
+        if should_reuse(reuse_enabled, probe_date, current_sig, cached):
+            print(f"♻️  Watchlist + data date unchanged ({probe_date}); "
+                  f"re-sending cached message")
+            deliver_message(cached["message_md"])
+            return
+
     stocks = [s + ".NS" for s in symbols]
     intervals = ["1d"]
 
@@ -541,8 +568,13 @@ def main():
 
     print()
     final_message = build_message(all_interval_signals, bollinger_results, index_moves, six7_set)
-    if final_message:
-        deliver_message(final_message)
+    if not final_message:
+        print("No signals rendered — nothing to send")
+        return
+    deliver_message(final_message)
+    stamp_date = probe_date or latest_trading_date()
+    if stamp_date:
+        write_cache(cache_path, stamp_date, current_sig, final_message)
 
 
 if __name__ == "__main__":
