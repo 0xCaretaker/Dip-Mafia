@@ -47,8 +47,29 @@ def test_dip_mafia_dedup_plumbing_gone():
         assert token not in text, f"dip-mafia.yml still references: {token!r}"
 
 
+def test_regen_emits_changed_output():
+    doc = _load("regen-stocks.yml")
+    regen = doc["jobs"]["regen"]
+    assert regen.get("outputs", {}).get("changed") == "${{ steps.commit.outputs.changed }}"
+    text = _text("regen-stocks.yml")
+    assert 'echo "changed=true" >> "$GITHUB_OUTPUT"' in text
+    assert 'echo "changed=false" >> "$GITHUB_OUTPUT"' in text
+
+
+def test_regen_runs_bot_only_when_changed():
+    jobs = _load("regen-stocks.yml")["jobs"]
+    assert "run-bot" in jobs, "regen-stocks.yml must define a run-bot job"
+    run_bot = jobs["run-bot"]
+    assert run_bot["needs"] == "regen"
+    assert "needs.regen.outputs.changed == 'true'" in run_bot["if"]
+    assert run_bot["uses"] == "./.github/workflows/dip-mafia.yml"
+    assert run_bot["secrets"] == "inherit"
+
+
 if __name__ == "__main__":
     test_dip_mafia_is_callable()
     test_dip_mafia_force_input_removed()
     test_dip_mafia_dedup_plumbing_gone()
+    test_regen_emits_changed_output()
+    test_regen_runs_bot_only_when_changed()
     print("✓ all workflow tests passed")
