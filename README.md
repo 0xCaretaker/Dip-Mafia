@@ -46,7 +46,7 @@
 └──────────────┬──────────────────────┘
                ▼
 ┌─────────────────────────────────────┐
-│  Telegram + Discord (if changed)   │
+│      Telegram + Discord            │
 └─────────────────────────────────────┘
 ```
 
@@ -66,7 +66,12 @@
 
 ### Delivery cadence
 
-Every run posts the full message to Telegram and Discord — each scheduled scan re-reads fresh prices, so it always reflects the current picture. A watchlist change (the six7 mirror updating `six7.txt`, or a `holdings.txt` re-sync) also auto-fires a full post immediately via `regen-stocks.yml`, but only when the `six7.txt ∪ holdings.txt` union actually changed.
+Two trigger paths post the same full message to Telegram and Discord:
+
+- **Scheduled cron** (`dip-mafia.yml`) — 4 runs/day on weekdays (~08:33 / 10:33 / 12:33 / 14:33 IST) plus one weekend summary (~10:33 IST). Each run re-reads fresh prices and always recomputes, so it reflects the current picture. (GitHub cron is best-effort, so these are targets, not guarantees; spreading 4 runs keeps coverage even if one is delayed or dropped.)
+- **Scan-triggered** — the external six7 scan dispatches `dip-mafia.yml` with `reuse_if_unchanged: true` on *every* scan, so a scan always posts once. When the watchlist signature and the latest NSE trading date both match the last cached post (`.cache/last_post.json`, persisted via `actions/cache`), the bot re-sends that cached message instead of re-downloading the universe; otherwise it recomputes and re-stamps the cache.
+
+A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `holdings.txt`) only rebuilds the derived `stocks.txt` via `regen-stocks.yml` — it **no longer posts directly**; the next scan or cron run covers it. This avoids double-posting. The cron and the manual **Run workflow** button leave `reuse_if_unchanged` false, so they always recompute.
 
 ## Sample Output
 
@@ -126,10 +131,10 @@ INFY
 ### 3. Done
 
 The bot runs automatically:
-- **Weekdays**: every hour, 9:15 AM – 3:15 PM IST (market hours)
-- **Weekends**: once at 10:15 AM IST
+- **Weekdays**: 4 runs/day, ~08:33 / 10:33 / 12:33 / 14:33 IST (cron targets — GitHub may delay them)
+- **Weekends**: one summary, ~10:33 IST
 
-Or trigger manually: **Actions tab → Run workflow**
+The external six7 scan also dispatches a run after each scan (re-sending the cached post when the watchlist and trading date are unchanged). Or trigger manually: **Actions tab → Run workflow**
 
 ### Local run
 
@@ -266,7 +271,8 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── docs/                  # GitHub Pages: index.html (unified dashboard) + data.js + strat_data.js
 ├── requirements.txt       # yfinance, requests
 └── .github/workflows/
-    └── dip-mafia.yml      # GitHub Actions (cron + cache); runs `python bot.py`
+    ├── dip-mafia.yml      # cron + scan-dispatch; runs `python bot.py` (with last-post cache)
+    └── regen-stocks.yml   # rebuilds derived stocks.txt when a source list changes (no posting)
 ```
 
 Each signal module can run standalone for quick analysis:
