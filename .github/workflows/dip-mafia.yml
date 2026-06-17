@@ -12,9 +12,14 @@ on:
     - cron: '3 3,5,7,9 * * 1-5'  # Target: 08:33/10:33/12:33/14:33 IST, weekdays
     - cron: '3 5 * * 0,6'        # Target: 10:33 IST weekend summary
   workflow_dispatch:
-  # Called by regen-stocks.yml when the watchlist union changes, so a new Top 50
-  # / holdings sync posts a fresh full message immediately (see regen-stocks.yml).
-  workflow_call:
+    inputs:
+      reuse_if_unchanged:
+        description: >-
+          Re-send the last cached message instead of recomputing when the
+          watchlist and trading date are unchanged. Set true by the six7 scan
+          dispatch; cron and the manual button leave it false (always recompute).
+        type: boolean
+        default: false
 
 jobs:
   run:
@@ -28,6 +33,14 @@ jobs:
         with:
           python-version: '3.12'
 
+      - name: Restore last-post cache
+        uses: actions/cache@v4
+        with:
+          path: .cache
+          key: dip-mafia-lastpost-${{ github.run_id }}
+          restore-keys: |
+            dip-mafia-lastpost-
+
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -37,4 +50,5 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
+          REUSE_IF_UNCHANGED: ${{ inputs.reuse_if_unchanged }}
         run: python bot.py
