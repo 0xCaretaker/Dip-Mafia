@@ -16,38 +16,27 @@
 
 ## How It Works
 
-```
-┌─────────────────────────────────────┐
-│  six7.txt ∪ holdings.txt (watchlist) │
-└──────────────┬──────────────────────┘
-               ▼
-┌─────────────────────────────────────┐
-│     yfinance, 1yr daily OHLCV     │
-└──────────────┬──────────────────────┘
-               ▼
-┌─────────────────────────────────────┐
-│  Bollinger Bands (200-period, 2σ)  │
-│  ┌─────┐  ┌───────┐  ┌──────┐     │
-│  │ Buy │  │ Watch │  │ Hold │     │
-│  └──┬──┘  └───┬───┘  └──┬───┘     │
-│     │         │         │ filtered │
-│     ▼         ▼         ✗ out     │
-│  ┌─────────────────┐              │
-│  │   MACD Filter   │              │
-│  │  Standard 12/26 │              │
-│  │  Impulse MACD   │              │
-│  └────────┬────────┘              │
-└───────────┼────────────────────────┘
-            ▼
-┌─────────────────────────────────────┐
-│  Sentiment (Hold/Wait for Buy %)   │
-│  Bullish · Neutral · Cautious ·    │
-│  Bearish                           │
-└──────────────┬──────────────────────┘
-               ▼
-┌─────────────────────────────────────┐
-│      Telegram + Discord            │
-└─────────────────────────────────────┘
+```mermaid
+flowchart TD
+    A(["📋 <b>Watchlist</b><br/>six7.txt ∪ holdings.txt"])
+    B["📥 <b>Data</b><br/>yfinance · 1yr daily OHLCV"]
+    C{"🎚️ <b>Gate · Bollinger Bands</b><br/>200-period · 2σ"}
+    D["📊 <b>Signal · Dual MACD</b><br/>Standard 12/26/9 · Impulse (LazyBear)"]
+    V{{"🎯 <b>VERDICT</b> · Bollinger + Impulse<br/><i>the only line a beginner acts on</i>"}}
+    T["📣 <b>Delivery</b><br/>Telegram + Discord"]
+    X(["🗑️ dropped"])
+
+    A --> B --> C
+    C -->|"Buy / Watch ✅"| D
+    C -.->|"Hold ✗"| X
+    D --> V --> T
+
+    classDef gate fill:#1e293b,stroke:#64748b,color:#e2e8f0;
+    classDef verdict fill:#16a34a,stroke:#15803d,color:#ffffff;
+    classDef drop fill:#450a0a,stroke:#7f1d1d,color:#fca5a5;
+    class C gate;
+    class V verdict;
+    class X drop;
 ```
 
 ### Signal Logic
@@ -76,30 +65,57 @@ A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `ho
 ## Sample Output
 
 ```
-📊 Signal Alert | 19 April, 03:15PM
-🔻 NIFTY 50: -3.42% (from ATH: -18.50%)
-🔻 NIFTY Midcap 100: -4.10% (from ATH: -25.30%)
+🩸 DIP MAFIA
+19 Apr · 3:15 PM IST
+
+🔻 NIFTY 50
+Today -3.42%  ·  ATH -18.5%
+🔻 MIDCAP 100
+Today -4.10%  ·  ATH -25.3%
+
 🔴 Sentiment: Bearish
 
-🔵 STANDARD MACD:
-⏱️ 1d
-🟢 SUZLON      ₹38.50
-🟢 GRSE        ₹1850.00
+📈 Early Signal (MACD)
+🟢 ⭐ ⏬ SUZLON  ₹38.50
+🟢 ⭐ 🔽 GRSE    ₹1850.00
 
-📈 Summary:
-🟣 Wait for Buy: 25/34 (73.5%)
-🟡 Hold: 7/34 (20.6%)
+🟣 Wait for Buy · 25/34 · 73.5%
+🟡 Hold · 7/34 · 20.6%
 
-🟠 IMPULSE MACD (LazyBear):
-⏱️ 1d Impulse MACD
-🟢 SUZLON      ₹38.50
-🟢 GRSE        ₹1850.00
-🟢 AIIL        ₹320.00
+──────────────────────────
+⚡ Strong Signal (iMACD)
+🟢 ⭐ ⏬ SUZLON  ₹38.50
+🟢 💼 ⏬ AIIL    ₹320.00
 
-📈 Summary:
-🟣 Wait for Buy: 28/34 (82.4%)
-🟡 Hold: 4/34 (11.8%)
+🟣 Wait for Buy · 28/34 · 82.4%
+🟡 Hold · 4/34 · 11.8%
+
+──────────────────────────
+🎯 Verdict (Boll + iMACD)
+🟢 ⭐ ⏬ SUZLON  ₹38.50
+
+🟣 Wait for Buy · 30/34 · 88.2%
+🟡 Hold · 4/34 · 11.8%
+
+──────────────────────────
+ℹ️ legends
+🟢 buy · 🔴 sell
+⭐ Top 50 · 💼 your holding
+⏬ deep dip · 🔽 undervalued
+🔼 above avg · ⏫ overvalued
+
+Dip Mafia never sells, red just flags weakness · we only buy dips & HODL
 ```
+
+### New here? Only read the 🎯 Verdict
+
+If none of the indicators, sentiment, or summary lines make sense, **ignore all of it and look at the `🎯 Verdict` section — that's the only thing that matters.** It's the bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
+
+- **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
+- **No 🟢 buy under Verdict? Do nothing.** No action that run — that's normal and most runs look like this.
+- **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
+
+Everything above the Verdict (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it — safe to skip.
 
 ## Quick Start
 
