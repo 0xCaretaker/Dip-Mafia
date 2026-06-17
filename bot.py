@@ -1,5 +1,4 @@
 import os
-import hashlib
 import requests
 import re
 from datetime import datetime, timezone, timedelta
@@ -282,42 +281,15 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
 
     final_message = "\n".join(cleaned)
 
-    # Hash raw signal data (actions + prices), independent of formatting/timestamps
-    signal_data = []
-    for interval, all_signals in all_interval_signals.items():
-        for stock in sorted(all_signals):
-            info = all_signals[stock]
-            signal_data.append(f"{interval}:{stock}:{info['action']}:{info['price']:.2f}")
-    for stock in sorted(bollinger_signals):
-        signal_data.append(f"BB:{stock}:{bollinger_signals[stock]['action']}")
-    current_hash = hashlib.sha256("\n".join(signal_data).encode()).hexdigest()[:16]
-
-    hash_file = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".last_signal_hash")
-    prev_hash = ""
-    if os.path.exists(hash_file):
-        with open(hash_file, "r") as f:
-            prev_hash = f.read().strip()
-
     print("\n" + "=" * 60)
     print("TELEGRAM MESSAGE:")
     print("=" * 60)
     print(final_message)
     print("=" * 60)
 
-    # Manual runs (the six7 "Run Dip Mafia" button / workflow_dispatch) set
-    # DIP_MAFIA_FORCE to post the current signals even if unchanged - otherwise
-    # the dedup hash would silently suppress an on-demand trigger.
-    force = os.environ.get("DIP_MAFIA_FORCE", "").strip().lower() in ("1", "true", "yes")
-    if current_hash == prev_hash and not force:
-        print("⏭️  Skipping Telegram: signals unchanged from last run")
-        return
-    if force and current_hash == prev_hash:
-        print("🔔 Force-send: posting despite unchanged signals")
-
-    with open(hash_file, "w") as f:
-        f.write(current_hash)
-
-    print(f"📤 Sending to Telegram (hash: {current_hash})\n")
+    # Every run posts: the dedup hash was removed so each scheduled scan (fresh
+    # prices) and each watchlist-change trigger delivers the full message.
+    print("📤 Sending to Telegram\n")
 
     for chat_id in TELEGRAM_CHAT_IDS:
         data = {
