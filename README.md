@@ -64,9 +64,9 @@
 | **Context** | NIFTY 50 + Midcap 100 | % move, % from ATH | Market-wide context |
 | **Sentiment** | Hold vs Wait ratio | Bullish/Neutral/Cautious/Bearish | Aggregate market mood |
 
-### Deduplication
+### Delivery cadence
 
-Signals are hashed each run. If unchanged from the previous run, notifications to both Telegram and Discord are skipped, no spam during sideways markets. The `force=true` workflow input (and the six7 dashboard's 🩸 button) bypasses the dedup for manual runs.
+Every run posts the full message to Telegram and Discord — each scheduled scan re-reads fresh prices, so it always reflects the current picture. A watchlist change (the six7 mirror updating `six7.txt`, or a `holdings.txt` re-sync) also auto-fires a full post immediately via `regen-stocks.yml`, but only when the `six7.txt ∪ holdings.txt` union actually changed.
 
 ## Sample Output
 
