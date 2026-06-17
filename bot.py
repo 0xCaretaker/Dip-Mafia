@@ -1,4 +1,5 @@
 import os
+import json
 import requests
 import re
 from datetime import datetime, timezone, timedelta
@@ -42,6 +43,40 @@ def escape_md(text):
     for char in special_chars:
         text = text.replace(char, f'\\{char}')
     return text
+
+
+# =========================
+# Scan-scoped reuse cache
+# =========================
+def watchlist_signature(symbols, six7_set):
+    """Stable, order-independent string identifying the live universe.
+
+    Plain join (not a hash) so the dedup-token guard stays green and the value
+    is human-readable in the cache. Includes six7 membership because the ⭐/💼
+    class tags depend on it, so a Top-50 move must change the signature.
+    """
+    return "\n".join(sorted(symbols)) + "|" + ",".join(sorted(six7_set))
+
+
+def read_cache(path):
+    """Return the cached post dict, or None if absent/unreadable/malformed."""
+    try:
+        with open(path, encoding="utf-8") as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return None
+
+
+def write_cache(path, data_date, watchlist_sig, message_md):
+    """Persist the last computed post for a later scan-triggered reuse."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    with open(path, "w", encoding="utf-8") as f:
+        json.dump(
+            {"data_date": data_date,
+             "watchlist_signature": watchlist_sig,
+             "message_md": message_md},
+            f,
+        )
 
 
 # =========================
