@@ -52,12 +52,3 @@ jobs:
           git commit -m "Regenerate derived stocks.txt (six7.txt ∪ holdings.txt)"
           git push
           echo "changed=true" >> "$GITHUB_OUTPUT"
-
-  # When the regenerated union actually changed, run the bot immediately so the
-  # new universe produces a full signal post without waiting for the next cron.
-  # Skipped when the union is unchanged (the next cron run covers it).
-  run-bot:
-    needs: regen
-    if: needs.regen.outputs.changed == 'true'
-    uses: ./.github/workflows/dip-mafia.yml
-    secrets: inherit
