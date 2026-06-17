@@ -58,6 +58,24 @@ def watchlist_signature(symbols, six7_set):
     return "\n".join(sorted(symbols)) + "|" + ",".join(sorted(six7_set))
 
 
+def latest_trading_date():
+    """Latest NSE trading date from a single ^NSEI daily bar (cheap probe).
+
+    Used only to decide whether a cached message can be reused — one ticker,
+    not the full universe. Returns 'YYYY-MM-DD' or None on any failure
+    (network error, empty frame), so reuse degrades to a full recompute.
+    """
+    try:
+        hist = yf.download("^NSEI", period="5d", interval="1d",
+                           auto_adjust=True, progress=False, threads=False)
+        if hist is None or hist.empty:
+            return None
+        return hist.index[-1].strftime("%Y-%m-%d")
+    except Exception as e:   # noqa: BLE001 — probe is best-effort, never fatal
+        print(f"date probe failed: {e}")
+        return None
+
+
 def read_cache(path):
     """Return the cached post dict, or None if absent/unreadable/malformed."""
     try:
