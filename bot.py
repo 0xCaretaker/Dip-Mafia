@@ -98,14 +98,7 @@ def get_index_moves():
 # =========================
 # Telegram sender (Filtered by Bollinger Bands)
 # =========================
-def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_moves, six7_set):
-    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
-    TELEGRAM_CHAT_IDS = os.environ.get("TELEGRAM_CHAT_IDS", "").split(",")
-    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_IDS[0]:
-        print("Error: TELEGRAM_TOKEN and TELEGRAM_CHAT_IDS env vars required")
-        return
-    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
-
+def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set):
     emoji = {
         "Buy": "🟢",
         "Sell": "🔴",
@@ -280,6 +273,17 @@ def send_bulk_telegram_message(all_interval_signals, bollinger_signals, index_mo
         cleaned.pop()
 
     final_message = "\n".join(cleaned)
+    return final_message
+
+
+def deliver_message(final_message):
+    """Send an already-rendered MarkdownV2 message to Telegram + Discord."""
+    TELEGRAM_TOKEN = os.environ.get("TELEGRAM_TOKEN", "")
+    TELEGRAM_CHAT_IDS = os.environ.get("TELEGRAM_CHAT_IDS", "").split(",")
+    if not TELEGRAM_TOKEN or not TELEGRAM_CHAT_IDS[0]:
+        print("Error: TELEGRAM_TOKEN and TELEGRAM_CHAT_IDS env vars required")
+        return
+    url = f'https://api.telegram.org/bot{TELEGRAM_TOKEN}/sendMessage'
 
     print("\n" + "=" * 60)
     print("TELEGRAM MESSAGE:")
@@ -483,7 +487,9 @@ def main():
             print(f"\n  Sentiment: {mood}")
 
     print()
-    send_bulk_telegram_message(all_interval_signals, bollinger_results, index_moves, six7_set)
+    final_message = build_message(all_interval_signals, bollinger_results, index_moves, six7_set)
+    if final_message:
+        deliver_message(final_message)
 
 
 if __name__ == "__main__":
