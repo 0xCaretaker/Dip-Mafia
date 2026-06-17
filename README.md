@@ -57,10 +57,10 @@ flowchart TD
 
 Two trigger paths post the same full message to Telegram and Discord:
 
-- **Scheduled cron** (`dip-mafia.yml`) — 4 runs/day on weekdays (~08:33 / 10:33 / 12:33 / 14:33 IST) plus one weekend summary (~10:33 IST). Each run re-reads fresh prices and always recomputes, so it reflects the current picture. (GitHub cron is best-effort, so these are targets, not guarantees; spreading 4 runs keeps coverage even if one is delayed or dropped.)
-- **Scan-triggered** — the external six7 scan dispatches `dip-mafia.yml` with `reuse_if_unchanged: true` on *every* scan, so a scan always posts once. When the watchlist signature and the latest NSE trading date both match the last cached post (`.cache/last_post.json`, persisted via `actions/cache`), the bot re-sends that cached message instead of re-downloading the universe; otherwise it recomputes and re-stamps the cache.
+- **Scheduled cron** (`dip-mafia.yml`) - 4 runs/day on weekdays (~08:33 / 10:33 / 12:33 / 14:33 IST) plus one weekend summary (~10:33 IST). Each run re-reads fresh prices and always recomputes, so it reflects the current picture. (GitHub cron is best-effort, so these are targets, not guarantees; spreading 4 runs keeps coverage even if one is delayed or dropped.)
+- **Scan-triggered** - the external six7 scan dispatches `dip-mafia.yml` with `reuse_if_unchanged: true` on *every* scan, so a scan always posts once. When the watchlist signature and the latest NSE trading date both match the last cached post (`.cache/last_post.json`, persisted via `actions/cache`), the bot re-sends that cached message instead of re-downloading the universe; otherwise it recomputes and re-stamps the cache.
 
-A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `holdings.txt`) only rebuilds the derived `stocks.txt` via `regen-stocks.yml` — it **no longer posts directly**; the next scan or cron run covers it. This avoids double-posting. The cron and the manual **Run workflow** button leave `reuse_if_unchanged` false, so they always recompute.
+A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `holdings.txt`) only rebuilds the derived `stocks.txt` via `regen-stocks.yml` - it **no longer posts directly**; the next scan or cron run covers it. This avoids double-posting. The cron and the manual **Run workflow** button leave `reuse_if_unchanged` false, so they always recompute.
 
 ## Sample Output
 
@@ -109,13 +109,13 @@ Dip Mafia never sells, red just flags weakness · we only buy dips & HODL
 
 ### New here? Only read the 🎯 Verdict
 
-If none of the indicators, sentiment, or summary lines make sense, **ignore all of it and look at the `🎯 Verdict` section — that's the only thing that matters.** It's the bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
+If none of the indicators, sentiment, or summary lines make sense, **ignore all of it and look at the `🎯 Verdict` section - that's the only thing that matters.** It's the bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
 
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
-- **No 🟢 buy under Verdict? Do nothing.** No action that run — that's normal and most runs look like this.
+- **No 🟢 buy under Verdict? Do nothing.** No action that run - that's normal and most runs look like this.
 - **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
 
-Everything above the Verdict (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it — safe to skip.
+Everything above the Verdict (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it - safe to skip.
 
 ## Quick Start
 
@@ -147,7 +147,7 @@ INFY
 ### 3. Done
 
 The bot runs automatically:
-- **Weekdays**: 4 runs/day, ~08:33 / 10:33 / 12:33 / 14:33 IST (cron targets — GitHub may delay them)
+- **Weekdays**: 4 runs/day, ~08:33 / 10:33 / 12:33 / 14:33 IST (cron targets - GitHub may delay them)
 - **Weekends**: one summary, ~10:33 IST
 
 The external six7 scan also dispatches a run after each scan (re-sending the cached post when the watchlist and trading date are unchanged). Or trigger manually: **Actions tab → Run workflow**
@@ -163,7 +163,7 @@ python bot.py
 
 ## Backtest
 
-A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget — the point of 50+ stocks is that something is always dipping, keeping cash deployed.
+A portfolio-level backtest validates the timing strategy against plain SIP investing. All stocks in `stocks.txt` share a single monthly budget - the point of 50+ stocks is that something is always dipping, keeping cash deployed.
 
 ### Run it
 
@@ -176,7 +176,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 
 ### Latest Results (50 stocks, 2010–2026)
 
-> Run as of 2026-04-17 against `six7.txt` alone — the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` — aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none — see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
+> Run as of 2026-04-17 against `six7.txt` alone - the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` - aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -222,15 +222,15 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 | Max Drawdown | **-41%** | -45% | -37% |
 | Volatility | 38.0% | 38.4% | 37.7% |
 
-- **Both strategies crush NIFTY 50 by ~4.6x** — stock picking matters more than timing, and the six7 Top 50 sets the fundamental quality bar (every name is a Strong Buy).
-- **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close — the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
-- **Drawdown is structurally better** — -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
-- **Backtest gate and live bot gate are aligned** — both `BUY_REQUIRE_BELOW_MID` (backtest) and `REQUIRE_CLOSE_BELOW_MIDLINE` (bot) are True, so the Telegram + Discord posts drop Watch names that recovered above the 200-SMA. What you see is what the backtest would actually buy.
+- **Both strategies crush NIFTY 50 by ~4.6x** - stock picking matters more than timing, and the six7 Top 50 sets the fundamental quality bar (every name is a Strong Buy).
+- **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close - the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
+- **Drawdown is structurally better** - -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
+- **Backtest gate and live bot gate are aligned** - both `BUY_REQUIRE_BELOW_MID` (backtest) and `REQUIRE_CLOSE_BELOW_MIDLINE` (bot) are True, so the Telegram + Discord posts drop Watch names that recovered above the 200-SMA. What you see is what the backtest would actually buy.
 - **Cash drag low at 1.3%**, longest idle stretch 21 trading days, V4 fallback deploying across any below-midline name when signals dry up.
-- **Real returns easily beat inflation** — 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
-- **Entry+Exit is worse than just holding** — XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
+- **Real returns easily beat inflation** - 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
+- **Entry+Exit is worse than just holding** - XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
 
-> The backtest is current-screen hindsight (today's Top 50 run backward — survivorship/look-ahead biased), so treat the levels as relative, not predictive.
+> The backtest is current-screen hindsight (today's Top 50 run backward - survivorship/look-ahead biased), so treat the levels as relative, not predictive.
 
 ### Returns by horizon (six7.txt alone)
 
