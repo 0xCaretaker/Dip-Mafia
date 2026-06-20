@@ -133,7 +133,7 @@ def run_cell(data, symbols, years, sig, end_dt):
     sim, cf, _bl, _idle = bt.simulate_timed_hodl(
         win, syms, monthly, bb, bb_mid, imp, slippage_bps=cfg["slippage_bps"])
     bt.BUY_REQUIRE_BELOW_MID = False
-    m = bt.compute_metrics(sim["portfolio"], "T", cf)
+    m = bt.nav_metrics(sim, cf, "T")
     inv = sum(v["amount"] for v in monthly.values())
     return {"xirr": round(m["xirr"], 1),
             "mult": round(m["final_value"] / inv, 2) if inv else None,
@@ -347,7 +347,7 @@ def strategy_horizons(data, symbols, sig, end_dt):
         # Timed HODL (gate per backtest default + V4 fallback defaults)
         tsim, tcf, tbl, _idle = bt.simulate_timed_hodl(win, syms, monthly, bb, bb_mid, imp,
                                                        slippage_bps=scfg["slippage_bps"])
-        tm = bt.compute_metrics(tsim["portfolio"], "T", tcf)
+        tm = bt.nav_metrics(tsim, tcf, "T")
         tot = tsim["portfolio"].replace(0, np.nan)
         cash_series = (tsim["cash"] / tot * 100).fillna(100)
         cells[f"Timed HODL|{hl}"] = _cell(tm, round(float(cash_series.mean()), 1))
@@ -356,13 +356,13 @@ def strategy_horizons(data, symbols, sig, end_dt):
                                             scfg["slippage_bps"])
         # SIP
         ssim, scf = bt.simulate_sip(win, syms, monthly, scfg["slippage_bps"])
-        sm = bt.compute_metrics(ssim["portfolio"], "S", scf)
+        sm = bt.nav_metrics(ssim, scf, "S")
         cells[f"SIP|{hl}"] = _cell(sm, None)
         # NIFTY 50
         nser = None
         if nifty is not None:
             nser, ncf = _nifty_sip_window(nifty[nifty.index >= hstart], monthly)
-            nm = bt.compute_metrics(nser, "N", ncf)
+            nm = bt.nav_metrics(nser, ncf, "N")
             cells[f"NIFTY 50|{hl}"] = _cell(nm, None)
         # per-horizon curves (downsampled for the dashboard charts)
         eq = {"Timed HODL": _downsample(tsim["portfolio"]), "SIP": _downsample(ssim["portfolio"])}

@@ -479,6 +479,31 @@ def _compute_nav(sim_df, cashflows):
     return pd.Series(nav_vals, index=sim_df.index)
 
 
+def nav_metrics(sim, cashflows, name):
+    """Metrics where risk is measured on the cash-flow-adjusted unit NAV.
+
+    Sharpe/Sortino/MaxDD/volatility/CAGR computed on the raw accumulating
+    portfolio value are meaningless: monthly contributions show up as
+    always-positive daily "returns", so a money-losing SIP can post a high
+    Sharpe (this is why an unadjusted NIFTY SIP read Sharpe ~1.1-2.5 instead of
+    its true ~0.2-0.4). `_compute_nav` strips contributions, giving the true
+    time-weighted risk profile. Final value and XIRR stay money-weighted
+    (computed on the value series + cashflows).
+
+    `sim` may be a DataFrame with a "portfolio" column or a bare value Series.
+    With no cashflows, falls back to value-series metrics (nothing to strip).
+    """
+    sim_df = sim if isinstance(sim, pd.DataFrame) else pd.DataFrame({"portfolio": sim})
+    if not cashflows:
+        return compute_metrics(sim_df["portfolio"], name)
+    nav = _compute_nav(sim_df, cashflows)
+    m = compute_metrics(nav, name)                          # risk metrics from NAV
+    vm = compute_metrics(sim_df["portfolio"], name, cashflows)
+    m["final_value"] = vm["final_value"]                    # money-weighted final
+    m["xirr"] = vm["xirr"]                                  # money-weighted return
+    return m
+
+
 # ─── Charts ─────────────────────────────────────────────────────────────────
 
 def _style_ax(ax, ylabel="", title=""):
@@ -1064,10 +1089,10 @@ def main():
     exit_sim, exit_cf, trade_log = simulate_timed_exit(stock_dfs, sig_syms, monthly_inv, bb_sig, imp_sig, imp_state, cfg["slippage_bps"])
     nifty_sim, nifty_cf = simulate_nifty_sip(cfg, monthly_inv)
 
-    m_timed = compute_metrics(timed_sim["portfolio"], LABEL_TIMED, timed_cf)
-    m_sip = compute_metrics(sip_sim["portfolio"], LABEL_SIP, sip_cf)
-    m_exit = compute_metrics(exit_sim["portfolio"], LABEL_EXIT, exit_cf)
-    m_nifty = compute_metrics(nifty_sim["portfolio"], LABEL_NIFTY, nifty_cf) if nifty_sim is not None else None
+    m_timed = nav_metrics(timed_sim, timed_cf, LABEL_TIMED)
+    m_sip = nav_metrics(sip_sim, sip_cf, LABEL_SIP)
+    m_exit = nav_metrics(exit_sim, exit_cf, LABEL_EXIT)
+    m_nifty = nav_metrics(nifty_sim, nifty_cf, LABEL_NIFTY) if nifty_sim is not None else None
 
     portfolios = {LABEL_TIMED: timed_sim["portfolio"], LABEL_SIP: sip_sim["portfolio"],
                   LABEL_EXIT: exit_sim["portfolio"]}

@@ -132,21 +132,9 @@ def nifty_sip(nifty_data, monthly_inv, slippage_bps=5):
     return pd.DataFrame(records).set_index("date"), cashflows
 
 
-def nav_metrics(sim_df, cashflows, name):
-    """Metrics where risk is measured on the cash-flow-adjusted NAV (unit value).
-
-    Sharpe/Sortino/MaxDD/volatility/CAGR on the raw accumulating portfolio value
-    are meaningless - monthly contributions show up as always-positive daily
-    "returns", so a money-losing SIP can post a high Sharpe. The NAV (unit value)
-    strips contributions, giving the true time-weighted risk profile. Final value
-    and XIRR stay money-weighted (computed on the value series + cashflows).
-    """
-    nav = bt._compute_nav(sim_df, cashflows)
-    m = bt.compute_metrics(nav, name)                       # risk metrics from NAV
-    vm = bt.compute_metrics(sim_df["portfolio"], name, cashflows)
-    m["final_value"] = vm["final_value"]                    # money-weighted final
-    m["xirr"] = vm["xirr"]                                  # money-weighted return
-    return m
+# Risk-on-NAV metrics now live in backtest.py as the single source of truth
+# (bt.nav_metrics); kept here as a thin alias so the call sites read unchanged.
+nav_metrics = bt.nav_metrics
 
 
 # ── windowed equity curves for the web (per-horizon, re-based from window start) ──
@@ -256,10 +244,10 @@ def run_full_suite(name, syms_ns, stock_dfs_full, signals, cfg, nifty_price):
         dfs, syms, monthly_inv, bb, imp, imp_st, cfg["slippage_bps"])
     nifty_sim, nifty_cf = bt.simulate_nifty_sip(cfg, monthly_inv)
 
-    m_timed = bt.compute_metrics(timed_sim["portfolio"], bt.LABEL_TIMED, timed_cf)
-    m_sip = bt.compute_metrics(sip_sim["portfolio"], bt.LABEL_SIP, sip_cf)
-    m_exit = bt.compute_metrics(exit_sim["portfolio"], bt.LABEL_EXIT, exit_cf)
-    m_nifty = bt.compute_metrics(nifty_sim["portfolio"], bt.LABEL_NIFTY, nifty_cf) if nifty_sim is not None else None
+    m_timed = nav_metrics(timed_sim, timed_cf, bt.LABEL_TIMED)
+    m_sip = nav_metrics(sip_sim, sip_cf, bt.LABEL_SIP)
+    m_exit = nav_metrics(exit_sim, exit_cf, bt.LABEL_EXIT)
+    m_nifty = nav_metrics(nifty_sim, nifty_cf, bt.LABEL_NIFTY) if nifty_sim is not None else None
 
     portfolios = {bt.LABEL_TIMED: timed_sim["portfolio"], bt.LABEL_SIP: sip_sim["portfolio"],
                   bt.LABEL_EXIT: exit_sim["portfolio"]}
