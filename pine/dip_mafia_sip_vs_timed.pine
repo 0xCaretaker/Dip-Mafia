@@ -14,15 +14,18 @@
 //                  idle-cash fallback (on one symbol, "deploy across the watchlist
 //                  below midline, else force-deploy" collapses to "buy this name").
 //   • SIP        : deploy the month's ₹ immediately, every month.
-// Both equity curves + a comparison table are drawn, with SIP — NOT day-1 Buy &
-// Hold — as the benchmark. This is the on-chart analog of simulate_timed_hodl vs
-// simulate_sip in backtest.py. It does NOT model the cross-stock fallback or the
+// This overlays the PRICE chart: BUY markers on the candles + a Timed-vs-SIP
+// comparison table (final value / multiple / return / Timed − SIP), with SIP —
+// NOT day-1 Buy & Hold — as the benchmark. The rupee equity curves are optional
+// (off by default; they'd flatten the candles on the price scale). This is the
+// on-chart analog of simulate_timed_hodl vs simulate_sip in backtest.py. It does
+// NOT model the cross-stock fallback or the
 // 15%-per-stock cap (portfolio-level; they live in backtest.py / the dashboard),
 // so a single name that rarely dips can still trail SIP — that's honest.
 //
 // INVARIANT: long-only, never sells. Cash only ever buys; units are held forever.
 // ============================================================================
-indicator("Dip Mafia — Timed HODL vs SIP (monthly)", overlay = false)
+indicator("Dip Mafia — Timed HODL vs SIP (monthly)", overlay = true)
 
 // ---------- Contribution + sim inputs ---------------------------------------
 monthlyAmt = input.float(20000, "Monthly contribution (₹)", minval = 1, group = "Contributions")
@@ -119,19 +122,25 @@ if t_cash > 0 and not sigBuy
 t_value = t_units * close + t_cash                       // incl. any waiting cash
 s_value = s_units * close
 
-// ---------- Plots (own pane) ------------------------------------------------
-plot(invested, "Invested",    color = color.new(color.gray,  0), linewidth = 1)
-plot(s_value,  "SIP value",   color = color.new(color.blue,  0), linewidth = 2)
-plot(t_value,  "Timed value", color = color.new(color.green, 0), linewidth = 2)
+// ---------- Display (overlays the PRICE chart) ------------------------------
+// overlay=true so candles + buys + the comparison table all share one chart.
+// The rupee equity curves (Timed/SIP/Invested) run ~100x the share price, so on
+// the price scale they flatten the candles - they're OFF by default. The table
+// always carries the Timed-vs-SIP result. Turn the curves on only if you'll
+// right-click one → "Move to → New pane above/below" to give them their own scale.
+showRace = input.bool(false, "Plot Timed/SIP value curves", group = "Display",
+     tooltip = "Off by default - the rupee curves dwarf the share price and flatten the candles. The table shows the numbers regardless. If you enable this, move the curves to their own pane/scale via right-click.")
+plot(showRace ? invested : na, "Invested",    color = color.new(color.gray,  0), linewidth = 1)
+plot(showRace ? s_value  : na, "SIP value",   color = color.new(color.blue,  0), linewidth = 2)
+plot(showRace ? t_value  : na, "Timed value", color = color.new(color.green, 0), linewidth = 2)
 
-// Timed HODL buy markers, force_overlay onto the MAIN price chart (below the bar
-// where the buy happened): green = dip+MACD signal buy, orange = idle-cash
-// fallback deploy. SIP buys every month, so it isn't marked (it would be a marker
-// on every monthly bar). The equity curves stay in this indicator's own pane.
+// Timed HODL buy markers on the PRICE candles (below the bar where the buy
+// happened): green BUY = dip+MACD signal buy, orange = idle-cash fallback deploy.
+// SIP buys every month, so it isn't marked.
 plotshape(sigBuy, "Dip buy (signal)", shape.triangleup, location.belowbar,
-     color.new(color.green, 0), size = size.small, text = "BUY", force_overlay = true)
+     color.new(color.green, 0), size = size.small, text = "BUY")
 plotshape(fbBuy, "Idle-cash deploy (fallback)", shape.triangleup, location.belowbar,
-     color.new(color.orange, 0), size = size.tiny, force_overlay = true)
+     color.new(color.orange, 0), size = size.tiny)
 
 // ---------- Comparison table ------------------------------------------------
 var table cmp = table.new(position.top_right, 2, 9, border_width = 1,
