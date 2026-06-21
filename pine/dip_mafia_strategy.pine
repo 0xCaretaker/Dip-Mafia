@@ -13,10 +13,13 @@
 // open P&L into its native stats instead of showing ~0 Net Profit. It does not
 // change the equity curve and is not a strategy decision.
 //
-// This is a per-symbol approximation of "Timed HODL": it deploys a fixed cash
-// tranche on each gated buy. It does NOT model the portfolio-level fallback
-// averaging, 15%-per-stock cap, or SIP split - those need a shared cash pool
-// across the whole watchlist and live in backtest.py.
+// This is a per-symbol approximation of "Timed HODL": it deploys a configurable
+// tranche on each gated buy. Default sizing is a PERCENT OF EQUITY (not a tiny
+// fixed cash amount), so on a single symbol the account actually gets invested
+// instead of parking ~99% in idle cash - the artifact that made the strategy's
+// % return and Sharpe look absurd next to Buy & Hold. It does NOT model the
+// portfolio-level fallback averaging, 15%-per-stock cap, or SIP split - those
+// need a shared cash pool across the whole watchlist and live in backtest.py.
 // =============================================================================
 strategy("Dip Mafia HODL (long-only, never sells)", overlay = true,
      pyramiding = 1000, calc_on_every_tick = false, process_orders_on_close = true,
@@ -47,6 +50,12 @@ signalSrc = input.string("Impulse", "MACD trigger",
 
 oncePerBar = input.bool(true, "Max one buy per bar", group = "Sizing",
      tooltip = "Standard and Impulse can both cross up on the same bar; this avoids double-tranche entries.")
+sizeMode = input.string("Percent of equity", "Position sizing", options = ["Percent of equity", "Fixed cash"], group = "Sizing",
+     tooltip = "Percent of equity (default) deploys a fraction of the account on each dip, so it stays invested - this is what stops the single-symbol idle-cash drag. Fixed cash buys the same rupee amount each dip (the old behaviour) and will leave most of a large account in cash.")
+sizePct  = input.float(25, "% of equity per dip-buy", minval = 1, maxval = 100, group = "Sizing",
+     tooltip = "Used in Percent-of-equity mode. ~25% reaches near-full investment after ~4 dips while still averaging in. Higher = deploy faster (100 = all-in on the first dip ≈ Buy & Hold but delayed to the first signal). A single-dip stock can only ever deploy this once, so some idle cash on quiet names is unavoidable.")
+sizeCash = input.float(10000, "Fixed cash per dip-buy", minval = 1, group = "Sizing",
+     tooltip = "Used in Fixed-cash mode (rupees per entry).")
 
 rfAnnual = input.float(6.0, "Risk-free rate % (annual)", group = "Metrics",
      tooltip = "Used for Sharpe/Sortino. 6% matches the India risk-free rate in backtest.py.")
@@ -107,10 +116,19 @@ dipBuy = macdBuy and inUniverse and midOk
 var int nBuys = 0
 warmedUp = not na(lower)
 if dipBuy and warmedUp
-    // unique id per entry so each tranche shows separately under pyramiding
-    eid = oncePerBar ? "Dip" : "Dip-" + str.tostring(bar_index)
-    strategy.entry(eid, strategy.long)
-    nBuys += 1
+    // Size the tranche. Available cash = equity − current holding value; cap the
+    // spend at it (less a hair for the 0.05% commission) so a buy is never rejected
+    // for insufficient funds. Percent-of-equity sizing keeps the account deployed
+    // instead of leaving ~99% idle cash (the single-symbol artifact).
+    cashAvail = strategy.equity - strategy.position_size * close
+    want      = sizeMode == "Percent of equity" ? sizePct / 100.0 * strategy.equity : sizeCash
+    spend     = math.min(want, cashAvail * 0.998)
+    qty       = spend > 0 and close > 0 ? spend / close : 0.0
+    if qty > 0
+        // unique id per entry so each tranche shows separately under pyramiding
+        eid = oncePerBar ? "Dip" : "Dip-" + str.tostring(bar_index)
+        strategy.entry(eid, strategy.long, qty = qty)
+        nBuys += 1
 
 // No in-sample exit anywhere. HODL. The only close is the terminal mark-to-market
 // below: on the last bar we realize all open lots so TradingView's native Strategy
@@ -129,6 +147,7 @@ if barstate.islast
 // the negative-excess subset. These are time-weighted (not the dashboard's
 // money-weighted XIRR), so treat them as comparable-in-spirit, not identical.
 var float startEq   = na     // equity at first entry
+var float bhStart   = na     // close at first entry (Buy & Hold reference)
 var int   startTime = na
 var float prevEq    = na
 var int   nObs      = 0
@@ -145,6 +164,7 @@ inMarket = strategy.position_size > 0
 if inMarket
     if na(startEq)
         startEq   := strategy.equity
+        bhStart   := close
         startTime := time
         peakEq    := strategy.equity
     else if prevEq > 0
@@ -162,7 +182,7 @@ if inMarket
     prevEq := strategy.equity
 
 // ---------- Performance table (drawn on the last bar) -----------------------
-var table perf = table.new(position.top_right, 2, 11, border_width = 1,
+var table perf = table.new(position.top_right, 2, 13, border_width = 1,
      frame_color = color.gray, frame_width = 1)
 
 // helper must live in global scope (Pine forbids function defs inside if-blocks)
@@ -203,6 +223,12 @@ if showMetrics and barstate.islast
     metricRow(8,  "Open P&L",       str.tostring(strategy.openprofit, "#"))
     metricRow(9,  "Equity",         str.tostring(strategy.equity, "#"))
     metricRow(10, "Buys / open lots", str.tostring(nBuys) + " / " + str.tostring(strategy.opentrades))
+    // Direct comparison for the single-symbol read: B&H = full capital in the stock
+    // from the first buy; Total return above is on the whole account (incl. any
+    // idle cash). The gap = the cost of dip-timing + undeployed cash on this name.
+    bhRet = (na(bhStart) or bhStart == 0) ? 0.0 : close / bhStart - 1.0
+    metricRow(11, "Buy & Hold (1st buy→now)", str.tostring(bhRet * 100.0, "#.##") + "%")
+    metricRow(12, "Strategy − B&H",           str.tostring((tr - bhRet) * 100.0, "#.##") + " pp")
 
 // ---------- Markers ---------------------------------------------------------
 plotshape(dipBuy and warmedUp, "Dip BUY", shape.triangleup, location.belowbar,
