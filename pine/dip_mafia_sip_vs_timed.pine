@@ -129,7 +129,7 @@ plot(t_value,  "Timed value", color = color.new(color.green, 0), linewidth = 2)
 // fallback deploy. SIP buys every month, so it isn't marked (it would be a marker
 // on every monthly bar). The equity curves stay in this indicator's own pane.
 plotshape(sigBuy, "Dip buy (signal)", shape.triangleup, location.belowbar,
-     color.new(color.green, 0), size = size.tiny, force_overlay = true)
+     color.new(color.green, 0), size = size.small, text = "BUY", force_overlay = true)
 plotshape(fbBuy, "Idle-cash deploy (fallback)", shape.triangleup, location.belowbar,
      color.new(color.orange, 0), size = size.tiny, force_overlay = true)
 
