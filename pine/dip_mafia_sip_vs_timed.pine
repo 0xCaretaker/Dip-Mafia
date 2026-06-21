@@ -1,0 +1,156 @@
+//@version=6
+// ============================================================================
+// Dip Mafia — Timed HODL vs SIP   (per-symbol, MONTHLY CONTRIBUTIONS)
+//
+// Why this exists (and is an indicator, not a strategy): a Pine strategy()
+// starts with ONE fixed lump and can never receive more cash, so it cannot model
+// "salary arrives every month and gets deployed into dips" — and TradingView's
+// Buy & Hold benchmark unfairly assumes 100% invested on day one. This indicator
+// hand-rolls the accounting instead: it adds a flat ₹ amount to a cash pool every
+// month and runs TWO sims on that same cash stream —
+//   • Timed HODL : deploy the waiting cash when a dip + MACD signal fires; if cash
+//                  sits idle past `idleThresh` bars, deploy it anyway. That last
+//                  step is the single-symbol reduction of backtest.py's V4
+//                  idle-cash fallback (on one symbol, "deploy across the watchlist
+//                  below midline, else force-deploy" collapses to "buy this name").
+//   • SIP        : deploy the month's ₹ immediately, every month.
+// Both equity curves + a comparison table are drawn, with SIP — NOT day-1 Buy &
+// Hold — as the benchmark. This is the on-chart analog of simulate_timed_hodl vs
+// simulate_sip in backtest.py. It does NOT model the cross-stock fallback or the
+// 15%-per-stock cap (portfolio-level; they live in backtest.py / the dashboard),
+// so a single name that rarely dips can still trail SIP — that's honest.
+//
+// INVARIANT: long-only, never sells. Cash only ever buys; units are held forever.
+// ============================================================================
+indicator("Dip Mafia — Timed HODL vs SIP (monthly)", overlay = false)
+
+// ---------- Contribution + sim inputs ---------------------------------------
+monthlyAmt = input.float(20000, "Monthly contribution (₹)", minval = 1, group = "Contributions")
+idleThresh = input.int(21, "Deploy idle cash after N bars", minval = 1, group = "Timed HODL",
+     tooltip = "Single-symbol reduction of the V4 idle-cash fallback: if a dip signal hasn't fired in this many bars, deploy the waiting cash anyway so it doesn't rot. 21 ≈ one trading month, matching backtest.py.")
+slipBps    = input.float(5, "Slippage (bps)", minval = 0, group = "Execution",
+     tooltip = "5 bps = 0.05%, matching backtest.py. Applied to both Timed and SIP buys.")
+
+// ---------- Signal inputs (same gate as the other Dip Mafia scripts) --------
+bbLength        = input.int(200,  "Bollinger length",      minval = 1, group = "Bollinger gate")
+bbStdDev        = input.float(2.0,"Bollinger std dev",     step = 0.1, group = "Bollinger gate")
+watchLookback   = input.int(60,   "Watch lookback (bars)", minval = 1, group = "Bollinger gate")
+requireBelowMid = input.bool(true,"Require close < BB midline", group = "Bollinger gate",
+     tooltip = "On by default to match the live config (bot REQUIRE_CLOSE_BELOW_MIDLINE = true / backtest BUY_REQUIRE_BELOW_MID = true).")
+impLenMA = input.int(34, "Impulse MA length",     group = "Impulse MACD")
+impSig   = input.int(9,  "Impulse signal length", group = "Impulse MACD")
+macdFast = input.int(12, "MACD fast EMA",   group = "Standard MACD")
+macdSlow = input.int(26, "MACD slow EMA",   group = "Standard MACD")
+macdSig  = input.int(9,  "MACD signal EMA", group = "Standard MACD")
+signalSrc = input.string("Impulse", "MACD trigger", options = ["Standard", "Impulse", "Either", "Both"], group = "Combine",
+     tooltip = "Impulse matches the backtest's Timed HODL buy gate (imp_sig == Buy). Others are for exploration.")
+
+// ---------- Bollinger gate --------------------------------------------------
+basis = ta.sma(close, bbLength)
+dev   = ta.stdev(close, bbLength, false)
+lower = basis - bbStdDev * dev
+touched    = (low <= lower) or (close <= lower)
+bsTouch    = ta.barssince(touched)
+bbBuy      = touched
+bbWatch    = (not touched) and (not na(bsTouch)) and (bsTouch <= watchLookback)
+inUniverse = bbBuy or bbWatch
+midOk      = (not requireBelowMid) or (close < basis)
+
+// ---------- MACDs (Standard + Impulse, per macd_signals.py) -----------------
+emaFast  = ta.ema(close, macdFast)
+emaSlow  = ta.ema(close, macdSlow)
+macdLine = emaFast - emaSlow
+sigLine  = ta.ema(macdLine, macdSig)
+stdBuy   = ta.crossover(macdLine, sigLine)
+
+hlc3src = (high + low + close) / 3
+hi = ta.rma(high, impLenMA)        // SMMA == Pine RMA
+lo = ta.rma(low,  impLenMA)
+e1 = ta.ema(hlc3src, impLenMA)
+e2 = ta.ema(e1, impLenMA)
+mi = e1 + (e1 - e2)                // ZLEMA == DEMA
+md = mi > hi ? mi - hi : (mi < lo ? mi - lo : 0.0)
+sb = ta.sma(md, impSig)
+impBuy = ta.crossover(md, sb)
+
+macdBuy = signalSrc == "Standard" ? stdBuy :
+          signalSrc == "Impulse"  ? impBuy :
+          signalSrc == "Both"     ? (stdBuy and impBuy) :
+                                     (stdBuy or  impBuy)
+dipBuy  = macdBuy and inUniverse and midOk
+
+// ---------- Simulation: monthly cash → Timed HODL vs SIP --------------------
+slip   = slipBps / 10000.0
+warmed = not na(lower)                                   // 200-bar band defined
+var bool wasWarmed = false
+justStarted = warmed and not wasWarmed
+wasWarmed := wasWarmed or warmed
+newMonth   = na(month[1]) ? false : (month != month[1])
+addCash    = warmed and (newMonth or justStarted)        // contribute once/month, post-warmup
+
+var float invested = 0.0
+var float t_cash   = 0.0       // Timed HODL waiting cash
+var float t_units  = 0.0       // Timed HODL shares
+var float s_units  = 0.0       // SIP shares (cash deployed immediately, no residual)
+var int   idle     = 0
+
+if addCash
+    invested += monthlyAmt
+    t_cash   += monthlyAmt
+    if close > 0
+        s_units += monthlyAmt / (close * (1 + slip))     // SIP buys this month now
+
+// Timed HODL: buy the dip; otherwise deploy idle cash once it has waited too long
+bought = false
+if t_cash > 0 and dipBuy and warmed and close > 0
+    t_units += t_cash / (close * (1 + slip))
+    t_cash  := 0.0
+    bought  := true
+    idle    := 0
+if t_cash > 0 and not bought
+    idle += 1
+    if idle >= idleThresh and close > 0
+        t_units += t_cash / (close * (1 + slip))
+        t_cash  := 0.0
+        idle    := 0
+
+t_value = t_units * close + t_cash                       // incl. any waiting cash
+s_value = s_units * close
+
+// ---------- Plots (own pane) ------------------------------------------------
+plot(invested, "Invested",    color = color.new(color.gray,  0), linewidth = 1)
+plot(s_value,  "SIP value",   color = color.new(color.blue,  0), linewidth = 2)
+plot(t_value,  "Timed value", color = color.new(color.green, 0), linewidth = 2)
+
+// ---------- Comparison table ------------------------------------------------
+var table cmp = table.new(position.top_right, 2, 9, border_width = 1,
+     frame_color = color.gray, frame_width = 1)
+
+cmpRow(r, k, v, col) =>
+    bg = color.new(color.black, 15)
+    table.cell(cmp, 0, r, k, text_color = color.white, text_size = size.small,
+         text_halign = text.align_left,  bgcolor = bg)
+    table.cell(cmp, 1, r, v, text_color = col, text_size = size.small,
+         text_halign = text.align_right, bgcolor = bg)
+
+if barstate.islast
+    tMult = invested > 0 ? t_value / invested : 0.0
+    sMult = invested > 0 ? s_value / invested : 0.0
+    tRet  = (tMult - 1.0) * 100.0
+    sRet  = (sMult - 1.0) * 100.0
+    gapRs = t_value - s_value
+    gapPp = tRet - sRet
+    win   = gapRs >= 0
+    cashPct = t_value > 0 ? t_cash / t_value * 100.0 : 0.0
+    hd = color.new(color.teal, 0)
+    table.cell(cmp, 0, 0, "Timed HODL vs SIP (monthly ₹)", text_color = color.white,
+         text_size = size.small, bgcolor = hd)
+    table.cell(cmp, 1, 0, "", bgcolor = hd)
+    cmpRow(1, "Invested",         str.tostring(invested, "#"), color.white)
+    cmpRow(2, "Timed value",      str.tostring(t_value,  "#"), color.white)
+    cmpRow(3, "Timed mult / ret", str.tostring(tMult, "#.##") + "x  " + str.tostring(tRet, "#.#") + "%", color.white)
+    cmpRow(4, "SIP value",        str.tostring(s_value,  "#"), color.white)
+    cmpRow(5, "SIP mult / ret",   str.tostring(sMult, "#.##") + "x  " + str.tostring(sRet, "#.#") + "%", color.white)
+    cmpRow(6, "Timed − SIP (₹)",  str.tostring(gapRs, "#"), win ? color.lime : color.red)
+    cmpRow(7, "Timed − SIP (pp)", str.tostring(gapPp, "#.#") + " pp", win ? color.lime : color.red)
+    cmpRow(8, "Timed cash now",   str.tostring(cashPct, "#.#") + "%", color.white)
