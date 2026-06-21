@@ -101,17 +101,19 @@ if addCash
         s_units += monthlyAmt / (close * (1 + slip))     // SIP buys this month now
 
 // Timed HODL: buy the dip; otherwise deploy idle cash once it has waited too long
-bought = false
+sigBuy = false      // bought on a dip + MACD signal
+fbBuy  = false      // bought via the idle-cash fallback (no signal in idleThresh bars)
 if t_cash > 0 and dipBuy and warmed and close > 0
     t_units += t_cash / (close * (1 + slip))
     t_cash  := 0.0
-    bought  := true
+    sigBuy  := true
     idle    := 0
-if t_cash > 0 and not bought
+if t_cash > 0 and not sigBuy
     idle += 1
     if idle >= idleThresh and close > 0
         t_units += t_cash / (close * (1 + slip))
         t_cash  := 0.0
+        fbBuy   := true
         idle    := 0
 
 t_value = t_units * close + t_cash                       // incl. any waiting cash
@@ -121,6 +123,14 @@ s_value = s_units * close
 plot(invested, "Invested",    color = color.new(color.gray,  0), linewidth = 1)
 plot(s_value,  "SIP value",   color = color.new(color.blue,  0), linewidth = 2)
 plot(t_value,  "Timed value", color = color.new(color.green, 0), linewidth = 2)
+
+// Timed HODL buy markers (row along the bottom of the pane): green = dip+MACD
+// signal buy, orange = idle-cash fallback deploy. SIP buys every month, so it
+// isn't marked (it would be a marker on every monthly bar).
+plotshape(sigBuy, "Dip buy (signal)", shape.triangleup, location.bottom,
+     color.new(color.green, 0), size = size.tiny)
+plotshape(fbBuy, "Idle-cash deploy (fallback)", shape.triangleup, location.bottom,
+     color.new(color.orange, 0), size = size.tiny)
 
 // ---------- Comparison table ------------------------------------------------
 var table cmp = table.new(position.top_right, 2, 9, border_width = 1,
@@ -132,6 +142,15 @@ cmpRow(r, k, v, col) =>
          text_halign = text.align_left,  bgcolor = bg)
     table.cell(cmp, 1, r, v, text_color = col, text_size = size.small,
          text_halign = text.align_right, bgcolor = bg)
+
+// Compact Indian rupee formatting: ₹46.15 L / ₹2.36 Cr instead of raw digits.
+fmtINR(x) =>
+    a = math.abs(x)
+    s = a >= 1e7 ? str.tostring(x / 1e7, "0.00") + " Cr" :
+        a >= 1e5 ? str.tostring(x / 1e5, "0.00") + " L"  :
+        a >= 1e3 ? str.tostring(x / 1e3, "0.0")  + " K"  :
+                   str.tostring(x, "0")
+    "₹" + s
 
 if barstate.islast
     tMult = invested > 0 ? t_value / invested : 0.0
@@ -146,11 +165,11 @@ if barstate.islast
     table.cell(cmp, 0, 0, "Timed HODL vs SIP (monthly ₹)", text_color = color.white,
          text_size = size.small, bgcolor = hd)
     table.cell(cmp, 1, 0, "", bgcolor = hd)
-    cmpRow(1, "Invested",         str.tostring(invested, "#"), color.white)
-    cmpRow(2, "Timed value",      str.tostring(t_value,  "#"), color.white)
-    cmpRow(3, "Timed mult / ret", str.tostring(tMult, "#.##") + "x  " + str.tostring(tRet, "#.#") + "%", color.white)
-    cmpRow(4, "SIP value",        str.tostring(s_value,  "#"), color.white)
-    cmpRow(5, "SIP mult / ret",   str.tostring(sMult, "#.##") + "x  " + str.tostring(sRet, "#.#") + "%", color.white)
-    cmpRow(6, "Timed − SIP (₹)",  str.tostring(gapRs, "#"), win ? color.lime : color.red)
-    cmpRow(7, "Timed − SIP (pp)", str.tostring(gapPp, "#.#") + " pp", win ? color.lime : color.red)
-    cmpRow(8, "Timed cash now",   str.tostring(cashPct, "#.#") + "%", color.white)
+    cmpRow(1, "Invested",         fmtINR(invested), color.white)
+    cmpRow(2, "Timed value",      fmtINR(t_value),  color.white)
+    cmpRow(3, "Timed mult / ret", str.tostring(tMult, "0.00") + "x   " + str.tostring(tRet, "0.0") + "%", color.white)
+    cmpRow(4, "SIP value",        fmtINR(s_value),  color.white)
+    cmpRow(5, "SIP mult / ret",   str.tostring(sMult, "0.00") + "x   " + str.tostring(sRet, "0.0") + "%", color.white)
+    cmpRow(6, "Timed − SIP (₹)",  fmtINR(gapRs), win ? color.lime : color.red)
+    cmpRow(7, "Timed − SIP (pp)", str.tostring(gapPp, "0.0") + " pp", win ? color.lime : color.red)
+    cmpRow(8, "Timed cash now",   str.tostring(cashPct, "0.0") + "%", color.white)
