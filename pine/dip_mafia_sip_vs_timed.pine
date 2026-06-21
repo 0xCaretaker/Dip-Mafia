@@ -146,11 +146,14 @@ cmpRow(r, k, v, col) =>
 // Compact Indian rupee formatting: ₹46.15 L / ₹2.36 Cr instead of raw digits.
 fmtINR(x) =>
     a = math.abs(x)
-    s = a >= 1e7 ? str.tostring(x / 1e7, "0.00") + " Cr" :
-        a >= 1e5 ? str.tostring(x / 1e5, "0.00") + " L"  :
-        a >= 1e3 ? str.tostring(x / 1e3, "0.0")  + " K"  :
-                   str.tostring(x, "0")
-    "₹" + s
+    out = str.tostring(x, "0")
+    if a >= 1e7
+        out := str.tostring(x / 1e7, "0.00") + " Cr"
+    else if a >= 1e5
+        out := str.tostring(x / 1e5, "0.00") + " L"
+    else if a >= 1e3
+        out := str.tostring(x / 1e3, "0.0") + " K"
+    "₹" + out
 
 if barstate.islast
     tMult = invested > 0 ? t_value / invested : 0.0
