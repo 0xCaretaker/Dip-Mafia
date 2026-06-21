@@ -23,8 +23,8 @@ indicator("Dip Mafia - BB(200) gate + MACD / Impulse MACD", overlay = true, max_
 bbLength        = input.int(200,  "Bollinger length",            minval = 1, group = "Bollinger gate")
 bbStdDev        = input.float(2.0,"Bollinger std dev",           step = 0.1, group = "Bollinger gate")
 watchLookback   = input.int(60,   "Watch lookback (bars)",       minval = 1, group = "Bollinger gate")
-requireBelowMid = input.bool(false,"Require close < BB midline (backtest stricter mode)", group = "Bollinger gate",
-     tooltip = "Live bot = false (full Buy/Watch universe). backtest.py BUY_REQUIRE_BELOW_MID = true.")
+requireBelowMid = input.bool(true,"Require close < BB midline", group = "Bollinger gate",
+     tooltip = "On by default to match the live bot (REQUIRE_CLOSE_BELOW_MIDLINE = true) and backtest.py (BUY_REQUIRE_BELOW_MID = true): only Buy/Watch names still below the BB midline qualify. Turn off for the looser any-lower-band-touch-within-60-bars universe.")
 
 macdFast = input.int(12, "MACD fast EMA",   group = "Standard MACD")
 macdSlow = input.int(26, "MACD slow EMA",   group = "Standard MACD")
