@@ -104,7 +104,15 @@ plotshape(bbWatch and not dipBuy, "Watch (in universe, no MACD buy yet)", shape.
 plotshape(macdSell, "Weakness (info only, never sold)", shape.triangledown, location.abovebar,
      color.new(color.red, 25), size = size.tiny, text = "weak")
 
-bgcolor(bbBuy ? color.new(color.green, 90) : na, title = "Lower-band touch zone")
+// Background zones:
+//   green  = lower-band touch (the dip itself, bbBuy)
+//   purple = the up-to-`watchLookback`-bar (default 60) Watch grace window after
+//            a touch, where the stock is still a valid buy candidate (pending a
+//            MACD cross + the midline gate). With requireBelowMid on, the buy can
+//            only fire on the part of this zone that is BELOW the orange midline.
+// bbBuy and bbWatch are mutually exclusive, so the two tints never overlap.
+bgcolor(bbBuy   ? color.new(color.green,  90) : na, title = "Lower-band touch zone")
+bgcolor(bbWatch ? color.new(color.purple, 92) : na, title = "Watch window (still buyable, ≤60 bars)")
 
 // ---------- Alerts ----------------------------------------------------------
 alertcondition(dipBuy,   "Dip Mafia BUY",   "Dip Mafia: gated BUY signal (BB + MACD)")

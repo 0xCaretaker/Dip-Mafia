@@ -14,6 +14,11 @@ NSE chart (needs ~230+ daily bars for the 200-bar Bollinger warmup).
 - **MACD trigger** (`Combine` group): `Standard` / `Impulse` / `Either` / `Both`. The **indicator** defaults to `Either` (it mirrors the Telegram message, which surfaces both the Standard and Impulse sections). The **strategy** defaults to `Impulse`, because the Timed HODL backtest buys on the BB gate + Impulse MACD only (`imp_sig == "Buy"`) - Standard MACD never enters the buy decision.
 - **Require close < BB midline** (`Bollinger gate` group): **on by default** in both scripts, matching the live config (`bot.py REQUIRE_CLOSE_BELOW_MIDLINE = True` and `backtest.py BUY_REQUIRE_BELOW_MID = True`): a buy needs close < BB midline on top of the lower-band touch. Turn off for the looser BB(touch)+MACD universe.
 
+## Chart background zones (both scripts)
+
+- **Green** = lower-band touch (`bbBuy`) - the dip itself, where low/close tagged the lower band.
+- **Purple** = the `Watch` grace window - the up-to-60-bar (`watchLookback`) stretch *after* a touch where the stock is still a valid buy candidate, pending a MACD cross. With the midline gate on, a buy only fires on the part of the purple zone still **below the orange midline**; once price recovers above it, the candidate is dropped even though it's inside the 60-bar window.
+
 ## Not ported
 
 Portfolio-level mechanics - fallback averaging, the 15%-per-stock cap, the SIP
