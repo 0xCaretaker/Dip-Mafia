@@ -23,8 +23,8 @@ indicator("Dip Mafia - BB(200) gate + MACD / Impulse MACD", overlay = true, max_
 bbLength        = input.int(200,  "Bollinger length",            minval = 1, group = "Bollinger gate")
 bbStdDev        = input.float(2.0,"Bollinger std dev",           step = 0.1, group = "Bollinger gate")
 watchLookback   = input.int(60,   "Watch lookback (bars)",       minval = 1, group = "Bollinger gate")
-requireBelowMid = input.bool(false,"Require close < BB midline (backtest stricter mode)", group = "Bollinger gate",
-     tooltip = "Live bot = false (full Buy/Watch universe). backtest.py BUY_REQUIRE_BELOW_MID = true.")
+requireBelowMid = input.bool(true,"Require close < BB midline", group = "Bollinger gate",
+     tooltip = "On by default to match the live bot (REQUIRE_CLOSE_BELOW_MIDLINE = true) and backtest.py (BUY_REQUIRE_BELOW_MID = true): only Buy/Watch names still below the BB midline qualify. Turn off for the looser any-lower-band-touch-within-60-bars universe.")
 
 macdFast = input.int(12, "MACD fast EMA",   group = "Standard MACD")
 macdSlow = input.int(26, "MACD slow EMA",   group = "Standard MACD")
@@ -104,7 +104,15 @@ plotshape(bbWatch and not dipBuy, "Watch (in universe, no MACD buy yet)", shape.
 plotshape(macdSell, "Weakness (info only, never sold)", shape.triangledown, location.abovebar,
      color.new(color.red, 25), size = size.tiny, text = "weak")
 
-bgcolor(bbBuy ? color.new(color.green, 90) : na, title = "Lower-band touch zone")
+// Background zones:
+//   green  = lower-band touch (the dip itself, bbBuy)
+//   purple = the up-to-`watchLookback`-bar (default 60) Watch grace window after
+//            a touch, where the stock is still a valid buy candidate (pending a
+//            MACD cross + the midline gate). With requireBelowMid on, the buy can
+//            only fire on the part of this zone that is BELOW the orange midline.
+// bbBuy and bbWatch are mutually exclusive, so the two tints never overlap.
+bgcolor(bbBuy   ? color.new(color.green,  90) : na, title = "Lower-band touch zone")
+bgcolor(bbWatch ? color.new(color.purple, 92) : na, title = "Watch window (still buyable, ≤60 bars)")
 
 // ---------- Alerts ----------------------------------------------------------
 alertcondition(dipBuy,   "Dip Mafia BUY",   "Dip Mafia: gated BUY signal (BB + MACD)")

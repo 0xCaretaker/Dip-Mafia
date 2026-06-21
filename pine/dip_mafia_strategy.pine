@@ -5,9 +5,13 @@
 // Same signal layer as dip_mafia.pine (BB(200) gate + MACD / Impulse MACD), but
 // wired into strategy() so TradingView produces an equity curve.
 //
-// INVARIANT preserved: this strategy ONLY enters. There is no exit, stop, or
-// take-profit anywhere in this file. Every BUY accumulates and is held forever.
-// "Weakness" crossovers are plotted for awareness only and are never traded.
+// INVARIANT preserved: this strategy ONLY enters during the run. There is no
+// exit, stop, or take-profit on any in-sample bar. Every BUY accumulates and is
+// held forever. "Weakness" crossovers are plotted for awareness only and are
+// never traded. The ONE close is a report-only mark-to-market on the very last
+// bar (no next bar to act on), so TradingView's Strategy Tester realizes the
+// open P&L into its native stats instead of showing ~0 Net Profit. It does not
+// change the equity curve and is not a strategy decision.
 //
 // This is a per-symbol approximation of "Timed HODL": it deploys a fixed cash
 // tranche on each gated buy. It does NOT model the portfolio-level fallback
@@ -15,17 +19,20 @@
 // across the whole watchlist and live in backtest.py.
 // =============================================================================
 strategy("Dip Mafia HODL (long-only, never sells)", overlay = true,
-     pyramiding = 1000, calc_on_every_tick = false,
+     pyramiding = 1000, calc_on_every_tick = false, process_orders_on_close = true,
      initial_capital = 1000000, currency = currency.NONE,
      default_qty_type = strategy.cash, default_qty_value = 10000,
      commission_type = strategy.commission.percent, commission_value = 0.05)
+// process_orders_on_close=true: fill entries at the signal bar's CLOSE (matching
+// backtest.py, which buys at last_price = that day's close, not the next open),
+// and let the terminal mark-to-market close (see bottom) fill on the last bar.
 
 // ---------- Inputs ----------------------------------------------------------
 bbLength        = input.int(200,  "Bollinger length",            minval = 1, group = "Bollinger gate")
 bbStdDev        = input.float(2.0,"Bollinger std dev",           step = 0.1, group = "Bollinger gate")
 watchLookback   = input.int(60,   "Watch lookback (bars)",       minval = 1, group = "Bollinger gate")
-requireBelowMid = input.bool(false,"Require close < BB midline (backtest stricter mode)", group = "Bollinger gate",
-     tooltip = "Live bot = false. backtest.py BUY_REQUIRE_BELOW_MID = true.")
+requireBelowMid = input.bool(true,"Require close < BB midline", group = "Bollinger gate",
+     tooltip = "On by default to match the live config: bot REQUIRE_CLOSE_BELOW_MIDLINE = true AND backtest.py BUY_REQUIRE_BELOW_MID = true (a buy needs close < BB midline on top of the lower-band touch). Turn off for the looser BB(touch)+MACD universe.")
 
 macdFast = input.int(12, "MACD fast EMA",   group = "Standard MACD")
 macdSlow = input.int(26, "MACD slow EMA",   group = "Standard MACD")
@@ -34,8 +41,9 @@ macdSig  = input.int(9,  "MACD signal EMA", group = "Standard MACD")
 impLenMA = input.int(34, "Impulse MA length",     group = "Impulse MACD")
 impSig   = input.int(9,  "Impulse signal length", group = "Impulse MACD")
 
-signalSrc = input.string("Either", "MACD trigger",
-     options = ["Standard", "Impulse", "Either", "Both"], group = "Combine")
+signalSrc = input.string("Impulse", "MACD trigger",
+     options = ["Standard", "Impulse", "Either", "Both"], group = "Combine",
+     tooltip = "Impulse by default: the Timed HODL backtest buys on the BB gate + Impulse MACD ONLY (imp_sig == Buy); Standard MACD never enters the buy decision. 'Either'/'Both'/'Standard' are for exploration and diverge from the backtest.")
 
 oncePerBar = input.bool(true, "Max one buy per bar", group = "Sizing",
      tooltip = "Standard and Impulse can both cross up on the same bar; this avoids double-tranche entries.")
@@ -94,7 +102,7 @@ macdSell = signalSrc == "Standard" ? stdSell :
 
 dipBuy = macdBuy and inUniverse and midOk
 
-// ---------- Execution: enter only, NEVER exit -------------------------------
+// ---------- Execution: enter only (terminal MTM close at the very end) ------
 // Need enough history for the 200-bar band to be defined before trading.
 var int nBuys = 0
 warmedUp = not na(lower)
@@ -104,7 +112,13 @@ if dipBuy and warmedUp
     strategy.entry(eid, strategy.long)
     nBuys += 1
 
-// There is intentionally NO strategy.close / strategy.exit anywhere. HODL.
+// No in-sample exit anywhere. HODL. The only close is the terminal mark-to-market
+// below: on the last bar we realize all open lots so TradingView's native Strategy
+// Tester reports the true Net Profit / CAGR / % profitable (a never-sell strategy
+// otherwise leaves them ~0, with everything stuck in "Open P&L"). process_orders_on_close
+// lets this fill at the last bar's close; the equity curve is unchanged.
+if barstate.islast
+    strategy.close_all(comment = "MTM (report only)")
 
 // ---------- Performance metrics (equity-curve based) ------------------------
 // A never-sell strategy has ZERO closed trades, so TradingView's Strategy Tester
@@ -195,4 +209,10 @@ plotshape(dipBuy and warmedUp, "Dip BUY", shape.triangleup, location.belowbar,
      color.new(color.green, 0), size = size.small, text = "BUY")
 plotshape(macdSell, "Weakness (info only, never sold)", shape.triangledown, location.abovebar,
      color.new(color.red, 25), size = size.tiny, text = "weak")
-bgcolor(bbBuy ? color.new(color.green, 90) : na, title = "Lower-band touch zone")
+// Background zones: green = lower-band touch (the dip, bbBuy); purple = the
+// up-to-`watchLookback`-bar (default 60) Watch grace window after a touch, where
+// the stock is still a valid buy candidate (pending a MACD cross + the midline
+// gate). With requireBelowMid on, buys only fire on the part of the purple zone
+// below the orange midline. bbBuy and bbWatch are mutually exclusive.
+bgcolor(bbBuy   ? color.new(color.green,  90) : na, title = "Lower-band touch zone")
+bgcolor(bbWatch ? color.new(color.purple, 92) : na, title = "Watch window (still buyable, ≤60 bars)")
