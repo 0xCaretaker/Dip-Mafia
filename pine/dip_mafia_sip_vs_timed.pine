@@ -124,13 +124,14 @@ plot(invested, "Invested",    color = color.new(color.gray,  0), linewidth = 1)
 plot(s_value,  "SIP value",   color = color.new(color.blue,  0), linewidth = 2)
 plot(t_value,  "Timed value", color = color.new(color.green, 0), linewidth = 2)
 
-// Timed HODL buy markers (row along the bottom of the pane): green = dip+MACD
-// signal buy, orange = idle-cash fallback deploy. SIP buys every month, so it
-// isn't marked (it would be a marker on every monthly bar).
-plotshape(sigBuy, "Dip buy (signal)", shape.triangleup, location.bottom,
-     color.new(color.green, 0), size = size.tiny)
-plotshape(fbBuy, "Idle-cash deploy (fallback)", shape.triangleup, location.bottom,
-     color.new(color.orange, 0), size = size.tiny)
+// Timed HODL buy markers, force_overlay onto the MAIN price chart (below the bar
+// where the buy happened): green = dip+MACD signal buy, orange = idle-cash
+// fallback deploy. SIP buys every month, so it isn't marked (it would be a marker
+// on every monthly bar). The equity curves stay in this indicator's own pane.
+plotshape(sigBuy, "Dip buy (signal)", shape.triangleup, location.belowbar,
+     color.new(color.green, 0), size = size.tiny, force_overlay = true)
+plotshape(fbBuy, "Idle-cash deploy (fallback)", shape.triangleup, location.belowbar,
+     color.new(color.orange, 0), size = size.tiny, force_overlay = true)
 
 // ---------- Comparison table ------------------------------------------------
 var table cmp = table.new(position.top_right, 2, 9, border_width = 1,
