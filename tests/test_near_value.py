@@ -1,4 +1,4 @@
-"""Unit tests for the Near Value notification section.
+"""Unit tests for the Cheap Bargains notification section (a.k.a. near-value).
 
 Plain asserts; imports bot (needs yfinance installed). Run with:
     python tests/test_near_value.py
@@ -46,7 +46,7 @@ def test_near_value_section():
     assert msg is not None
     lines = msg.splitlines()
 
-    assert "📉 *Near Value*" in msg
+    assert "📉 *Cheap Bargains*" in msg
     assert "below 200" in msg           # title reflects below-midline only
     assert "cash in hand" in msg        # actionable prompt under the heading
 
