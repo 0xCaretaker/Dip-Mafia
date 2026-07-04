@@ -81,22 +81,6 @@ Today -4.10%  ·  ATH -25.3%
 
 🔴 Sentiment: Bearish
 
-📈 Early Signal (MACD)
-🟢 ⭐ ⏬ SUZLON  ₹38.50
-🟢 ⭐ 🔽 GRSE    ₹1850.00
-
-🟣 Wait for Buy · 25/34 · 73.5%
-🟡 Hold · 7/34 · 20.6%
-
-──────────────────────────
-⚡ Strong Signal (iMACD)
-🟢 ⭐ ⏬ SUZLON  ₹38.50
-🟢 💼 ⏬ AIIL    ₹320.00
-
-🟣 Wait for Buy · 28/34 · 82.4%
-🟡 Hold · 4/34 · 11.8%
-
-──────────────────────────
 🎯 Verdict (Boll + iMACD)
 🟢 ⭐ ⏬ SUZLON  ₹38.50
 
@@ -137,7 +121,7 @@ If the indicators, sentiment, and summary lines don't make sense, **skip them.**
 
 **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
 
-Everything else (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it - safe to skip.
+The `🟡 Sentiment` line up top is the only extra context in the message - safe to skip. The raw per-stock MACD and Impulse MACD lists (the noisier, ungated reads) are **not** in the notification anymore; they live in full detail in the GitHub Action run log, alongside a `BOLLINGER FILTER PASS` list of exactly which stocks feed the Verdict.
 
 ## Quick Start
 

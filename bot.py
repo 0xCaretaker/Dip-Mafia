@@ -235,7 +235,6 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )
 
-    std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
     # 4) Near Value: Top-50 names trading below the 200-SMA midline.
@@ -276,14 +275,12 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             "_💰 idle cash \\(\\>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
         )
 
-    # 1) Standard MACD, full universe, no Bollinger gate (earlier, noisier read)
-    append_macd_section("📈 *Early Signal* _\\(MACD\\)_", std_signals, None)
-    # 2) Impulse MACD, full universe, no Bollinger gate (stronger confirmation)
-    append_macd_section("⚡ *Strong Signal* _\\(iMACD\\)_", impulse_signals, None)
-    # 3) Bollinger + Impulse MACD, impulse gated by the Bollinger filter (the verdict)
+    # 1) The Verdict: Impulse MACD gated by the Bollinger filter — the only
+    #    actionable buy call. The ungated Early/Strong MACD lists are console-only
+    #    (full detail in the GitHub Action log), kept out of the notification.
     append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
-    # 4) Near Value radar (positional; renders even when the Verdict is empty)
+    # 2) Near Value radar (positional; renders even when the Verdict is empty)
     append_near_value_section()
 
     # Footer: arrow legend + the "we never sell" reminder.
@@ -492,6 +489,22 @@ def main():
         print("\n🟣 No Watch signals")
 
     print(f"\n🟡 HOLD: {len(hold_signals)} stocks")
+
+    # Console: stocks passing the Bollinger gate (the Verdict-eligible universe:
+    # Buy/Watch AND below the 200-SMA midline via passes_bollinger_gate). This is
+    # the exact set the notification's Verdict is drawn from.
+    print("\n" + "=" * 60)
+    print(f"BOLLINGER FILTER PASS ({len(bollinger_filter)} stocks · Buy/Watch + below-mid)")
+    print("=" * 60)
+    if bollinger_filter:
+        for stock in sorted(bollinger_filter):
+            info = bollinger_results.get(stock, {})
+            act = info.get("action", "-")
+            mid = info.get("mid_dist_pct")
+            mid_str = f"{mid:+.1f}%" if mid is not None else "   -  "
+            print(f"  ✓ {stock:<20} ₹{info.get('price', 0):>10.2f}  [BB:{act}]  mid {mid_str}")
+    else:
+        print("\n  (none pass the gate this run)")
 
     # Console: MACD signals (full detail)
     for interval, all_signals in all_interval_signals.items():
