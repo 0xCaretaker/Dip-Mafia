@@ -290,6 +290,10 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
+        combined_lines.append("_▶️ how to act_")
+        combined_lines.append("_🟢 buy the 🎯 Verdict picks_")
+        combined_lines.append("_💰 spare cash? spread it across 📉 Near Value \\(below mid\\)_")
+        combined_lines.append("")
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
         combined_lines.append("_⚡ iMACD turning up_")
