@@ -227,7 +227,10 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         if total > 0:
             wait_pct = (wait_count / total) * 100
             hold_pct = (hold_count / total) * 100
-            combined_lines.append("")
+            if entries:
+                combined_lines.append("")          # separate the buy list from the stats
+            else:
+                combined_lines.append("🚫 no buys today")   # tight: sits right under the title
             combined_lines.append(
                 f"🟣 Wait for Buy · `{wait_count}/{total} · {wait_pct:.1f}%`"
             )
@@ -264,6 +267,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         if not near:
             combined_lines.append("_none near the midline_")
             return
+        combined_lines.append("_💰 cash in hand? buy these below\\-mid names now_")
         name_w = max(len(n) for n, _, _, _ in near)
         pct_w = max(len(f"{d:+.1f}%") for _, d, _, _ in near)
         for name, d, pos, ticker in near:
@@ -271,9 +275,6 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             pct_str = f"{d:+.1f}%".rjust(pct_w)
             zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
             combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
-        combined_lines.append(
-            "_💰 idle cash \\(\\>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
-        )
 
     # 1) The Verdict: Impulse MACD gated by the Bollinger filter — the only
     #    actionable buy call. The ungated Early/Strong MACD lists are console-only
