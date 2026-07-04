@@ -1,5 +1,4 @@
 import os
-import json
 import requests
 import re
 from datetime import datetime, timezone, timedelta
@@ -43,67 +42,6 @@ def escape_md(text):
     for char in special_chars:
         text = text.replace(char, f'\\{char}')
     return text
-
-
-# =========================
-# Scan-scoped reuse cache
-# =========================
-def watchlist_signature(symbols, six7_set):
-    """Stable, order-independent string identifying the live universe.
-
-    Plain join (not a hash) so the dedup-token guard stays green and the value
-    is human-readable in the cache. Includes six7 membership because the ⭐/💼
-    class tags depend on it, so a Top-50 move must change the signature.
-    """
-    return "\n".join(sorted(symbols)) + "|" + ",".join(sorted(six7_set))
-
-
-def latest_trading_date():
-    """Latest NSE trading date from a single ^NSEI daily bar (cheap probe).
-
-    Used only to decide whether a cached message can be reused — one ticker,
-    not the full universe. Returns 'YYYY-MM-DD' or None on any failure
-    (network error, empty frame), so reuse degrades to a full recompute.
-    """
-    try:
-        hist = yf.download("^NSEI", period="5d", interval="1d",
-                           auto_adjust=True, progress=False, threads=False)
-        if hist is None or hist.empty:
-            return None
-        return hist.index[-1].strftime("%Y-%m-%d")
-    except Exception as e:   # noqa: BLE001 — probe is best-effort, never fatal
-        print(f"date probe failed: {e}")
-        return None
-
-
-def read_cache(path):
-    """Return the cached post dict, or None if absent/unreadable/malformed."""
-    try:
-        with open(path, encoding="utf-8") as f:
-            return json.load(f)
-    except (OSError, ValueError):
-        return None
-
-
-def write_cache(path, data_date, watchlist_sig, message_md):
-    """Persist the last computed post for a later scan-triggered reuse."""
-    os.makedirs(os.path.dirname(path), exist_ok=True)
-    with open(path, "w", encoding="utf-8") as f:
-        json.dump(
-            {"data_date": data_date,
-             "watchlist_signature": watchlist_sig,
-             "message_md": message_md},
-            f,
-        )
-
-
-def should_reuse(reuse_enabled, probe_date, current_sig, cache):
-    """True only when a scan-triggered run can safely re-send the cached post."""
-    return bool(
-        reuse_enabled and probe_date and cache
-        and cache.get("data_date") == probe_date
-        and cache.get("watchlist_signature") == current_sig
-    )
 
 
 # =========================
@@ -300,6 +238,44 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
+    # 4) Near Value: Top-50 names at/below the 200-SMA midline (+5% cushion).
+    #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
+    #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
+    def append_near_value_section():
+        near = []
+        for ticker, info in bollinger_signals.items():
+            name = ticker.replace(".NS", "").replace(".BO", "")
+            if name not in six7_set:
+                continue
+            d = info.get("mid_dist_pct")
+            if d is None or d > 5.0:
+                continue
+            near.append((name, d, info.get("position"), ticker))
+        near.sort(key=lambda t: t[1])  # deepest below-mid first
+
+        # Renders even when the Verdict is empty, but don't force an otherwise-
+        # empty message: skip only if there's nothing here AND nothing above.
+        if not near and not rendered[0]:
+            return
+        combined_lines.append("")
+        if rendered[0]:
+            combined_lines.append(divider)
+        rendered[0] = True
+        combined_lines.append("📉 *Near Value* _\\(Top 50 · ≤5% over 200\\-SMA\\)_")
+        if not near:
+            combined_lines.append("_none near the midline_")
+            return
+        name_w = max(len(n) for n, _, _, _ in near)
+        pct_w = max(len(f"{d:+.1f}%") for _, d, _, _ in near)
+        for name, d, pos, ticker in near:
+            pos_prefix = f"{pos} " if pos else ""
+            pct_str = f"{d:+.1f}%".rjust(pct_w)
+            zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
+            combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
+        combined_lines.append(
+            "_💰 idle cash \\(\\>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
+        )
+
     # 1) Standard MACD, full universe, no Bollinger gate (earlier, noisier read)
     append_macd_section("📈 *Early Signal* _\\(MACD\\)_", std_signals, None)
     # 2) Impulse MACD, full universe, no Bollinger gate (stronger confirmation)
@@ -307,12 +283,16 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     # 3) Bollinger + Impulse MACD, impulse gated by the Bollinger filter (the verdict)
     append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
+    # 4) Near Value radar (positional; renders even when the Verdict is empty)
+    append_near_value_section()
+
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
+        combined_lines.append("_⚡ iMACD turning up_")
         combined_lines.append("_⭐ Top 50 · 💼 your holding_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
@@ -443,24 +423,6 @@ def main():
     print(f"Watchlist: {len(symbols)} symbols "
           f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
 
-    # Scan-scoped reuse: only a run dispatched by the six7 scan sets
-    # REUSE_IF_UNCHANGED. When the watchlist and the trading date both match the
-    # cached post, re-send it instead of downloading the full universe. Cron and
-    # the manual button leave the flag false and always recompute.
-    reuse_enabled = os.environ.get("REUSE_IF_UNCHANGED", "").lower() in ("1", "true", "yes")
-    cache_path = os.path.join(os.path.dirname(os.path.abspath(__file__)),
-                              ".cache", "last_post.json")
-    current_sig = watchlist_signature(symbols, six7_set)
-    probe_date = latest_trading_date() if reuse_enabled else None
-
-    if reuse_enabled:
-        cached = read_cache(cache_path)
-        if should_reuse(reuse_enabled, probe_date, current_sig, cached):
-            print(f"♻️  Watchlist + data date unchanged ({probe_date}); "
-                  f"re-sending cached message")
-            deliver_message(cached["message_md"])
-            return
-
     stocks = [s + ".NS" for s in symbols]
     intervals = ["1d"]
 
@@ -572,9 +534,6 @@ def main():
         print("No signals rendered — nothing to send")
         return
     deliver_message(final_message)
-    stamp_date = probe_date or latest_trading_date()
-    if stamp_date:
-        write_cache(cache_path, stamp_date, current_sig, final_message)
 
 
 if __name__ == "__main__":

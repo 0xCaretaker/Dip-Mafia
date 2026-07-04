@@ -15,9 +15,10 @@ on:
     inputs:
       reuse_if_unchanged:
         description: >-
-          Re-send the last cached message instead of recomputing when the
-          watchlist and trading date are unchanged. Set true by the six7 scan
-          dispatch; cron and the manual button leave it false (always recompute).
+          Deprecated / ignored. The bot now always recomputes and posts on
+          every run. Kept only so the external six7 web-scan dispatch, which
+          still passes this input, does not fail with "Unexpected inputs
+          provided". Safe to drop once six7 stops sending it.
         type: boolean
         default: false
 
@@ -33,14 +34,6 @@ jobs:
         with:
           python-version: '3.12'
 
-      - name: Restore last-post cache
-        uses: actions/cache@v4
-        with:
-          path: .cache
-          key: dip-mafia-lastpost-${{ github.run_id }}
-          restore-keys: |
-            dip-mafia-lastpost-
-
       - name: Install dependencies
         run: |
           pip install -r requirements.txt
@@ -50,5 +43,4 @@ jobs:
           TELEGRAM_TOKEN: ${{ secrets.TELEGRAM_TOKEN }}
           TELEGRAM_CHAT_IDS: ${{ secrets.TELEGRAM_CHAT_IDS }}
           DISCORD_WEBHOOK_URL: ${{ secrets.DISCORD_WEBHOOK_URL }}
-          REUSE_IF_UNCHANGED: ${{ inputs.reuse_if_unchanged }}
         run: python bot.py
