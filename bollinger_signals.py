@@ -116,6 +116,20 @@ def calculate_bb_position(df, length=200, std_dev=2):
     return _position_from_levels(close[-1], lower, m, upper)
 
 
+def calculate_bb_mid_distance_pct(df, length=200):
+    """Signed % distance of the latest close from the 200-SMA midline
+    (the Bollinger middle band). Negative = below mid (cheaper).
+    Returns None on insufficient history / NaN warmup."""
+    if df.empty or len(df) < length:
+        return None
+    close = to_1d(df["Close"])
+    middle = pd.Series(close).rolling(window=length).mean().values
+    m = middle[-1]
+    if m != m or m == 0:  # NaN guard (warmup) / avoid div-by-zero
+        return None
+    return (close[-1] - m) / m * 100.0
+
+
 # =========================
 # Process signals from pre-downloaded data
 # =========================
@@ -165,6 +179,7 @@ def process_bollinger_signals(data, stocks, length=200):
                 "time": df.index[-1],
                 "price": float(df["Close"].iloc[-1]),
                 "position": position,
+                "mid_dist_pct": calculate_bb_mid_distance_pct(df, length=length),
             }
 
             print("✓")

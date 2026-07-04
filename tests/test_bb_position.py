@@ -9,7 +9,8 @@ import sys
 
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
-from bollinger_signals import _position_from_levels
+import pandas as pd
+from bollinger_signals import _position_from_levels, calculate_bb_mid_distance_pct
 
 
 def test_zones():
@@ -35,8 +36,28 @@ def test_fallback():
     assert _position_from_levels(105, 100, 110, nan) is None
 
 
+def _close_df(closes):
+    return pd.DataFrame({"Close": closes})
+
+
+def test_mid_distance():
+    # constant series: last close == 200-SMA midline -> ~0%
+    d = calculate_bb_mid_distance_pct(_close_df([100.0] * 250), length=200)
+    assert d is not None and abs(d) < 1e-9
+
+    # last close below the trailing average -> negative
+    assert calculate_bb_mid_distance_pct(_close_df([100.0] * 249 + [50.0]), length=200) < 0
+
+    # last close above the trailing average -> positive
+    assert calculate_bb_mid_distance_pct(_close_df([100.0] * 249 + [150.0]), length=200) > 0
+
+    # insufficient history (< length bars) -> None
+    assert calculate_bb_mid_distance_pct(_close_df([100.0] * 150), length=200) is None
+
+
 if __name__ == "__main__":
     test_zones()
     test_boundaries()
     test_fallback()
+    test_mid_distance()
     print("✓ all bb position tests passed")
