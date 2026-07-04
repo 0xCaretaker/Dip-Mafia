@@ -300,6 +300,44 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
+    # 4) Near Value: Top-50 names at/below the 200-SMA midline (+5% cushion).
+    #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
+    #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
+    def append_near_value_section():
+        near = []
+        for ticker, info in bollinger_signals.items():
+            name = ticker.replace(".NS", "").replace(".BO", "")
+            if name not in six7_set:
+                continue
+            d = info.get("mid_dist_pct")
+            if d is None or d > 5.0:
+                continue
+            near.append((name, d, info.get("position"), ticker))
+        near.sort(key=lambda t: t[1])  # deepest below-mid first
+
+        # Renders even when the Verdict is empty, but don't force an otherwise-
+        # empty message: skip only if there's nothing here AND nothing above.
+        if not near and not rendered[0]:
+            return
+        combined_lines.append("")
+        if rendered[0]:
+            combined_lines.append(divider)
+        rendered[0] = True
+        combined_lines.append("📉 *Near Value* _\\(Top 50 · ≤5% over 200\\-SMA\\)_")
+        if not near:
+            combined_lines.append("_none near the midline_")
+            return
+        name_w = max(len(n) for n, _, _, _ in near)
+        pct_w = max(len(f"{d:+.1f}%") for _, d, _, _ in near)
+        for name, d, pos, ticker in near:
+            pos_prefix = f"{pos} " if pos else ""
+            pct_str = f"{d:+.1f}%".rjust(pct_w)
+            zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
+            combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
+        combined_lines.append(
+            "_💰 idle cash \\(>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
+        )
+
     # 1) Standard MACD, full universe, no Bollinger gate (earlier, noisier read)
     append_macd_section("📈 *Early Signal* _\\(MACD\\)_", std_signals, None)
     # 2) Impulse MACD, full universe, no Bollinger gate (stronger confirmation)
@@ -307,12 +345,16 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     # 3) Bollinger + Impulse MACD, impulse gated by the Bollinger filter (the verdict)
     append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
+    # 4) Near Value radar (positional; renders even when the Verdict is empty)
+    append_near_value_section()
+
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
+        combined_lines.append("_⚡ iMACD turning up_")
         combined_lines.append("_⭐ Top 50 · 💼 your holding_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
