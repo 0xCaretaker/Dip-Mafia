@@ -240,7 +240,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
 
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
-    # 4) Near Value: Top-50 names trading below the 200-SMA midline.
+    # 4) Cheap Bargains: Top-50 names trading below the 200-SMA midline.
     #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
     #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
     def append_near_value_section():
@@ -263,11 +263,11 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         if rendered[0]:
             combined_lines.append(divider)
         rendered[0] = True
-        combined_lines.append("📉 *Near Value* _\\(Top 50 · below 200\\-SMA\\)_")
+        combined_lines.append("📉 *Cheap Bargains* _\\(Top 50 · below 200\\-SMA\\)_")
         if not near:
             combined_lines.append("_none near the midline_")
             return
-        combined_lines.append("_💰 cash in hand? buy these below\\-mid names now_")
+        combined_lines.append("_💰 cash in hand? grab these undervalued now_")
         name_w = max(len(n) for n, _, _, _ in near)
         pct_w = max(len(f"{d:+.1f}%") for _, d, _, _ in near)
         for name, d, pos, ticker in near:
@@ -281,7 +281,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     #    (full detail in the GitHub Action log), kept out of the notification.
     append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
 
-    # 2) Near Value radar (positional; renders even when the Verdict is empty)
+    # 2) Cheap Bargains radar (positional; renders even when the Verdict is empty)
     append_near_value_section()
 
     # Footer: arrow legend + the "we never sell" reminder.
@@ -289,8 +289,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         combined_lines.append("")
         combined_lines.append(divider)
         combined_lines.append("_▶️ how to act_")
-        combined_lines.append("_🟢 buy the 🎯 Verdict picks_")
-        combined_lines.append("_💰 spare cash? spread it across 📉 Near Value \\(below mid\\)_")
+        combined_lines.append("_🟢 buy the *🎯 Verdict* picks_")
+        combined_lines.append("_💰 spare cash? spread across *📉 Cheap Bargains*_")
         combined_lines.append("")
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
