@@ -17,17 +17,17 @@ TS = datetime(2026, 7, 4, tzinfo=ZoneInfo("Asia/Kolkata"))
 
 
 def _msg():
-    six7 = {"ECLERX", "FOO", "FAR"}
+    six7 = {"ECLERX", "FOO", "ABOVE"}
     bollinger = {
         # Top-50, deep below mid, fresh iMACD Buy -> gets the zap
         "ECLERX.NS": {"action": "Hold", "time": TS, "price": 1488.8,
                       "position": "🔽", "mid_dist_pct": -21.0},
-        # Top-50, just above mid within +5% cushion, no fresh cross -> no zap
+        # Top-50, below mid, no fresh cross -> kept, no zap
         "FOO.NS": {"action": "Hold", "time": TS, "price": 100.0,
-                   "position": "🔼", "mid_dist_pct": 2.4},
-        # Top-50 but beyond the +5% cushion -> excluded
-        "FAR.NS": {"action": "Hold", "time": TS, "price": 10.0,
-                   "position": "🔼", "mid_dist_pct": 9.0},
+                   "position": "🔽", "mid_dist_pct": -3.1},
+        # Top-50 but ABOVE the midline -> excluded (below-mid only, no cushion)
+        "ABOVE.NS": {"action": "Hold", "time": TS, "price": 10.0,
+                     "position": "🔼", "mid_dist_pct": 2.4},
         # below mid but NOT Top-50 -> excluded
         "BAR.NS": {"action": "Hold", "time": TS, "price": 10.0,
                    "position": "🔽", "mid_dist_pct": -3.0},
@@ -47,21 +47,22 @@ def test_near_value_section():
     lines = msg.splitlines()
 
     assert "📉 *Near Value*" in msg
-    assert "idle cash" in msg          # Part C footnote present
+    assert "below 200" in msg           # title reflects below-midline only
+    assert "idle cash" in msg           # Part C footnote present
 
     # ECLERX line: identified by its unique % string, carries position + zap
     ecl = [l for l in lines if "-21.0%" in l][0]
     assert "ECLERX" in ecl and "🔽" in ecl and ecl.rstrip().endswith("⚡")
 
-    # FOO line: within cushion, no fresh cross -> no zap
-    foo = [l for l in lines if "+2.4%" in l][0]
+    # FOO line: below mid, no fresh cross -> no zap
+    foo = [l for l in lines if "-3.1%" in l][0]
     assert "FOO" in foo and "⚡" not in foo
 
     # cheapest-first ordering
-    assert msg.index("-21.0%") < msg.index("+2.4%")
+    assert msg.index("-21.0%") < msg.index("-3.1%")
 
-    # exclusions: beyond +5% cushion, and non-Top-50
-    assert "FAR" not in msg
+    # exclusions: above the midline (no +5% cushion), and non-Top-50
+    assert "ABOVE" not in msg
     assert "BAR" not in msg
 
 

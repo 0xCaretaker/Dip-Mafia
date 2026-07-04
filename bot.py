@@ -238,7 +238,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     std_signals = all_interval_signals.get("1d", {})
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 
-    # 4) Near Value: Top-50 names at/below the 200-SMA midline (+5% cushion).
+    # 4) Near Value: Top-50 names trading below the 200-SMA midline.
     #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
     #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
     def append_near_value_section():
@@ -248,7 +248,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             if name not in six7_set:
                 continue
             d = info.get("mid_dist_pct")
-            if d is None or d > 5.0:
+            if d is None or d >= 0:          # below the 200-SMA midline only
                 continue
             near.append((name, d, info.get("position"), ticker))
         near.sort(key=lambda t: t[1])  # deepest below-mid first
@@ -261,7 +261,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         if rendered[0]:
             combined_lines.append(divider)
         rendered[0] = True
-        combined_lines.append("📉 *Near Value* _\\(Top 50 · ≤5% over 200\\-SMA\\)_")
+        combined_lines.append("📉 *Near Value* _\\(Top 50 · below 200\\-SMA\\)_")
         if not near:
             combined_lines.append("_none near the midline_")
             return
