@@ -273,7 +273,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
             combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
         combined_lines.append(
-            "_💰 idle cash \\(>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
+            "_💰 idle cash \\(\\>21d\\) deploys into watchlist names below the 200\\-SMA midline_"
         )
 
     # 1) Standard MACD, full universe, no Bollinger gate (earlier, noisier read)

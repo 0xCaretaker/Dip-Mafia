@@ -4,6 +4,7 @@ Plain asserts; imports bot (needs yfinance installed). Run with:
     python tests/test_near_value.py
 """
 import os
+import re
 import sys
 from datetime import datetime
 from zoneinfo import ZoneInfo
@@ -64,6 +65,23 @@ def test_near_value_section():
     assert "BAR" not in msg
 
 
+def test_no_unescaped_markdownv2_specials():
+    """A single unescaped MarkdownV2 special outside a code span makes Telegram
+    400-reject the whole message. Guard the chars that are never used as
+    formatting markers here (notably '>' in the idle-cash footnote)."""
+    msg = _msg()
+    # These are never intentional markers in this bot (unlike * _ ` used for
+    # bold/italic/code), so any unescaped occurrence outside a code span is a bug.
+    never_marker = r">#+=|{}!"
+    for line in msg.splitlines():
+        nocode = re.sub(r"`[^`]*`", "", line)      # drop `...` code spans
+        for ch in never_marker:
+            for m in re.finditer(re.escape(ch), nocode):
+                prev = nocode[m.start() - 1] if m.start() > 0 else ""
+                assert prev == "\\", f"unescaped {ch!r} in: {line!r}"
+
+
 if __name__ == "__main__":
     test_near_value_section()
+    test_no_unescaped_markdownv2_specials()
     print("✓ near value section tests passed")
