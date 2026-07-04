@@ -39,10 +39,13 @@ def test_dip_mafia_has_reuse_input():
     assert inputs["reuse_if_unchanged"].get("default") in (False, "false"), "default false"
 
 
-def test_dip_mafia_caches_last_post():
+def test_dip_mafia_reuse_cache_retired():
+    # The scan reuse-cache was retired (2026-07-04): every run recomputes and
+    # posts fresh. The actions/cache step and the REUSE_IF_UNCHANGED env are gone;
+    # only the workflow_dispatch input shim remains (see test_dip_mafia_has_reuse_input).
     text = _text("dip-mafia.yml")
-    assert "actions/cache" in text and ".cache" in text, "must persist .cache via actions/cache"
-    assert "REUSE_IF_UNCHANGED" in text, "must pass REUSE_IF_UNCHANGED env to bot.py"
+    for token in ("actions/cache", "REUSE_IF_UNCHANGED", "lastpost"):
+        assert token not in text, f"dip-mafia.yml still references retired reuse-cache: {token!r}"
 
 
 def test_dip_mafia_force_input_removed():
@@ -79,7 +82,7 @@ def test_regen_no_longer_runs_bot():
 if __name__ == "__main__":
     test_dip_mafia_triggers()
     test_dip_mafia_has_reuse_input()
-    test_dip_mafia_caches_last_post()
+    test_dip_mafia_reuse_cache_retired()
     test_dip_mafia_force_input_removed()
     test_dip_mafia_dedup_plumbing_gone()
     test_regen_emits_changed_output()
