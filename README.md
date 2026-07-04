@@ -23,19 +23,24 @@ flowchart TD
     C{"🎚️ <b>Gate · Bollinger Bands</b><br/>200-period · 2σ"}
     D["📊 <b>Signal · Dual MACD</b><br/>Standard 12/26/9 · Impulse (LazyBear)"]
     V{{"🎯 <b>VERDICT</b> · Bollinger + Impulse<br/><i>the only line a beginner acts on</i>"}}
+    N["💰 <b>Near Value</b> · idle-cash targets<br/>Top-50 at/below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
     T["📣 <b>Delivery</b><br/>Telegram + Discord"]
     X(["🗑️ dropped"])
 
     A --> B --> C
+    A -.->|"below midline"| N
     C -->|"Buy / Watch ✅"| D
     C -.->|"Hold ✗"| X
     D --> V --> T
+    N --> T
 
     classDef gate fill:#1e293b,stroke:#64748b,color:#e2e8f0;
     classDef verdict fill:#16a34a,stroke:#15803d,color:#ffffff;
+    classDef cash fill:#78350f,stroke:#b45309,color:#fed7aa;
     classDef drop fill:#450a0a,stroke:#7f1d1d,color:#fca5a5;
     class C gate;
     class V verdict;
+    class N cash;
     class X drop;
 ```
 
@@ -52,15 +57,16 @@ flowchart TD
 | | Both | Hold / Wait for Buy | Between crossovers |
 | **Context** | NIFTY 50 + Midcap 100 | % move, % from ATH | Market-wide context |
 | **Sentiment** | Hold vs Wait ratio | Bullish/Neutral/Cautious/Bearish | Aggregate market mood |
+| **Deploy** | Near Value (Top-50 vs 200-SMA) | idle-cash targets | Top-50 names trading at or below the 200-SMA midline (within a +5% cushion), cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Near Value` section. |
 
 ### Delivery cadence
 
 Two trigger paths post the same full message to Telegram and Discord:
 
-- **Scheduled cron** (`dip-mafia.yml`) - 4 runs/day on weekdays (~08:33 / 10:33 / 12:33 / 14:33 IST) plus one weekend summary (~10:33 IST). Each run re-reads fresh prices and always recomputes, so it reflects the current picture. (GitHub cron is best-effort, so these are targets, not guarantees; spreading 4 runs keeps coverage even if one is delayed or dropped.)
-- **Scan-triggered** - the external six7 scan dispatches `dip-mafia.yml` with `reuse_if_unchanged: true` on *every* scan, so a scan always posts once. When the watchlist signature and the latest NSE trading date both match the last cached post (`.cache/last_post.json`, persisted via `actions/cache`), the bot re-sends that cached message instead of re-downloading the universe; otherwise it recomputes and re-stamps the cache.
+- **Scheduled cron** (`dip-mafia.yml`) - 4 runs/day on weekdays (~08:33 / 10:33 / 12:33 / 14:33 IST) plus a weekend summary on **both Saturday and Sunday** (~10:33 IST). (GitHub cron is best-effort, so these are targets, not guarantees; spreading the runs keeps coverage even if one is delayed or dropped.)
+- **Scan-triggered** - the external six7 scan dispatches `dip-mafia.yml` on *every* scan, so a scan always posts once.
 
-A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `holdings.txt`) only rebuilds the derived `stocks.txt` via `regen-stocks.yml` - it **no longer posts directly**; the next scan or cron run covers it. This avoids double-posting. The cron and the manual **Run workflow** button leave `reuse_if_unchanged` false, so they always recompute.
+**Every run recomputes and posts fresh.** It re-reads current prices and rebuilds the whole message each time, so the prices, sentiment, and the mid-line / Near Value read are always current - there is no reuse cache (it was retired so intraday drift never shows stale data). A watchlist source-list change (`six7.txt` from the mirror, or a hand-synced `holdings.txt`) only rebuilds the derived `stocks.txt` via `regen-stocks.yml` - it **no longer posts directly**; the next scan or cron run covers it, which avoids double-posting. The `reuse_if_unchanged` workflow input still exists but is now ignored - a no-op kept only so the six7 dispatch (which still passes it) doesn't error.
 
 ## Sample Output
 
@@ -98,8 +104,20 @@ Today -4.10%  ·  ATH -25.3%
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
+📉 Near Value (Top 50 · ≤5% over 200-SMA)
+⏬ SUZLON  -12.4% ⚡
+🔽 GRSE     -3.1%
+🔼 KRBL     +4.2%
+💰 idle cash (>21d) deploys into watchlist names below the 200-SMA midline
+
+──────────────────────────
+▶️ how to act
+🟢 buy the 🎯 Verdict picks
+💰 spare cash? spread it across 📉 Near Value (below mid)
+
 ℹ️ legends
 🟢 buy · 🔴 sell
+⚡ iMACD turning up
 ⭐ Top 50 · 💼 your holding
 ⏬ deep dip · 🔽 undervalued
 🔼 above avg · ⏫ overvalued
@@ -107,15 +125,19 @@ Today -4.10%  ·  ATH -25.3%
 Dip Mafia never sells, red just flags weakness · we only buy dips & HODL
 ```
 
-### New here? Only read the 🎯 Verdict
+### New here? How to read it - and what to do
 
-If none of the indicators, sentiment, or summary lines make sense, **ignore all of it and look at the `🎯 Verdict` section - that's the only thing that matters.** It's the bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
+If the indicators, sentiment, and summary lines don't make sense, **skip them.** Two sections tell you what to do, and the `▶️ how to act` block at the bottom of every message sums them up:
 
+**🎯 Verdict - what to buy.** The bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
-- **No 🟢 buy under Verdict? Do nothing.** No action that run - that's normal and most runs look like this.
-- **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
+- **No 🟢 buy under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
 
-Everything above the Verdict (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it - safe to skip.
+**📉 Near Value - where idle cash goes.** Top-50 names trading at or below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
+
+**🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
+
+Everything else (Early Signal, Strong Signal, sentiment, summaries) is extra context for people who want it - safe to skip.
 
 ## Quick Start
 
