@@ -48,7 +48,7 @@ def test_near_value_section():
 
     assert "📉 *Near Value*" in msg
     assert "below 200" in msg           # title reflects below-midline only
-    assert "idle cash" in msg           # Part C footnote present
+    assert "cash in hand" in msg        # actionable prompt under the heading
 
     # ECLERX line: identified by its unique % string, carries position + zap
     ecl = [l for l in lines if "-21.0%" in l][0]

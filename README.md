@@ -89,10 +89,10 @@ Today -4.10%  ·  ATH -25.3%
 
 ──────────────────────────
 📉 Near Value (Top 50 · below 200-SMA)
+💰 cash in hand? buy these below-mid names now
 ⏬ SUZLON  -12.4% ⚡
 🔽 GRSE     -3.1%
 🔽 KRBL     -1.8%
-💰 idle cash (>21d) deploys into watchlist names below the 200-SMA midline
 
 ──────────────────────────
 ▶️ how to act
@@ -115,7 +115,7 @@ If the indicators, sentiment, and summary lines don't make sense, **skip them.**
 
 **🎯 Verdict - what to buy.** The bot's highest-conviction call: a stock that's both deeply dipped (Bollinger) *and* turning up (Impulse MACD).
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
-- **No 🟢 buy under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
+- **`🚫 no buys today` under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
 
 **📉 Near Value - where idle cash goes.** Top-50 names trading below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
 
