@@ -697,6 +697,11 @@ function tile(k, v, sub, vc, lead, link){
 function goLink(sec){ if(SECTIONS.some(s=>s[0]===sec)) show(sec); }
 function sechead(title, lede, asof){ return `<div class="sec-head"><div><h1>${title}</h1>${lede?`<p class="lede">${lede}</p>`:""}</div>${asof?`<div class="asof">${asof}</div>`:""}</div>`; }
 
+// Shared "how it works" callout: the V4 idle-cash rule. Surfaced anywhere cash
+// or holdings are discussed (Overview, Portfolio, Backtest) so it reads the same
+// everywhere. No em-dashes (PRODUCT.md invariant).
+const IDLE_CASH_NOTE = `<div class="note-strip" style="margin:16px 0"><span class="pin">¶</span><p><b>Idle-cash rule.</b> Cash never rots. If it sits unused for &gt;21 trading days (about a month), Timed HODL spreads it equally across any watchlist stock trading <b>below its 200-SMA (the Bollinger midline)</b>, capped at 15% per name; if nothing is below the midline (a raging bull), it deploys across all names. That discipline is why cash drag stays low.</p></div>`;
+
 /* ════════════════ OVERVIEW ════════════════ */
 function renderOverview(){
   const el=$("#panel-overview"); const pf=PH(), su=pf.summary, nav=pf.nav;
@@ -729,6 +734,7 @@ function renderOverview(){
   if(su.xirr!=null&&scell&&ncell){
     html += `<div class="note-strip" style="margin-top:18px"><span class="pin">¶</span><p>Starting ${HZ==="All"?"in 2010":HZ+" ago"}, <b>Timed HODL</b> compounded at <b>${fmtPctRaw(su.xirr)}</b> annualised (${fmtPct(su.total_ret)} total), against equal-weight <b>SIP ${fmtPctRaw(scell.xirr)}</b> and a <b>NIFTY 50 SIP ${fmtPctRaw(ncell.xirr)}</b> over the same window.</p></div>`;
   }
+  html += IDLE_CASH_NOTE;
   el.innerHTML=html;
   navChart($("#ov_nav"), nav, 230);
 }
@@ -763,6 +769,7 @@ function renderPortfolio(){
       <div class="card"><h3>P&amp;L by stock</h3><div class="csub">Realised + unrealised, live prices</div>
         <div class="chart-host" id="pf_pnl"></div></div>
     </div>
+    ${IDLE_CASH_NOTE}
     <div class="controls"><input id="pf_q" placeholder="Filter stocks…" oninput="pfFilter()"></div>
     <div class="table-wrap"><table id="pf_tbl"><thead><tr>
       <th data-col="stock" onclick="pfSort('stock')">Stock</th><th class="nosort">Trend</th>
@@ -860,10 +867,7 @@ function renderBacktest(){
       <div class="card"><h3>Cash idle</h3><div class="csub">% sitting in cash (drag) · fresh ${HZ==="All"?"full":HZ} sim</div><div class="chart-host" id="bt_cash"></div></div>
       <div class="card"><h3>Outperformance vs SIP</h3><div class="csub">Rolling alpha: how far Timed HODL's trailing 12- and 36-month return runs ahead of an equal-weight SIP, in percentage points. Above the zero line is winning.</div><div class="chart-host" id="bt_alpha"></div><div class="csub" id="bt_alpha_win" style="margin-top:6px"></div></div>
     </div>
-    <div class="note-strip" style="margin:16px 0">
-      <span class="pin">¶</span>
-      <p><b>Idle-cash rule.</b> If cash sits unused for &gt;21 trading days (~1 month), Timed HODL deploys it equally across any watchlist stock trading <b>below its 200-SMA (the Bollinger midline)</b>, capped at 15% per name. If nothing is below the midline (raging bull), it spreads across all names so cash never rots.</p>
-    </div>
+    ${IDLE_CASH_NOTE}
     <div class="grid" style="grid-template-columns:1fr 1fr">
       <div class="card"><h3>Regime returns</h3><div class="csub">NAV-based, by market condition within ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_reg"></div></div>
       <div class="card"><h3>Buy distribution</h3><div class="csub">Most-bought names · buys within ${HZ==="All"?"full history":HZ}</div><div class="chart-host" id="bt_buy"></div></div>
