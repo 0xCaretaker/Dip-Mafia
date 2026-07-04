@@ -23,7 +23,7 @@ flowchart TD
     C{"🎚️ <b>Gate · Bollinger Bands</b><br/>200-period · 2σ"}
     D["📊 <b>Signal · Dual MACD</b><br/>Standard 12/26/9 · Impulse (LazyBear)"]
     V{{"🎯 <b>VERDICT</b> · Bollinger + Impulse<br/><i>the only line a beginner acts on</i>"}}
-    N["💰 <b>Near Value</b> · idle-cash targets<br/>Top-50 at/below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
+    N["💰 <b>Near Value</b> · idle-cash targets<br/>Top-50 below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
     T["📣 <b>Delivery</b><br/>Telegram + Discord"]
     X(["🗑️ dropped"])
 
@@ -57,7 +57,7 @@ flowchart TD
 | | Both | Hold / Wait for Buy | Between crossovers |
 | **Context** | NIFTY 50 + Midcap 100 | % move, % from ATH | Market-wide context |
 | **Sentiment** | Hold vs Wait ratio | Bullish/Neutral/Cautious/Bearish | Aggregate market mood |
-| **Deploy** | Near Value (Top-50 vs 200-SMA) | idle-cash targets | Top-50 names trading at or below the 200-SMA midline (within a +5% cushion), cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Near Value` section. |
+| **Deploy** | Near Value (Top-50 vs 200-SMA) | idle-cash targets | Top-50 names trading below the 200-SMA midline, cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Near Value` section. |
 
 ### Delivery cadence
 
@@ -104,10 +104,10 @@ Today -4.10%  ·  ATH -25.3%
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
-📉 Near Value (Top 50 · ≤5% over 200-SMA)
+📉 Near Value (Top 50 · below 200-SMA)
 ⏬ SUZLON  -12.4% ⚡
 🔽 GRSE     -3.1%
-🔼 KRBL     +4.2%
+🔽 KRBL     -1.8%
 💰 idle cash (>21d) deploys into watchlist names below the 200-SMA midline
 
 ──────────────────────────
@@ -133,7 +133,7 @@ If the indicators, sentiment, and summary lines don't make sense, **skip them.**
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
 - **No 🟢 buy under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
 
-**📉 Near Value - where idle cash goes.** Top-50 names trading at or below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
+**📉 Near Value - where idle cash goes.** Top-50 names trading below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
 
 **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
 
