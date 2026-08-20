@@ -189,6 +189,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
     def append_macd_section(title, all_signals, filter_set):
         entries = []
+        wait_names = []
         total = hold_count = wait_count = 0
 
         for stock, info in all_signals.items():
@@ -201,6 +202,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                     hold_count += 1
                 elif action == "Wait for Buy":
                     wait_count += 1
+                    wait_names.append(stock.replace(".NS", "").replace(".BO", ""))
             if action in ["Buy", "Sell"] and time and price:
                 stock_clean = stock.replace(".NS", "").replace(".BO", "")
                 position = bollinger_signals.get(stock, {}).get("position")
@@ -234,11 +236,34 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             combined_lines.append(
                 f"🟣 Wait for Buy · `{wait_count}/{total} · {wait_pct:.1f}%`"
             )
+            # Name them. A bare "3/3" said how many were waiting but never which,
+            # so the one list worth watching for tomorrow was the one you
+            # couldn't see. Same ⭐/💼 vocabulary as the buy rows above.
+            if wait_names:
+                wait_w = max(len(n) for n in wait_names)
+                for name in sorted(wait_names):
+                    cls = "⭐" if name in six7_set else "💼"
+                    combined_lines.append(f"{cls} `{name.ljust(wait_w)}`")
             combined_lines.append(
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )
 
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
+
+    def macd_section_has_content(all_signals, filter_set):
+        """Whether append_macd_section would render anything for this input.
+
+        Cheap Bargains runs first now, so `rendered` is always False by the time
+        it decides whether an empty radar is worth printing. It needs to know
+        what comes *after* it instead — otherwise a day with no bargains and a
+        live Verdict would drop the 'none near the midline' note entirely.
+        """
+        for stock, info in all_signals.items():
+            if filter_set is not None and stock not in filter_set:
+                continue
+            if info["action"] and info["time"] and info["price"]:
+                return True
+        return False
 
     # 4) Cheap Bargains: Top-50 names trading below the 200-SMA midline.
     #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
@@ -256,8 +281,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         near.sort(key=lambda t: t[1])  # deepest below-mid first
 
         # Renders even when the Verdict is empty, but don't force an otherwise-
-        # empty message: skip only if there's nothing here AND nothing above.
-        if not near and not rendered[0]:
+        # empty message: skip only if there's nothing here AND nothing to follow.
+        if not near and not macd_section_has_content(impulse_signals, bollinger_filter):
             return
         combined_lines.append("")
         if rendered[0]:
@@ -276,21 +301,23 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
             combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
 
-    # 1) The Verdict: Impulse MACD gated by the Bollinger filter — the only
+    # 1) Cheap Bargains radar first (positional; renders even when the Verdict
+    #    is empty). Most days the Verdict has no buys, so leading with it buried
+    #    the section that always has something to act on.
+    append_near_value_section()
+
+    # 2) The Verdict: Impulse MACD gated by the Bollinger filter — the only
     #    actionable buy call. The ungated Early/Strong MACD lists are console-only
     #    (full detail in the GitHub Action log), kept out of the notification.
     append_macd_section("🎯 *Verdict* _\\(Boll \\+ iMACD\\)_", impulse_signals, bollinger_filter)
-
-    # 2) Cheap Bargains radar (positional; renders even when the Verdict is empty)
-    append_near_value_section()
 
     # Footer: arrow legend + the "we never sell" reminder.
     if rendered[0]:
         combined_lines.append("")
         combined_lines.append(divider)
         combined_lines.append("_▶️ how to act_")
-        combined_lines.append("_🟢 buy the *🎯 Verdict* picks_")
         combined_lines.append("_💰 spare cash? spread across *📉 Cheap Bargains*_")
+        combined_lines.append("_🟢 buy the *🎯 Verdict* picks_")
         combined_lines.append("")
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
