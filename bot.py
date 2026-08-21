@@ -219,21 +219,22 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     divider = "`" + "─" * max(content_width + 9, 18) + "`"
     rendered = [False]
 
-    # Fund. Score annotation for 💼 rows only. `scored` records whether any row
-    # actually carried one, so the footer explains the number only when a number
-    # was printed. Lives inside the code span — the '.' in "7.2" is a MarkdownV2
-    # special and is only safe there.
+    # Fund. Score annotation, on every row that has one — ⭐ and 💼 alike, in the
+    # Verdict and in Cheap Bargains. `scored` records whether any row actually
+    # carried one, so the footer explains the number only when a number was
+    # printed. Lives inside the code span — the '.' in "7.2" is a MarkdownV2
+    # special and is only safe there. Right-justified to 4 chars because the
+    # scale runs to 10.0, and one perfect score would otherwise shift the column
+    # on every other row.
     fund_scores = fund_scores or {}
     scored = [False]
 
-    def score_suffix(name, cls):
-        if cls != "💼":
-            return ""
+    def score_suffix(name):
         value = fund_scores.get(name.upper())
         if not isinstance(value, (int, float)):
             return ""
         scored[0] = True
-        return f" · {value:.1f}"
+        return f" · {value:>4.1f}"
 
     # MACD section builder. filter_set=None renders the full universe;
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
@@ -274,7 +275,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             cls = "⭐" if stock in six7_set else "💼"   # Top 50 vs your holding
             combined_lines.append(
                 f"{emoji[action]} {cls} {pos_prefix}`{padded_stock} ₹{price_str}"
-                f"{score_suffix(stock, cls)}`"
+                f"{score_suffix(stock)}`"
             )
 
         if total > 0:
@@ -299,7 +300,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 for name in sorted(wait_names):
                     cls = "⭐" if name in six7_set else "💼"
                     combined_lines.append(
-                        f"{cls} `{name.ljust(wait_w)}{score_suffix(name, cls)}`"
+                        f"{cls} `{name.ljust(wait_w)}{score_suffix(name)}`"
                     )
             combined_lines.append(
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
@@ -356,7 +357,9 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             pos_prefix = f"{pos} " if pos else ""
             pct_str = f"{d:+.1f}%".rjust(pct_w)
             zap = " ⚡" if impulse_signals.get(ticker, {}).get("action") == "Buy" else ""
-            combined_lines.append(f"{pos_prefix}`{name.ljust(name_w)} {pct_str}`{zap}")
+            combined_lines.append(
+                f"{pos_prefix}`{name.ljust(name_w)} {pct_str}{score_suffix(name)}`{zap}"
+            )
 
     # 1) Cheap Bargains radar first (positional; renders even when the Verdict
     #    is empty). Most days the Verdict has no buys, so leading with it buried
@@ -381,7 +384,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         combined_lines.append("_⚡ iMACD turning up_")
         combined_lines.append("_⭐ Top 50 · 💼 your holding_")
         if scored[0]:
-            combined_lines.append(f"_{escape_md('💼 number = six7 Fund. Score 0-10')}_")
+            combined_lines.append(f"_{escape_md('· number = six7 Fund. Score 0-10')}_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
         combined_lines.append("")
@@ -512,7 +515,7 @@ def main():
           f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
 
     fund_scores = load_fund_scores()
-    print(f"Fund. Scores: {len(fund_scores)} holdings scored by six7")
+    print(f"Fund. Scores: {len(fund_scores)} symbols scored by six7")
 
     stocks = [s + ".NS" for s in symbols]
     intervals = ["1d"]
