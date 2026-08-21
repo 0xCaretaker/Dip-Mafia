@@ -6,7 +6,7 @@
 >
 > **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
-> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. This bot handles the technical timing layer on top of that fundamental filter.
+> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. A `⭐` name's fundamentals are why it is on the list at all; a `💼` name arrives with none, so six7 also mirrors `six7_scores.json` here and every `💼` row in the Verdict carries its 0-10 Fund. Score. This bot handles the technical timing layer on top of that fundamental filter.
 
 ### Join to receive live signals:
 - 📨 [Telegram channel](https://t.me/dipmafia)
@@ -83,8 +83,10 @@ Today -4.10%  ·  ATH -25.3%
 
 🎯 Verdict (Boll + iMACD)
 🟢 ⭐ ⏬ SUZLON  ₹38.50
+🟢 💼 🔽 AETHER  ₹812.30 · 7.2
 
 🟣 Wait for Buy · 30/34 · 88.2%
+💼 KITEX  · 5.8
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
@@ -103,6 +105,7 @@ Today -4.10%  ·  ATH -25.3%
 🟢 buy · 🔴 sell
 ⚡ iMACD turning up
 ⭐ Top 50 · 💼 your holding
+💼 number = six7 Fund. Score 0-10
 ⏬ deep dip · 🔽 undervalued
 🔼 above avg · ⏫ overvalued
 
