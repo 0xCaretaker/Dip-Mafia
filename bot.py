@@ -283,7 +283,11 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             if entries:
                 combined_lines.append("")          # separate the buy list from the stats
             else:
-                combined_lines.append("🚫 no buys today")   # tight: sits right under the title
+                # The verdict itself. It used to sit flush against the stats
+                # below, which read as one block and blurred "nothing to buy"
+                # into the roster of names that aren't actionable yet.
+                combined_lines.append("🚫 no buys today")
+                combined_lines.append("")
             combined_lines.append(
                 f"🟣 Wait for Buy · `{wait_count}/{total} · {wait_pct:.1f}%`"
             )

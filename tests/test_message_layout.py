@@ -110,6 +110,19 @@ def test_nothing_at_all_sends_nothing():
     assert _msg(bollinger=empty, impulse={}, six7=set()) is None
 
 
+def test_no_buys_line_is_separated_from_the_wait_stats():
+    """'no buys today' used to sit flush against the Wait-for-Buy stats, so the
+    verdict and the roster below it read as one undifferentiated block."""
+    impulse = {
+        "AAA.NS": {"action": "Wait for Buy", "time": TS, "price": 100.0},
+        "BBB.NS": {"action": "Wait for Buy", "time": TS, "price": 200.0},
+    }
+    lines = _msg(impulse=impulse).splitlines()
+    i = next(n for n, ln in enumerate(lines) if "no buys today" in ln)
+    assert lines[i + 1] == "", "expected a blank line under 'no buys today'"
+    assert "Wait for Buy" in lines[i + 2]
+
+
 def test_no_unescaped_markdownv2_specials():
     msg = _msg()
     never_marker = r">#+=|{}!"
@@ -127,6 +140,7 @@ if __name__ == "__main__":
     test_wait_for_buy_lists_every_name()
     test_wait_names_carry_their_class_tag()
     test_no_names_listed_when_nothing_is_waiting()
+    test_no_buys_line_is_separated_from_the_wait_stats()
     test_empty_bargains_still_reported_when_the_verdict_has_content()
     test_nothing_at_all_sends_nothing()
     test_no_unescaped_markdownv2_specials()
