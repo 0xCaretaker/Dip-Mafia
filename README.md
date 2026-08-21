@@ -6,7 +6,7 @@
 >
 > **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
-> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. A `⭐` name's fundamentals are why it is on the list at all; a `💼` name arrives with none, so six7 also mirrors `six7_scores.json` here and every `💼` row in the Verdict carries its 0-10 Fund. Score. This bot handles the technical timing layer on top of that fundamental filter.
+> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. six7 also mirrors `six7_scores.json` here, so **every row carries its 0-10 Fund. Score** — Verdict and Cheap Bargains, `⭐` and `💼` alike — which is what picks between two buys on the same day. This bot handles the technical timing layer on top of that fundamental filter.
 
 ### Join to receive live signals:
 - 📨 [Telegram channel](https://t.me/dipmafia)
@@ -82,19 +82,20 @@ Today -4.10%  ·  ATH -25.3%
 🔴 Sentiment: Bearish
 
 🎯 Verdict (Boll + iMACD)
-🟢 ⭐ ⏬ SUZLON  ₹38.50
-🟢 💼 🔽 AETHER  ₹812.30 · 7.2
+🟢 ⭐ ⏬ SUZLON  ₹38.50 ·  9.4
+🟢 💼 🔽 AETHER  ₹812.30 ·  7.2
 
 🟣 Wait for Buy · 30/34 · 88.2%
-💼 KITEX  · 5.8
+💼 KITEX  ·  5.8
+⭐ GRSE   · 10.0
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
 📉 Cheap Bargains (Top 50 · below 200-SMA)
 💰 cash in hand? grab these undervalued now
-⏬ SUZLON  -12.4% ⚡
-🔽 GRSE     -3.1%
-🔽 KRBL     -1.8%
+⏬ SUZLON  -12.4% ·  9.4 ⚡
+🔽 GRSE     -3.1% · 10.0
+🔽 KRBL     -1.8% ·  6.2
 
 ──────────────────────────
 ▶️ how to act
@@ -105,7 +106,7 @@ Today -4.10%  ·  ATH -25.3%
 🟢 buy · 🔴 sell
 ⚡ iMACD turning up
 ⭐ Top 50 · 💼 your holding
-💼 number = six7 Fund. Score 0-10
+· number = six7 Fund. Score 0-10
 ⏬ deep dip · 🔽 undervalued
 🔼 above avg · ⏫ overvalued
 

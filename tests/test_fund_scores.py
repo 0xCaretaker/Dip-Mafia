@@ -78,11 +78,12 @@ def test_holding_buy_row_carries_its_fund_score():
     assert "💼" in line and "7.2" in line
 
 
-def test_top50_buy_row_carries_no_score():
-    """Only 💼 rows are annotated — a ⭐ name's fundamentals are why it is listed."""
+def test_top50_buy_row_carries_its_score_too():
+    """Every Verdict row is annotated, ⭐ as well as 💼 — a Top 50 name's score
+    is the reason to prefer one of them over another on a day with two buys."""
     rows = _buy_rows(_msg(scores={"AAA": 9.9, **SCORES}))
     line = [ln for ln in rows.splitlines() if "AAA" in ln][0]
-    assert "⭐" in line and "9.9" not in line
+    assert "⭐" in line and "9.9" in line
 
 
 def test_holding_wait_row_carries_its_fund_score():
@@ -112,11 +113,52 @@ def test_columns_stay_aligned_across_scored_and_unscored_rows():
     assert len({ln.index("₹") for ln in rows}) == 1
 
 
+def test_top50_wait_row_carries_its_score_too():
+    msg = _msg(scores={"CCC": 4.5}, six7={"CCC"})
+    line = [ln for ln in _wait_rows(msg).splitlines() if "CCC" in ln][0]
+    assert "⭐" in line and "4.5" in line
+
+
+def test_cheap_bargains_rows_carry_their_score():
+    """The radar is where idle cash goes, so quality matters most there: it says
+    which of the cheap names is actually worth buying, not just which is cheapest."""
+    msg = _msg(scores={"AAA": 9.9}, six7={"AAA"})
+    bargains = msg.split("Cheap Bargains")[1].split("🎯")[0]
+    line = [ln for ln in bargains.splitlines() if "AAA" in ln][0]
+    assert "9.9" in line and "%" in line   # score sits alongside the % from mid
+
+
+def test_cheap_bargains_row_without_a_score_renders_clean():
+    msg = _msg(scores={}, six7={"AAA"})
+    bargains = msg.split("Cheap Bargains")[1].split("🎯")[0]
+    line = [ln for ln in bargains.splitlines() if "AAA" in ln][0]
+    assert "%" in line and "n/a" not in line.lower()
+
+
+def test_scores_right_align_so_a_ten_does_not_shift_the_column():
+    """0-10 means 10.0 is four chars where 8.9 is three. Right-justify, or a
+    single perfect score knocks every other row out of alignment."""
+    # Both are 💼 Wait-for-Buy rows, so they render one under the other.
+    impulse = {
+        "BBB.NS": {"action": "Wait for Buy", "time": TS, "price": 200.0},
+        "CCC.NS": {"action": "Wait for Buy", "time": TS, "price": 300.0},
+    }
+    block = _wait_rows(_msg(scores={"BBB": 10.0, "CCC": 4.5}, impulse=impulse))
+    rows = [ln for ln in block.splitlines() if ln.startswith(("⭐", "💼"))]
+    assert len(rows) == 2, rows
+    # the score field is a fixed 4-wide column, so 10.0 and 4.5 end together
+    assert {ln.rindex("·") for ln in rows} == {rows[0].rindex("·")}
+    fields = [ln.split("·")[-1].rstrip("`") for ln in rows]
+    assert fields == [" 10.0", "  4.5"]          # padded to a common width
+    assert [f.strip() for f in fields] == ["10.0", "4.5"]
+
+
 def test_legend_explains_the_number():
     """A bare 7.2 next to a ticker is unreadable without being told what it is."""
     msg = _msg()
     assert "Fund" in msg and "0" in msg
     assert "score" in msg.lower()
+    assert "💼 number" not in msg  # not holdings-specific any more
 
 
 def test_legend_is_absent_when_nothing_is_scored():
