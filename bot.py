@@ -1,3 +1,4 @@
+import json
 import os
 import requests
 import re
@@ -21,6 +22,38 @@ from watchlist import load_watchlist
 # notes/STRATEGY_COMPARISON.md and backtest.py BUY_REQUIRE_BELOW_MID.
 REQUIRE_CLOSE_BELOW_MIDLINE = True
 _BELOW_MID_POSITIONS = {"⏬", "🔽"}
+
+
+# =========================
+# six7 Fund. Scores (💼 rows)
+# =========================
+# A ⭐ row is a six7 Top 50 name — its fundamentals are why it is on the list at
+# all. A 💼 row is a stock you already hold, kept in the watchlist after the Top
+# 50 rotated past it, and it arrives with no fundamental context. six7 mirrors
+# {SYMBOL: 0-10 Fund. Score} into this file so the Verdict can annotate them.
+SCORES_FILE = "six7_scores.json"
+
+
+def load_fund_scores(path=SCORES_FILE):
+    """The mirrored Fund. Score map, or {} if it isn't readable.
+
+    Best-effort by design: a missing, stale, or half-written mirror degrades to
+    {} and the Verdict renders its 💼 rows unannotated. A garnish must never
+    take the signal bot down.
+    """
+    try:
+        with open(path) as f:
+            data = json.load(f)
+    except (OSError, ValueError) as e:
+        print(f"No Fund. Scores ({path}): {e}")
+        return {}
+    if not isinstance(data, dict):
+        return {}
+    return {
+        str(k).upper(): float(v)
+        for k, v in data.items()
+        if isinstance(v, (int, float)) and not isinstance(v, bool)
+    }
 
 
 def passes_bollinger_gate(info):
@@ -98,7 +131,8 @@ def get_index_moves():
 # =========================
 # Telegram sender (Filtered by Bollinger Bands)
 # =========================
-def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set):
+def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set,
+                  fund_scores=None):
     emoji = {
         "Buy": "🟢",
         "Sell": "🔴",
@@ -185,6 +219,22 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     divider = "`" + "─" * max(content_width + 9, 18) + "`"
     rendered = [False]
 
+    # Fund. Score annotation for 💼 rows only. `scored` records whether any row
+    # actually carried one, so the footer explains the number only when a number
+    # was printed. Lives inside the code span — the '.' in "7.2" is a MarkdownV2
+    # special and is only safe there.
+    fund_scores = fund_scores or {}
+    scored = [False]
+
+    def score_suffix(name, cls):
+        if cls != "💼":
+            return ""
+        value = fund_scores.get(name.upper())
+        if not isinstance(value, (int, float)):
+            return ""
+        scored[0] = True
+        return f" · {value:.1f}"
+
     # MACD section builder. filter_set=None renders the full universe;
     # otherwise only symbols in filter_set (e.g. the Bollinger filter) render.
     def append_macd_section(title, all_signals, filter_set):
@@ -223,7 +273,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             pos_prefix = f"{position} " if position else ""
             cls = "⭐" if stock in six7_set else "💼"   # Top 50 vs your holding
             combined_lines.append(
-                f"{emoji[action]} {cls} {pos_prefix}`{padded_stock} ₹{price_str}`"
+                f"{emoji[action]} {cls} {pos_prefix}`{padded_stock} ₹{price_str}"
+                f"{score_suffix(stock, cls)}`"
             )
 
         if total > 0:
@@ -243,7 +294,9 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 wait_w = max(len(n) for n in wait_names)
                 for name in sorted(wait_names):
                     cls = "⭐" if name in six7_set else "💼"
-                    combined_lines.append(f"{cls} `{name.ljust(wait_w)}`")
+                    combined_lines.append(
+                        f"{cls} `{name.ljust(wait_w)}{score_suffix(name, cls)}`"
+                    )
             combined_lines.append(
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )
@@ -323,6 +376,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         combined_lines.append("_🟢 buy · 🔴 sell_")
         combined_lines.append("_⚡ iMACD turning up_")
         combined_lines.append("_⭐ Top 50 · 💼 your holding_")
+        if scored[0]:
+            combined_lines.append(f"_{escape_md('💼 number = six7 Fund. Score 0-10')}_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
         combined_lines.append("_🔼 above avg · ⏫ overvalued_")
         combined_lines.append("")
@@ -452,6 +507,9 @@ def main():
     print(f"Watchlist: {len(symbols)} symbols "
           f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
 
+    fund_scores = load_fund_scores()
+    print(f"Fund. Scores: {len(fund_scores)} holdings scored by six7")
+
     stocks = [s + ".NS" for s in symbols]
     intervals = ["1d"]
 
@@ -574,7 +632,8 @@ def main():
             print(f"\n  Sentiment: {mood}")
 
     print()
-    final_message = build_message(all_interval_signals, bollinger_results, index_moves, six7_set)
+    final_message = build_message(all_interval_signals, bollinger_results, index_moves,
+                                  six7_set, fund_scores)
     if not final_message:
         print("No signals rendered — nothing to send")
         return
