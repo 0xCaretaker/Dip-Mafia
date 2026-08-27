@@ -16,3 +16,4 @@ analysis/six7_stocks/snapshot_*.json
 .github/skills/
 docs/superpowers/
 .superpowers/
+.venv-linux/
