@@ -79,7 +79,7 @@ def test_wait_for_buy_lists_every_name():
 
 def test_wait_names_carry_their_class_tag():
     """Same ⭐ / 💼 vocabulary as the buy rows, so the list reads consistently."""
-    msg = _msg(six7={"BBB"})               # CCC is then a holding, not Top 50
+    msg = _msg(six7={"BBB"})               # CCC is then a holding, not six7
     wait_block = msg.split("Wait for Buy")[1].split("Hold")[0]
     assert "⭐" in wait_block and "💼" in wait_block
 

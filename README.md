@@ -2,11 +2,11 @@
 
 **Dip Mafia** (formerly HODL-bot) is an automated **algo-trading signal system** that identifies deeply undervalued stocks during market crashes using **200-period Bollinger Bands** and **dual MACD crossovers**, then delivers actionable buy signals with market sentiment to Telegram and Discord, fully automated via GitHub Actions.
 
-> **Philosophy**: Buy the crash, hold forever. This bot watches 100+ NSE stocks (six7 Top 50 ∪ your real holdings) and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits, just long entries at high-conviction dips.
+> **Philosophy**: Buy the crash, hold forever. This bot watches 150+ NSE stocks (the six7 watchlist ∪ your real holdings) and alerts when they hit statistically extreme lows with confirmed momentum reversal. No day-trading, no exits, just long entries at high-conviction dips.
 >
 > **We never sell.** Sell / red signals are **indications only**: they flag technical weakness for awareness; Dip Mafia does not execute exits. The strategy is buy dips and HODL.
 >
-> The watchlist is the union of two lists: `six7.txt` (the six7 Top 50, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` Top 50 or `💼` your holding, so a position you hold keeps getting signals even after the Top 50 rotates. six7 also mirrors `six7_scores.json` here, so **every row carries its 0-10 Fund. Score** — Verdict and Cheap Bargains, `⭐` and `💼` alike — which is what picks between two buys on the same day. This bot handles the technical timing layer on top of that fundamental filter.
+> The watchlist is the union of two lists: `six7.txt` (the six7 watchlist — the Top N by Fundamental Score, curated by a separate fundamental scorer) and `holdings.txt` (the stocks already held). Signals fire on both, and each Telegram line is tagged `⭐` six7 or `💼` your holding, so a position you hold keeps getting signals even after the six7 list rotates. six7 also mirrors `six7_scores.json` here, so **every row carries its 0-10 Fund. Score** — Verdict and Cheap Bargains, `⭐` and `💼` alike — which is what picks between two buys on the same day. This bot handles the technical timing layer on top of that fundamental filter.
 
 ### Join to receive live signals:
 - 📨 [Telegram channel](https://t.me/dipmafia)
@@ -23,7 +23,7 @@ flowchart TD
     C{"🎚️ <b>Gate · Bollinger Bands</b><br/>200-period · 2σ"}
     D["📊 <b>Signal · Dual MACD</b><br/>Standard 12/26/9 · Impulse (LazyBear)"]
     V{{"🎯 <b>VERDICT</b> · Bollinger + Impulse<br/><i>the only line a beginner acts on</i>"}}
-    N["💰 <b>Cheap Bargains</b> · idle-cash targets<br/>Top-50 below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
+    N["💰 <b>Cheap Bargains</b> · idle-cash targets<br/>six7 names below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
     T["📣 <b>Delivery</b><br/>Telegram + Discord"]
     X(["🗑️ dropped"])
 
@@ -57,7 +57,7 @@ flowchart TD
 | | Both | Hold / Wait for Buy | Between crossovers |
 | **Context** | NIFTY 50 + Midcap 100 | % move, % from ATH | Market-wide context |
 | **Sentiment** | Hold vs Wait ratio | Bullish/Neutral/Cautious/Bearish | Aggregate market mood |
-| **Deploy** | Cheap Bargains (Top-50 vs 200-SMA) | idle-cash targets | Top-50 names trading below the 200-SMA midline, cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Cheap Bargains` section. |
+| **Deploy** | Cheap Bargains (six7 vs 200-SMA) | idle-cash targets | six7 names trading below the 200-SMA midline, cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Cheap Bargains` section. |
 
 ### Delivery cadence
 
@@ -91,7 +91,7 @@ Today -4.10%  ·  ATH -25.3%
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
-📉 Cheap Bargains (Top 50 · below 200-SMA)
+📉 Cheap Bargains (Top 100 · below 200-SMA)
 💰 cash in hand? grab these undervalued now
 ⏬ SUZLON  -12.4% ·  9.4 ⚡
 🔽 GRSE     -3.1% · 10.0
@@ -105,7 +105,7 @@ Today -4.10%  ·  ATH -25.3%
 ℹ️ legends
 🟢 buy · 🔴 sell
 ⚡ iMACD turning up
-⭐ Top 50 · 💼 your holding
+⭐ Top 100 · 💼 your holding
 · number = six7 Fund. Score 0-10
 ⏬ deep dip · 🔽 undervalued
 🔼 above avg · ⏫ overvalued
@@ -121,7 +121,7 @@ If the indicators, sentiment, and summary lines don't make sense, **skip them.**
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
 - **`🚫 no buys today` under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
 
-**📉 Cheap Bargains - where idle cash goes.** Top-50 names trading below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
+**📉 Cheap Bargains - where idle cash goes.** six7 watchlist names trading below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
 
 **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
 
@@ -143,7 +143,7 @@ Go to **Settings > Secrets and variables > Actions** and add:
 
 The bot signals on the union of two files, one NSE symbol per line, without `.NS`:
 
-- `six7.txt` - the Top 50 watchlist (overwritten by the external six7 mirror)
+- `six7.txt` - the six7 watchlist, Top N by Fundamental Score (overwritten by the external six7 mirror; widened 50 -> 100 on 2026-08-28)
 - `holdings.txt` - stocks you already hold (so they keep getting signals)
 
 ```
@@ -186,7 +186,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 
 ### Latest Results (50 stocks, 2010–2026)
 
-> Run as of 2026-04-17 against `six7.txt` alone - the **six7 Top 50** (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` - aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
+> Run as of 2026-04-17 against `six7.txt` alone - the **six7 Top 50** as it stood then (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` - aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
@@ -232,7 +232,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 | Max Drawdown | **-41%** | -45% | -37% |
 | Volatility | 38.0% | 38.4% | 37.7% |
 
-- **Both strategies crush NIFTY 50 by ~4.6x** - stock picking matters more than timing, and the six7 Top 50 sets the fundamental quality bar (every name is a Strong Buy).
+- **Both strategies crush NIFTY 50 by ~4.6x** - stock picking matters more than timing, and the six7 watchlist sets the fundamental quality bar (every name is a Strong Buy).
 - **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close - the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
 - **Drawdown is structurally better** - -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
 - **Backtest gate and live bot gate are aligned** - both `BUY_REQUIRE_BELOW_MID` (backtest) and `REQUIRE_CLOSE_BELOW_MIDLINE` (bot) are True, so the Telegram + Discord posts drop Watch names that recovered above the 200-SMA. What you see is what the backtest would actually buy.
@@ -240,7 +240,7 @@ Generates 8 charts in a dated run subfolder under `backtest_output/` + console s
 - **Real returns easily beat inflation** - 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
 - **Entry+Exit is worse than just holding** - XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
 
-> The backtest is current-screen hindsight (today's Top 50 run backward - survivorship/look-ahead biased), so treat the levels as relative, not predictive.
+> The backtest is current-screen hindsight (the then-current Top 50 run backward - survivorship/look-ahead biased), so treat the levels as relative, not predictive. It has **not** been re-run since the list widened to 100 or since the 2026-08-28 six7 scoring rebuild.
 
 ### Returns by horizon (six7.txt alone)
 
@@ -280,7 +280,7 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── macd_signals.py        # Standard + Impulse MACD (standalone capable)
 ├── bollinger_signals.py   # 200-period Bollinger Bands (standalone capable)
 ├── watchlist.py           # two-list loader; regenerates stocks.txt
-├── six7.txt               # source list: six7 Top 50 (mirror target)
+├── six7.txt               # source list: six7 watchlist, Top N (mirror target)
 ├── holdings.txt           # source list: stocks you already hold
 ├── stocks.txt             # DERIVED union (six7 ∪ holdings); analysis input only
 ├── analysis/              # research/backtest tooling (run from the repo root)

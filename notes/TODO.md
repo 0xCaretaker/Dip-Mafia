@@ -20,6 +20,33 @@ to be named that, so this needs a new org. Steps (all in GitHub web UI):
       git remote (`git remote set-url origin …`). Alternative to all of this: a custom
       domain (CNAME in docs/ + DNS) on the existing repo.
 
+## Open questions from the six7 audit (2026-08-28)
+
+Both need point-in-time data that only started accumulating 2026-08-26; usable
+around **late October 2026** (~60 observation days). Do NOT re-run these on
+back-dated panels — that produced five retractions across six7 audit volumes
+III-VI, because rescaling a multiple by a price ratio that spans the measurement
+window makes `Spearman(factor, return) = -1.000` by construction.
+
+- [ ] **Does buying below the 200-SMA actually pay off, just later?**
+      The premise this bot is built on. Clean price-only tests over 6 windows show
+      below-SMA names UNDERperforming in 6/6 in the broad universe (mean -4.75pp),
+      but that reverses inside the six7 Top 100 (4 up / 2 down, mean +0.05pp) where
+      survivorship pushes the other way. Genuinely unresolved. All windows tested
+      were <= 6 months; a value thesis plausibly needs 6-12.
+- [ ] **Can cheapest-PEG be used to pick within the watchlist?**
+      Untestable today: back-dated PEG sorts winners into the cheap bucket, and
+      today's PEG sorts losers into it (cheapest-20 beat only 4%/1%/2% of random
+      draws). A clean cross-sectional test does show cheapness and price weakness
+      travel together: `Spearman(PEG, position vs 200-SMA) = +0.254` (p=0.011).
+- [ ] **Re-run the strat backtest.** The README's headline numbers use the
+      then-current Top 50 and predate both the widening to 100 and the 2026-08-28
+      six7 scoring rebuild (PEG now built from `pe`, not the vendor forward PE).
+      The figures are stale as well as hindsight-biased.
+- [ ] **Reconsider the gate-vs-timing framing.** Deferred by the owner pending the
+      data above: whether a reversal signal should decide *whether* to buy (a veto)
+      or only *when* to place an order already decided.
+
 ## Backlog ideas (not started)
 
 ### Watchlist management via Telegram

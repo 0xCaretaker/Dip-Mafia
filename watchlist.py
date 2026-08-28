@@ -2,11 +2,12 @@
 
 The bot signals on the union of two hand/mirror-maintained files:
 
-  six7.txt      the six7 NSE Top 50 (overwritten by the external six7 mirror)
+  six7.txt      the six7 NSE watchlist, Top N by Fundamental Score
+                (overwritten by the external six7 mirror)
   holdings.txt  the user's real Zerodha book (synced from Portfolio-Analyzer)
 
 Splitting them keeps signals flowing for stocks you already hold even after the
-mirror rewrites the Top 50. `stocks.txt` is a *derived* file (the sorted union)
+mirror rewrites the six7 list. `stocks.txt` is a *derived* file (the sorted union)
 regenerated from here so the analysis/backtest tooling keeps reading one list.
 
 Symbols are stored without the `.NS` suffix (bot.py appends it). NSE series
@@ -46,7 +47,7 @@ def load_watchlist(six7_path=SIX7_FILE, holdings_path=HOLDINGS_FILE):
     """Return (symbols, six7_set, holdings_set), all normalized and .NS-free.
 
     `symbols` is the sorted, de-duplicated union. A symbol in both lists is in
-    both sets; callers treat six7 membership as winning (it's the Top 50 tag).
+    both sets; callers treat six7 membership as winning (it's the ⭐ tag).
     """
     six7 = {_normalize(s) for s in _read(six7_path)}
     holdings = {_normalize(s) for s in _read(holdings_path)}

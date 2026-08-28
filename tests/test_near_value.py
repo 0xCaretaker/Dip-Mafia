@@ -86,3 +86,18 @@ if __name__ == "__main__":
     test_near_value_section()
     test_no_unescaped_markdownv2_specials()
     print("✓ near value section tests passed")
+
+
+# ---- watchlist-size label (2026-08-28) ------------------------------------
+# The header said "Top 50" while six7 was widening the mirror to 100. A
+# hardcoded number goes stale the moment the upstream list changes, so the
+# label is now derived from the list actually loaded.
+
+
+def test_bargains_header_reports_the_actual_watchlist_size():
+    from bot import six7_label
+
+    assert six7_label(set()) == "Top 50"          # empty -> the documented default
+    assert six7_label({f"S{i}" for i in range(50)}) == "Top 50"
+    assert six7_label({f"S{i}" for i in range(100)}) == "Top 100"
+    assert six7_label({f"S{i}" for i in range(87)}) == "Top 87"

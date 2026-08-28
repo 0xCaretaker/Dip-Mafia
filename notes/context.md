@@ -15,7 +15,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
   - **Gates aligned (2026-06-17)**: backtest `BUY_REQUIRE_BELOW_MID=True` and live bot `REQUIRE_CLOSE_BELOW_MIDLINE=True`. The bot now posts only Watch names that are still below the 200-SMA midline, matching what the backtest would buy.
 
 # Architecture
-- `bot.py` - single entry point. Reads `six7.txt` ∪ `holdings.txt` via `watchlist.py` (so signals fire on both the Top 50 and your real book; each line tagged `⭐` / `💼`). Downloads all tickers once via `yf.download`, passes the shared DataFrame to signal modules. Sends MarkdownV2 Telegram messages + a parallel Discord post (`@here` ping).
+- `bot.py` - single entry point. Reads `six7.txt` ∪ `holdings.txt` via `watchlist.py` (so signals fire on both the six7 watchlist and your real book; each line tagged `⭐` / `💼`). Downloads all tickers once via `yf.download`, passes the shared DataFrame to signal modules. Sends MarkdownV2 Telegram messages + a parallel Discord post (`@here` ping).
 - `bollinger_signals.py` - BB 200-period, 2σ. Gate filter: Buy/Watch/Hold.
 - `macd_signals.py` - Standard MACD (12/26/9) + Impulse MACD (LazyBear, SMMA/ZLEMA, length=34, signal=9). Crossover → Buy/Sell/Hold/Wait.
 - `watchlist.py` - two-list loader; regenerates the derived `stocks.txt` union for the analysis tooling.
@@ -44,7 +44,7 @@ Long-only signal bot for NSE stocks: BB + Impulse MACD timing strategy with Tele
 
 # Key Files
 - `bot.py` - production entry point
-- `six7.txt` - Top 50 watchlist (overwritten by the external six7 mirror)
+- `six7.txt` - six7 watchlist, Top N by Fundamental Score (overwritten by the external six7 mirror; 50 -> 100 on 2026-08-28)
 - `holdings.txt` - real Zerodha book (manual Kite snapshot)
 - `stocks.txt` - DERIVED union (six7 ∪ holdings); analysis input only
 - `analysis/backtest.py` - portfolio-level backtest (run: `python3 analysis/backtest.py` from repo root)

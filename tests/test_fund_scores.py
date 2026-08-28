@@ -1,6 +1,6 @@
 """Fund. Score on the 💼 rows of the Verdict.
 
-A ⭐ row is a six7 Top 50 name — its fundamentals are why it is on the list at
+A ⭐ row is a six7 watchlist name — its fundamentals are why it is on the list at
 all. A 💼 row is a stock you already hold, kept in the watchlist after the Top
 50 rotated past it, and it arrived with no fundamental context whatsoever. So
 six7 mirrors `six7_scores.json` ({SYMBOL: 0-10 Fund. Score}) into this repo and
@@ -26,7 +26,7 @@ from bot import build_message, load_fund_scores
 
 TS = datetime(2026, 8, 21, tzinfo=ZoneInfo("Asia/Kolkata"))
 
-# AAA is a Top 50 name (⭐); BBB and CCC are holdings (💼).
+# AAA is a six7 name (⭐); BBB and CCC are holdings (💼).
 SIX7 = {"AAA"}
 SCORES = {"BBB": 7.2, "CCC": 4.5}
 
@@ -79,7 +79,7 @@ def test_holding_buy_row_carries_its_fund_score():
 
 
 def test_top50_buy_row_carries_its_score_too():
-    """Every Verdict row is annotated, ⭐ as well as 💼 — a Top 50 name's score
+    """Every Verdict row is annotated, ⭐ as well as 💼 — a six7 name's score
     is the reason to prefer one of them over another on a day with two buys."""
     rows = _buy_rows(_msg(scores={"AAA": 9.9, **SCORES}))
     line = [ln for ln in rows.splitlines() if "AAA" in ln][0]

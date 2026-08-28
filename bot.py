@@ -27,7 +27,7 @@ _BELOW_MID_POSITIONS = {"⏬", "🔽"}
 # =========================
 # six7 Fund. Scores (💼 rows)
 # =========================
-# A ⭐ row is a six7 Top 50 name — its fundamentals are why it is on the list at
+# A ⭐ row is a six7 watchlist name — its fundamentals are why it is on the list at
 # all. A 💼 row is a stock you already hold, kept in the watchlist after the Top
 # 50 rotated past it, and it arrives with no fundamental context. six7 mirrors
 # {SYMBOL: 0-10 Fund. Score} into this file so the Verdict can annotate them.
@@ -68,6 +68,20 @@ def passes_bollinger_gate(info):
 # =========================
 # Escape for Telegram MarkdownV2
 # =========================
+def six7_label(six7_set):
+    """"Top N" for the six7 half of the watchlist, sized from the list itself.
+
+    The header used to hardcode "Top 50". six7 widened the mirror to 100 on
+    2026-08-28, and a hardcoded number is wrong from the moment upstream changes
+    until someone notices — which took three days last time. Deriving it means
+    the message can never disagree with the file it was built from.
+
+    An empty set means six7.txt was missing or unreadable; fall back to the
+    documented default rather than rendering "Top 0".
+    """
+    return f"Top {len(six7_set) or 50}"
+
+
 def escape_md(text):
     """Escape special characters for Telegram MarkdownV2"""
     text = str(text)
@@ -272,7 +286,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             padded_stock = stock.ljust(max_len)
             price_str = f"{price:.2f}".rjust(price_width)
             pos_prefix = f"{position} " if position else ""
-            cls = "⭐" if stock in six7_set else "💼"   # Top 50 vs your holding
+            cls = "⭐" if stock in six7_set else "💼"   # six7 list vs your holding
             combined_lines.append(
                 f"{emoji[action]} {cls} {pos_prefix}`{padded_stock} ₹{price_str}"
                 f"{score_suffix(stock)}`"
@@ -323,8 +337,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 return True
         return False
 
-    # 4) Cheap Bargains: Top-50 names trading below the 200-SMA midline.
-    #    Positional awareness only — NOT gated like the Verdict — so cheap Top-50
+    # 4) Cheap Bargains: six7 names trading below the 200-SMA midline.
+    #    Positional awareness only — NOT gated like the Verdict — so cheap six7
     #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
     def append_near_value_section():
         near = []
@@ -346,7 +360,9 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         if rendered[0]:
             combined_lines.append(divider)
         rendered[0] = True
-        combined_lines.append("📉 *Cheap Bargains* _\\(Top 50 · below 200\\-SMA\\)_")
+        combined_lines.append(
+            f"📉 *Cheap Bargains* _\\({escape_md(six7_label(six7_set))} · below 200\\-SMA\\)_"
+        )
         if not near:
             combined_lines.append("_none near the midline_")
             return
@@ -382,7 +398,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
         combined_lines.append("_ℹ️ legends_")
         combined_lines.append("_🟢 buy · 🔴 sell_")
         combined_lines.append("_⚡ iMACD turning up_")
-        combined_lines.append("_⭐ Top 50 · 💼 your holding_")
+        combined_lines.append(f"_⭐ {escape_md(six7_label(six7_set))} · 💼 your holding_")
         if scored[0]:
             combined_lines.append(f"_{escape_md('· number = six7 Fund. Score 0-10')}_")
         combined_lines.append("_⏬ deep dip · 🔽 undervalued_")
@@ -512,7 +528,7 @@ def main():
         return
 
     print(f"Watchlist: {len(symbols)} symbols "
-          f"({len(six7_set)} Top 50, {len(symbols) - len(six7_set)} holdings-only)")
+          f"({len(six7_set)} {six7_label(six7_set)}, {len(symbols) - len(six7_set)} holdings-only)")
 
     fund_scores = load_fund_scores()
     print(f"Fund. Scores: {len(fund_scores)} symbols scored by six7")
