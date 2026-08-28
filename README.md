@@ -23,7 +23,7 @@ flowchart TD
     C{"🎚️ <b>Gate · Bollinger Bands</b><br/>200-period · 2σ"}
     D["📊 <b>Signal · Dual MACD</b><br/>Standard 12/26/9 · Impulse (LazyBear)"]
     V{{"🎯 <b>VERDICT</b> · Bollinger + Impulse<br/><i>the only line a beginner acts on</i>"}}
-    N["💰 <b>Cheap Bargains</b> · idle-cash targets<br/>six7 names below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
+    N["💰 <b>Cheap Bargains</b> · idle-cash targets<br/>six7 names 15%+ below the 200-SMA midline<br/><i>where spare cash gets deployed</i>"]
     T["📣 <b>Delivery</b><br/>Telegram + Discord"]
     X(["🗑️ dropped"])
 
@@ -57,7 +57,7 @@ flowchart TD
 | | Both | Hold / Wait for Buy | Between crossovers |
 | **Context** | NIFTY 50 + Midcap 100 | % move, % from ATH | Market-wide context |
 | **Sentiment** | Hold vs Wait ratio | Bullish/Neutral/Cautious/Bearish | Aggregate market mood |
-| **Deploy** | Cheap Bargains (six7 vs 200-SMA) | idle-cash targets | six7 names trading below the 200-SMA midline, cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Cheap Bargains` section. |
+| **Deploy** | Cheap Bargains (six7 vs 200-SMA) | idle-cash targets | six7 names trading more than 15% below the 200-SMA midline (`MIN_BARGAIN_DISCOUNT_PCT`), cheapest first, with `⚡` on a fresh Impulse MACD cross. This is **where spare cash goes**: cash left idle beyond ~21 days is spread equally across these below-midline names (capped 15% per name). Rendered as the `📉 Cheap Bargains` section. |
 
 ### Delivery cadence
 
@@ -91,7 +91,7 @@ Today -4.10%  ·  ATH -25.3%
 🟡 Hold · 4/34 · 11.8%
 
 ──────────────────────────
-📉 Cheap Bargains (Top 100 · below 200-SMA)
+📉 Cheap Bargains (Top 100 · 15%+ below 200-SMA)
 💰 cash in hand? grab these undervalued now
 ⏬ SUZLON  -12.4% ·  9.4 ⚡
 🔽 GRSE     -3.1% · 10.0
@@ -121,7 +121,7 @@ If the indicators, sentiment, and summary lines don't make sense, **skip them.**
 - **🟢 buy in the Verdict = the only line a beginner needs to act on.** That's "Dip Mafia thinks this is a good dip to buy." The example above is telling you to buy `SUZLON`.
 - **`🚫 no buys today` under Verdict? Do nothing.** No action that run - that's normal, and most runs look like this.
 
-**📉 Cheap Bargains - where idle cash goes.** six7 watchlist names trading below their 200-day average (the 200-SMA midline), cheapest first. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
+**📉 Cheap Bargains - where idle cash goes.** six7 watchlist names trading **more than 15% below** their 200-day average (the 200-SMA midline), cheapest first. The floor (`MIN_BARGAIN_DISCOUNT_PCT` in `bot.py`) exists because the Top-100 widening pushed this section to 36 rows reaching -2.1%; a name 2% under its average is noise, and it buried the genuine -30% names. If you have cash sitting idle, **this is where the strategy parks it** - spread it across these below-midline names rather than letting it rot. A `⚡` means momentum is already turning up on that name. (Same rule the backtest uses: cash idle beyond ~21 days is deployed equally across below-midline names, capped 15% per name.)
 
 **🔴 red is never a sell.** Dip Mafia never sells. Red just flags technical weakness for awareness. You only ever buy dips and HODL.
 

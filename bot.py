@@ -21,6 +21,14 @@ from watchlist import load_watchlist
 # "any lower-band touch within 60 bars + MACD" view. See
 # notes/STRATEGY_COMPARISON.md and backtest.py BUY_REQUIRE_BELOW_MID.
 REQUIRE_CLOSE_BELOW_MIDLINE = True
+
+# Minimum discount below the 200-SMA midline for a name to count as a bargain,
+# in percent (strictly greater than). Cheap Bargains is where idle cash goes, so
+# it has to be a shortlist you can act on, not a census of everything under the
+# average. When the six7 mirror widened to Top 100 on 2026-08-28 the section ran
+# to 36 rows reaching -2.1% — a name 2% below its 200-day average is noise, and
+# listing it buried the genuine -30% names under twenty lines of nothing.
+MIN_BARGAIN_DISCOUNT_PCT = 15.0
 _BELOW_MID_POSITIONS = {"⏬", "🔽"}
 
 
@@ -337,7 +345,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 return True
         return False
 
-    # 4) Cheap Bargains: six7 names trading below the 200-SMA midline.
+    # 4) Cheap Bargains: six7 names trading well below the 200-SMA midline
+    #    (more than MIN_BARGAIN_DISCOUNT_PCT under it).
     #    Positional awareness only — NOT gated like the Verdict — so cheap six7
     #    names with no lower-band touch (e.g. below-mid grinders) are still seen.
     def append_near_value_section():
@@ -347,8 +356,8 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             if name not in six7_set:
                 continue
             d = info.get("mid_dist_pct")
-            if d is None or d >= 0:          # below the 200-SMA midline only
-                continue
+            if d is None or d >= -MIN_BARGAIN_DISCOUNT_PCT:
+                continue                     # deep below the midline only
             near.append((name, d, info.get("position"), ticker))
         near.sort(key=lambda t: t[1])  # deepest below-mid first
 
@@ -361,10 +370,15 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             combined_lines.append(divider)
         rendered[0] = True
         combined_lines.append(
-            f"📉 *Cheap Bargains* _\\({escape_md(six7_label(six7_set))} · below 200\\-SMA\\)_"
+            f"📉 *Cheap Bargains* _\\({escape_md(six7_label(six7_set))} · "
+            f"{escape_md(f'{MIN_BARGAIN_DISCOUNT_PCT:.0f}%+ below 200-SMA')}\\)_"
         )
         if not near:
-            combined_lines.append("_none near the midline_")
+            combined_lines.append(
+                "_" + escape_md(
+                    f"none more than {MIN_BARGAIN_DISCOUNT_PCT:.0f}% below the midline"
+                ) + "_"
+            )
             return
         combined_lines.append("_💰 cash in hand? grab these undervalued now_")
         name_w = max(len(n) for n, _, _, _ in near)

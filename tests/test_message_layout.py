@@ -99,7 +99,7 @@ def test_empty_bargains_still_reported_when_the_verdict_has_content():
     for info in above.values():
         info["mid_dist_pct"] = 5.0         # nothing below the midline
     msg = _msg(bollinger=above)
-    assert "none near the midline" in msg
+    assert "none more than 15% below the midline" in msg
     assert msg.index("Cheap Bargains") < msg.index("Verdict")
 
 

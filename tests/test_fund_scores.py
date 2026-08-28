@@ -34,11 +34,11 @@ SCORES = {"BBB": 7.2, "CCC": 4.5}
 def _bollinger():
     return {
         "AAA.NS": {"action": "Buy", "time": TS, "price": 100.0,
-                   "position": "⏬", "mid_dist_pct": -10.0},
+                   "position": "⏬", "mid_dist_pct": -30.0},
         "BBB.NS": {"action": "Buy", "time": TS, "price": 200.0,
-                   "position": "🔽", "mid_dist_pct": -5.0},
+                   "position": "🔽", "mid_dist_pct": -25.0},
         "CCC.NS": {"action": "Watch", "time": TS, "price": 300.0,
-                   "position": "🔽", "mid_dist_pct": -2.0},
+                   "position": "🔽", "mid_dist_pct": -20.0},
     }
 
 

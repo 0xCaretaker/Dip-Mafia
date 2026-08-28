@@ -22,15 +22,15 @@ def _msg():
         # Top-50, deep below mid, fresh iMACD Buy -> gets the zap
         "ECLERX.NS": {"action": "Hold", "time": TS, "price": 1488.8,
                       "position": "🔽", "mid_dist_pct": -21.0},
-        # Top-50, below mid, no fresh cross -> kept, no zap
+        # six7, deep below mid, no fresh cross -> kept, no zap
         "FOO.NS": {"action": "Hold", "time": TS, "price": 100.0,
-                   "position": "🔽", "mid_dist_pct": -3.1},
+                   "position": "🔽", "mid_dist_pct": -18.1},
         # Top-50 but ABOVE the midline -> excluded (below-mid only, no cushion)
         "ABOVE.NS": {"action": "Hold", "time": TS, "price": 10.0,
                      "position": "🔼", "mid_dist_pct": 2.4},
-        # below mid but NOT Top-50 -> excluded
+        # deep below mid but NOT six7 -> excluded for membership, not depth
         "BAR.NS": {"action": "Hold", "time": TS, "price": 10.0,
-                   "position": "🔽", "mid_dist_pct": -3.0},
+                   "position": "🔽", "mid_dist_pct": -19.0},
     }
     all_signals = {
         "1d": {},
@@ -55,11 +55,11 @@ def test_near_value_section():
     assert "ECLERX" in ecl and "🔽" in ecl and ecl.rstrip().endswith("⚡")
 
     # FOO line: below mid, no fresh cross -> no zap
-    foo = [l for l in lines if "-3.1%" in l][0]
+    foo = [l for l in lines if "-18.1%" in l][0]
     assert "FOO" in foo and "⚡" not in foo
 
     # cheapest-first ordering
-    assert msg.index("-21.0%") < msg.index("-3.1%")
+    assert msg.index("-21.0%") < msg.index("-18.1%")
 
     # exclusions: above the midline (no +5% cushion), and non-Top-50
     assert "ABOVE" not in msg
@@ -101,3 +101,53 @@ def test_bargains_header_reports_the_actual_watchlist_size():
     assert six7_label({f"S{i}" for i in range(50)}) == "Top 50"
     assert six7_label({f"S{i}" for i in range(100)}) == "Top 100"
     assert six7_label({f"S{i}" for i in range(87)}) == "Top 87"
+
+
+# ---- minimum discount (2026-08-28) ---------------------------------------
+# Widening the six7 mirror to Top 100 turned Cheap Bargains into a 36-row list
+# reaching down to -2.1% from the midline. A name 2% below its 200-day average
+# is not a bargain, it is noise, and burying the genuine -30% names under it
+# defeats the section's purpose: it is where idle cash goes.
+
+
+def _bargains(msg):
+    return msg.split("Cheap Bargains")[1].split("🎯")[0]
+
+
+def _deep_msg(pcts):
+    six7 = set(pcts)
+    boll = {
+        f"{n}.NS": {"action": "Hold", "time": TS, "price": 100.0,
+                    "position": "🔽", "mid_dist_pct": d}
+        for n, d in pcts.items()
+    }
+    return build_message({"1d": {}, "1d Impulse MACD": {}}, boll, None, six7)
+
+
+def test_bargains_require_a_minimum_discount():
+    from bot import MIN_BARGAIN_DISCOUNT_PCT
+
+    assert MIN_BARGAIN_DISCOUNT_PCT == 15.0
+    msg = _deep_msg({"DEEP": -30.0, "EDGE": -15.1, "ATBAR": -15.0, "SHALLOW": -2.1})
+    b = _bargains(msg)
+    assert "DEEP" in b and "EDGE" in b          # past the floor
+    assert "ATBAR" not in b                     # exactly at it -> excluded
+    assert "SHALLOW" not in b                   # noise
+
+
+def test_bargains_say_so_when_nothing_is_deep_enough():
+    # A Verdict entry is needed or the whole message is suppressed by design —
+    # nothing to say anywhere means nothing is sent.
+    six7 = {"SHALLOW", "MILD"}
+    boll = {
+        "SHALLOW.NS": {"action": "Buy", "time": TS, "price": 100.0,
+                       "position": "🔽", "mid_dist_pct": -3.0},
+        "MILD.NS": {"action": "Hold", "time": TS, "price": 50.0,
+                    "position": "🔽", "mid_dist_pct": -9.9},
+    }
+    sig = {"1d": {}, "1d Impulse MACD": {
+        "SHALLOW.NS": {"action": "Buy", "time": TS, "price": 100.0}}}
+    msg = build_message(sig, boll, None, six7)
+    b = _bargains(msg)
+    assert "SHALLOW" not in b and "MILD" not in b
+    assert "none" in b.lower()                  # explicit, not a silent gap
