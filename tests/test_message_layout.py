@@ -145,3 +145,46 @@ if __name__ == "__main__":
     test_nothing_at_all_sends_nothing()
     test_no_unescaped_markdownv2_specials()
     print("✓ message layout tests passed")
+
+
+# ---- Hold names (2026-09-01) ---------------------------------------------
+# Wait for Buy listed its symbols; Hold showed only a count. Same asymmetry the
+# wait_names block was added to fix — "12/14" tells you how many are holding but
+# never which, so the roster you're actually carrying stays invisible.
+
+
+def _hold_wait_msg():
+    TS = datetime(2026, 9, 1, tzinfo=ZoneInfo("Asia/Kolkata"))
+    boll = {
+        # Bollinger action must be Buy/Watch + below the midline to pass the
+        # gate; the MACD action below is what makes the row Hold vs Wait.
+        "HOLDA.NS": {"action": "Watch", "time": TS, "price": 100.0,
+                     "position": "🔽", "mid_dist_pct": -20.0},
+        "HOLDB.NS": {"action": "Watch", "time": TS, "price": 50.0,
+                     "position": "🔽", "mid_dist_pct": -18.0},
+        "WAITA.NS": {"action": "Watch", "time": TS, "price": 10.0,
+                     "position": "🔽", "mid_dist_pct": -25.0},
+    }
+    sig = {"1d": {}, "1d Impulse MACD": {
+        "HOLDA.NS": {"action": "Hold", "time": TS, "price": 100.0},
+        "HOLDB.NS": {"action": "Hold", "time": TS, "price": 50.0},
+        "WAITA.NS": {"action": "Wait for Buy", "time": TS, "price": 10.0},
+    }}
+    return build_message(sig, boll, None, {"HOLDA", "WAITA"})
+
+
+def test_hold_lists_its_symbols_like_wait_does():
+    msg = _hold_wait_msg()
+    verdict = msg.split("🎯")[1]
+    assert "🟡 Hold" in verdict
+    hold_block = verdict.split("🟡 Hold")[1]
+    assert "HOLDA" in hold_block and "HOLDB" in hold_block
+    # the waiting name belongs to the Wait block, not the Hold block
+    assert "WAITA" not in hold_block
+
+
+def test_hold_rows_carry_the_six7_class_tag():
+    msg = _hold_wait_msg()
+    hold_block = msg.split("🟡 Hold")[1]
+    assert "⭐ `HOLDA" in hold_block   # in six7
+    assert "💼 `HOLDB" in hold_block   # holding only

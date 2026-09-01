@@ -263,6 +263,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
     def append_macd_section(title, all_signals, filter_set):
         entries = []
         wait_names = []
+        hold_names = []
         total = hold_count = wait_count = 0
 
         for stock, info in all_signals.items():
@@ -273,6 +274,7 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                 total += 1
                 if action == "Hold":
                     hold_count += 1
+                    hold_names.append(stock.replace(".NS", "").replace(".BO", ""))
                 elif action == "Wait for Buy":
                     wait_count += 1
                     wait_names.append(stock.replace(".NS", "").replace(".BO", ""))
@@ -327,6 +329,16 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
             combined_lines.append(
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )
+            # Name them too. Hold showed only a count while Wait for Buy listed
+            # its symbols — so the roster you are actually carrying was the one
+            # you could not see. Same ⭐/💼 vocabulary as every other row.
+            if hold_names:
+                hold_w = max(len(n) for n in hold_names)
+                for name in sorted(hold_names):
+                    cls = "⭐" if name in six7_set else "💼"
+                    combined_lines.append(
+                        f"{cls} `{name.ljust(hold_w)}{score_suffix(name)}`"
+                    )
 
     impulse_signals = all_interval_signals.get("1d Impulse MACD", {})
 

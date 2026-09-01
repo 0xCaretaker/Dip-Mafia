@@ -89,6 +89,10 @@ Today -4.10%  ·  ATH -25.3%
 💼 KITEX  ·  5.8
 ⭐ GRSE   · 10.0
 🟡 Hold · 4/34 · 11.8%
+💼 AHLUCONT ·  6.0
+⭐ MAYURUNIQ · 10.0
+⭐ RSYSTEMS  · 10.0
+⭐ VEDL      ·  8.9
 
 ──────────────────────────
 📉 Cheap Bargains (Top 100 · 15%+ below 200-SMA)
