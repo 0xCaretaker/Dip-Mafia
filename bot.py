@@ -326,6 +326,11 @@ def build_message(all_interval_signals, bollinger_signals, index_moves, six7_set
                     combined_lines.append(
                         f"{cls} `{name.ljust(wait_w)}{score_suffix(name)}`"
                     )
+            # Both rosters name their symbols now, so without this the Hold
+            # header sat flush against the last Wait name and the two lists read
+            # as one block.
+            if wait_names:
+                combined_lines.append("")
             combined_lines.append(
                 f"🟡 Hold · `{hold_count}/{total} · {hold_pct:.1f}%`"
             )

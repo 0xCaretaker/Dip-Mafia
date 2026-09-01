@@ -88,6 +88,7 @@ Today -4.10%  ·  ATH -25.3%
 🟣 Wait for Buy · 30/34 · 88.2%
 💼 KITEX  ·  5.8
 ⭐ GRSE   · 10.0
+
 🟡 Hold · 4/34 · 11.8%
 💼 AHLUCONT ·  6.0
 ⭐ MAYURUNIQ · 10.0

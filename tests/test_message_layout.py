@@ -188,3 +188,12 @@ def test_hold_rows_carry_the_six7_class_tag():
     hold_block = msg.split("🟡 Hold")[1]
     assert "⭐ `HOLDA" in hold_block   # in six7
     assert "💼 `HOLDB" in hold_block   # holding only
+
+
+def test_blank_line_separates_the_wait_and_hold_rosters():
+    """Both sections list names now, so the Hold header sat flush against the
+    last Wait name and the two rosters read as one block."""
+    msg = _hold_wait_msg()
+    lines = msg.splitlines()
+    hold_i = next(i for i, l in enumerate(lines) if l.startswith("🟡 Hold"))
+    assert lines[hold_i - 1] == "", "Hold header must be preceded by a blank line"
