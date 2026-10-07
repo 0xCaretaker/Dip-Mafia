@@ -234,12 +234,17 @@ Live almanac (every six7 list × 1y/3y/5y/10y/Full, plus the strat dashboard): *
 | XIRR | 29.3% | **30.0%** | 9.4% |
 | Real XIRR (−6% inflation) | 23.3% | **24.0%** | 3.4% |
 | Sharpe | 1.00 | **1.03** | 0.28 |
+| Sortino | 1.23 | **1.26** | 0.36 |
+| Calmar (CAGR / max DD) | 0.48 | **0.49** | 0.24 |
+| Profit factor (daily, up/down) | 1.25 | **1.26** | 1.12 |
+| Ulcer index (RMS drawdown) | **14.2** | 14.4 | 8.9 |
+| Martin ratio | 1.39 | **1.46** | 0.36 |
 | Max Drawdown | **-53.5%** | -54.5% | -38.4% |
 | Volatility | 19.5% | 19.9% | 16.4% |
 
 - **Both strategies beat NIFTY 50 by ~3x on XIRR** (29-30% vs 9.4%). Stock picking matters far more than timing.
 - **Timed HODL no longer beats SIP over the full run** (29.3% vs 30.0%). It wins the 5y and 10y windows by under a point and loses 1y/3y. The new screen is lower-beta (D/E ≤ 0.6), so there are fewer deep dips for the BB/MACD gate to buy. On the 150-symbol live union, SIP leads at every horizon.
-- **The new screen trades return for drawdown.** Run over the same window as the June screen (to 2026-06-03), the new Top 100 gives 28.8% Full XIRR vs 32.1%, with max drawdown -53.5% vs -56.8% (5y: -21.7% vs -26.5%). Details: [`notes/2026-10-07-backtest-rerun.md`](notes/2026-10-07-backtest-rerun.md).
+- **The new screen trades return for drawdown.** Run over the same window as the June screen (to 2026-06-03), the new Top 100 gives 28.8% Full XIRR vs 32.1%, with max drawdown -53.5% vs -56.8% (5y: -21.7% vs -26.5%). Details, including profit factor, Calmar, Ulcer/Martin, win rate and payoff for every list and horizon: [`notes/2026-10-07-backtest-rerun.md`](notes/2026-10-07-backtest-rerun.md).
 - **The market-cap and PEG gates do work.** The ungated screens (Strong Buy, 6+) made ≈0% over the same 1y window. The gated Top 100 made 17.6%.
 - **Cash drag is low at 1.3%**: longest idle stretch 21 trading days, with the V4 fallback deploying when signals dry up.
 - **Entry+Exit is still worse than holding**: 22.9% XIRR vs Timed HODL's 29.3%, with a -78% drawdown. Selling on MACD Sell destroys compounding.
@@ -292,6 +297,7 @@ The summary table above is the full ~16.8-year run. Trailing-window XIRR for the
 │   ├── horizon_compare.py # 1y/3y/5y/10y/Full horizon grids for the dashboard
 │   ├── portfolio_view.py  # emits docs/strat_data.js (per-horizon portfolio books + backtest + iterations)
 │   ├── backtest_six7.py   # six7 almanac: lists × horizons (same Timed HODL strategy)
+│   ├── ratios_six7.py     # extended ratios (profit factor, Calmar, Ulcer/Martin, win rate) per list
 │   ├── build_web.py       # assembles docs/data.js for the Screens section
 │   └── run_paths.py       # backtest_output/ layout helper
 ├── pine/                  # TradingView ports (indicator + strategy)

@@ -112,6 +112,88 @@ Iterations tab, every past watchlist re-run on the same 2026-10-06 window (bb-60
 On today's window the current watchlist leads on 1y and 3y and is level with the August one over
 Full.
 
+## 4. Profit factor, Sortino and the other ratios
+
+From `analysis/ratios_six7.py` (outputs: `backtest_output/six7_20260616/ratios.json` = old screen,
+`backtest_output/six7/samewindow_20260603/ratios.json` = new screen on the old window,
+`backtest_output/six7/ratios.json` = new screen to 2026-10-06). It reproduces the published XIRR,
+Sharpe, Sortino and max DD exactly for both the old and the new runs.
+
+How each is measured:
+
+- **Sharpe, Sortino, Calmar, Ulcer, Martin, profit factor (daily)**: computed on the unit NAV,
+  with contributions stripped (time-weighted), 6% risk-free rate.
+  - **Calmar** = NAV CAGR / |max DD|.
+  - **Profit factor (daily)** = sum of up-day returns / |sum of down-day returns| (= Omega at 0).
+  - **Ulcer** = RMS drawdown in %, which penalises how deep *and how long* you sit under water.
+  - **Martin** = (CAGR − 6%) / Ulcer.
+- **Position PF, win rate, payoff**: each stock's whole position, valued at the window's last close.
+  - **Position PF** = gains on stocks held at a profit / |losses on stocks held at a loss|.
+  - **Payoff** = average win % / |average loss %|.
+  - Shown for 3y and 1y only. Over 5y+ these come out at 90–99% win rates and PFs in the hundreds
+    or thousands, because every name in today's screen survived and rose. That is survivorship,
+    not skill.
+
+### Top 100, the list that matters (Timed HODL / SIP)
+
+| Window | Screen | XIRR | Sharpe | Sortino | Calmar | Profit factor | Ulcer | Martin | Max DD |
+|---|---|---|---|---|---|---|---|---|---|
+| Full | old | 32.1 / 31.1 | 1.12 / 1.16 | 1.41 / 1.41 | 0.50 / 0.57 | 1.28 / 1.29 | 15.0 / 11.8 | 1.51 / 1.93 | −56.8 / −50.2 |
+| Full | new, old window | 28.8 / 29.9 | 0.98 / 1.03 | 1.21 / 1.25 | 0.47 / 0.49 | 1.25 / 1.26 | 14.4 / 14.5 | 1.35 / 1.44 | −53.5 / −54.5 |
+| Full | **new** | 29.3 / 30.0 | 1.00 / 1.03 | 1.23 / 1.26 | 0.48 / 0.49 | 1.25 / 1.26 | 14.2 / 14.4 | 1.39 / 1.46 | −53.5 / −54.5 |
+| 5y | old | 42.3 / 41.3 | 1.46 / 1.65 | 1.91 / 1.96 | 1.52 / 1.90 | 1.35 / 1.40 | 7.6 / 5.6 | 4.53 / 6.91 | −26.5 / −23.5 |
+| 5y | new, old window | 38.9 / 39.4 | 1.49 / 1.59 | 1.86 / 1.88 | 1.98 / 1.72 | 1.36 / 1.38 | 5.4 / 6.3 | 6.81 / 6.13 | −21.7 / −25.8 |
+| 5y | **new** | 39.4 / 38.6 | 1.36 / 1.44 | 1.81 / 1.71 | 1.86 / 1.54 | 1.33 / 1.35 | 6.5 / 6.2 | 5.43 / 5.39 | −22.1 / −25.7 |
+| 3y | old | 20.5 / 29.1 | 1.22 / 1.62 | 1.57 / 1.93 | 1.68 / 1.94 | 1.32 / 1.40 | 4.6 / 5.6 | | −16.1 / −22.1 |
+| 3y | new, old window | 23.9 / 27.9 | 1.20 / 1.48 | 1.31 / 1.78 | 1.75 / 1.62 | 1.31 / 1.36 | 5.8 / 7.0 | | −20.5 / −25.3 |
+| 3y | **new** | 24.3 / 26.6 | 1.18 / 1.25 | 1.44 / 1.55 | 1.86 / 1.36 | 1.29 / 1.31 | 5.4 / 6.9 | | −18.3 / −25.3 |
+| 1y | old | 26.3 / 21.6 | 1.16 / 0.74 | 1.96 / 1.08 | 1.63 / 1.26 | 1.28 / 1.20 | 7.5 / 3.9 | 3.91 / 3.25 | −21.6 / −14.8 |
+| 1y | new, old window | 17.6 / 24.9 | 0.34 / 0.82 | 0.54 / 1.15 | 0.47 / 1.33 | 1.11 / 1.22 | 9.1 / 4.9 | 0.63 / 3.09 | −25.1 / −15.8 |
+| 1y | **new** | 26.9 / 33.4 | 0.29 / 0.83 | 0.48 / 1.18 | 0.39 / 1.35 | 1.10 / 1.22 | 9.4 / 4.9 | 0.49 / 3.25 | −27.2 / −16.2 |
+
+Position-level, Top 100 (Timed / SIP):
+
+| Window | Screen | Position PF | Win rate | Payoff |
+|---|---|---|---|---|
+| 3y | old | 15.1 / 21.3 | 73% / 84% | 5.5 / 3.5 |
+| 3y | new, old window | 38.3 / 44.6 | 82% / 92% | 4.8 / 3.9 |
+| 3y | **new** | 17.3 / 14.5 | 82% / 84% | 4.1 / 2.7 |
+| 1y | old | 3.6 / 3.4 | 51% / 59% | 4.3 / 2.4 |
+| 1y | new, old window | 4.0 / 4.6 | 68% / 68% | 3.8 / 2.1 |
+| 1y | **new** | 3.0 / 4.8 | 58% / 68% | 5.1 / 2.2 |
+
+NIFTY 50 SIP for reference: Full Sharpe 0.28, Sortino 0.36, Calmar 0.24, profit factor 1.12,
+Ulcer 8.9, Martin 0.36. 1y: Sharpe −1.13, profit factor 0.89.
+
+### Other lists, full history (Timed HODL; old → new on the old window → new)
+
+| List | Sharpe | Sortino | Calmar | Profit factor | Ulcer | Martin |
+|---|---|---|---|---|---|---|
+| Top 50 | 0.96 → 0.88 → 0.89 | 1.22 → 1.13 → 1.14 | 0.49 → 0.41 → 0.42 | 1.24 → 1.22 → 1.23 | 13.2 → 18.3 → 18.1 | 1.42 → 1.02 → 1.04 |
+| 6+ criteria | 1.04 → 1.02 → 1.03 | 1.51 → 1.29 → 1.31 | 0.54 → 0.48 → 0.48 | 1.28 → 1.26 → 1.26 | 16.0 → 15.6 → 15.4 | 1.61 → 1.26 → 1.30 |
+| Perfect 7 | 1.17 → 1.04 → 0.98 | 1.54 → 1.46 → 1.39 | 0.70 → 0.58 → 0.55 | 1.29 → 1.25 → 1.24 | 9.5 → 16.5 → 16.5 | 2.74 → 1.42 → 1.33 |
+| Live watchlist | 0.83 → 0.86 → 0.86 | 1.06 → 1.08 → 1.08 | 0.38 → 0.39 → 0.39 | 1.21 → 1.22 → 1.22 | 19.9 → 19.0 → 18.8 | 0.85 → 0.88 → 0.89 |
+
+What the ratios add:
+
+- **On the same window, the new screen is a little worse on every risk-adjusted ratio over full
+  history.** Top 100 Sharpe goes 1.12 → 0.98, Sortino 1.41 → 1.21, Martin 1.51 → 1.35. Its daily
+  profit factor barely moves (1.28 → 1.25): the up and down days are almost the same size. What
+  changes is the compounding.
+- **Over 5y it is better on drawdown pain.** Timed Ulcer goes 7.6 → 5.4, Calmar 1.52 → 1.98 and
+  Martin 4.53 → 6.81, even though XIRR is 3.4 points lower. That is the D/E 0.6 effect: shallower,
+  shorter drawdowns.
+- **Timed HODL vs SIP on the new Top 100 splits by ratio.** SIP has the higher Sharpe at every
+  horizon. Timed has the shallower max drawdown at every horizon except 1y (Full −53.5 vs −54.5,
+  5y −22.1 vs −25.7, 3y −18.3 vs −25.3), so Timed wins Calmar over 5y and 3y, and Sortino and
+  Martin over 5y. The last year is the exception, where SIP wins everything. In it Timed's NAV fell 27% (Ulcer 9.4 vs SIP's 4.9; Sharpe 0.29 vs 0.83).
+  Its 26.9% XIRR is money-weighted: it bought the dip with most of the year's money, and that money
+  recovered. The time-weighted NAV made only 10.7%.
+- **Timed wins bigger, SIP wins more often.** Timed's payoff is 4–5x against SIP's 2–3x, while
+  SIP's win rate is higher. Concentrated dip-buys produce big winners and more losers.
+- **Perfect 7 lost the most quality on the new screen.** It grew 17 → 49 names, Ulcer rose
+  9.5 → 16.5 and Martin fell 2.74 → 1.42. The old 17 were exceptionally smooth; the wider set is not.
+
 ## Caveats
 
 - **Hindsight.** Every list is today's screen run backwards. Both the old and new screens carry
