@@ -16,6 +16,23 @@ Everything here is the same strategy as always: Timed HODL (BB-200/2σ lower-ban
 bars + Impulse MACD cross + close below the 200-SMA midline), V4 idle-cash fallback, salary-model
 contributions for Full/10y, flat ₹20k/mo for 5y/3y/1y.
 
+## Terms used below
+
+- **Old screen**: the six7 lists as scored on 2026-06-16. D/E up to 1.2, PEG scored the
+  pre-August way, and the Top 100 taken straight from the ranking with no size or valuation gate.
+- **New screen**: the lists from the 2026-10-07 scan. D/E capped at 0.6, the rebuilt PEG, and a
+  Top 100 that only admits market cap > ₹2,000cr with PEG < 2 (so it holds 88 names).
+- **Old window**: the backtest period the old almanac used, from 2010 (or the trailing 10y/5y/3y/1y)
+  up to 2026-06-03.
+- **New window**: the same period stretched to today's data, up to 2026-10-06. Four more months of
+  market.
+- **Like-for-like** = the new screen run over the old window. Only the stock lists differ from the
+  archived run, so the gap between the two is the effect of the new rules alone. Comparing old
+  screen/old window with new screen/new window would mix the rule change with four months of
+  market moves.
+
+The same definitions sit above the "Old screen vs new screen" table on the almanac's Screens tab.
+
 ## What was kept, what was regenerated
 
 | Artifact | Old (kept) | New |

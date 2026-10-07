@@ -211,6 +211,14 @@ tr.it-spark td{border-bottom:1px solid var(--line-2)}
   font-size:.84rem; color:var(--ink-dim); line-height:1.7}
 .note-strip b{color:var(--ink); font-weight:600}
 .note-strip .pin{color:var(--accent); font-family:var(--disp); font-size:1.1rem; line-height:1}
+.seg.wrap{flex-wrap:wrap; max-width:100%}
+.gloss{display:grid; grid-template-columns:repeat(auto-fit,minmax(min(100%,250px),1fr)); gap:10px 22px;
+  padding:14px 16px; margin-bottom:14px; background:var(--surface); border:1px solid var(--line);
+  border-radius:var(--r); font-size:.82rem; color:var(--ink-dim); line-height:1.6}
+.gloss dt{font-family:var(--mono); font-size:.66rem; letter-spacing:.08em; text-transform:uppercase; color:var(--ink)}
+.gloss dd{margin:2px 0 0}
+.gloss .full{grid-column:1/-1; border-top:1px solid var(--line); padding-top:10px}
+td .nsub{color:var(--ink-mute); font-size:.7rem; margin-left:6px}
 
 /* ── overview hero ── */
 .hero{display:grid; grid-template-columns:1.15fr 1fr; gap:28px; align-items:center;
@@ -946,7 +954,16 @@ function renderBtCmp(c){
 }
 
 /* ════════════════ SCREENS (six7) ════════════════ */
-let SCR_SORT="final", SCR_LIST=null;
+let SCR_SORT="final", SCR_LIST=null, CHG_METRIC="xirr";
+const SHORT_HZ = h => h==="1Y"||h==="3Y";   // position stats are survivorship noise past ~3y
+// [key, label, higher-is-better, formatter]
+const RATIO_COLS=[["sortino","Sortino",1,v=>fmtNum(v)],["calmar","Calmar",1,v=>fmtNum(v)],
+  ["pf","Profit factor",1,v=>fmtNum(v)],["ulcer","Ulcer",0,v=>fmtNum(v,1)],["martin","Martin",1,v=>fmtNum(v)]];
+const POS_COLS=[["win","Win rate",1,v=>fmtPctRaw(v,0)],["payoff","Payoff",1,v=>v==null||isNaN(v)?"–":v.toFixed(1)+"×"],
+  ["pos_pf","Position PF",1,v=>fmtNum(v,1)]];
+const CHG_METRICS=[["xirr","XIRR",1,v=>fmtPctRaw(v)],["sharpe","Sharpe",1,v=>fmtNum(v)],["sortino","Sortino",1,v=>fmtNum(v)],
+  ["calmar","Calmar",1,v=>fmtNum(v)],["pf","Profit factor",1,v=>fmtNum(v)],["ulcer","Ulcer",0,v=>fmtNum(v,1)],
+  ["martin","Martin",1,v=>fmtNum(v)],["maxdd","Max DD",1,v=>fmtPctRaw(v)]];
 function renderScreens(){
   const el=$("#panel-screens");
   if(!SIX){ el.innerHTML=sechead("Screens","six7 data (data.js) not found."); return; }
@@ -955,12 +972,17 @@ function renderScreens(){
     "Which fundamental screen would have compounded best? Each list run through the same Timed HODL engine. Leaderboard and inspect both scope to the horizon.",
     `scan <b>${SIX.snapshot_date}</b><br>${(SIX.universe||0).toLocaleString()} stocks scored`) + `
     <div class="controls"><span class="hz-label" style="display:inline">Rank by</span>
-      <span class="seg sm" id="scrSort">
-        ${[["final","Final ₹"],["xirr","XIRR"],["sharpe","Sharpe"],["maxdd","Drawdown"]].map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===SCR_SORT}" onclick="scrSetSort('${k}')">${l}</button>`).join("")}
+      <span class="seg sm wrap" id="scrSort">
+        ${[["final","Final ₹"],["xirr","XIRR"],["sharpe","Sharpe"],["sortino","Sortino"],["calmar","Calmar"],["pf","Profit factor"],["martin","Martin"],["maxdd","Drawdown"]].map(([k,l])=>`<button data-k="${k}" aria-pressed="${k===SCR_SORT}" onclick="scrSetSort('${k}')">${l}</button>`).join("")}
       </span></div>
-    <div class="table-wrap" style="margin-bottom:22px"><table id="scr_tbl"><thead><tr>
-      <th>List</th><th class="nosort">Trend</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th><th>SIP final</th>
+    <div class="table-wrap" style="margin-bottom:10px"><table id="scr_tbl"><thead><tr>
+      <th>List</th><th class="nosort">Trend</th><th>Stocks</th><th>Invested</th><th>Timed final</th><th>×</th><th>Return</th><th>XIRR</th><th>Sharpe</th><th>Max DD</th>
+      ${RATIO_COLS.map(c=>`<th>${c[1]}</th>`).join("")}${SHORT_HZ(HZ)?POS_COLS.map(c=>`<th>${c[1]}</th>`).join(""):""}<th>SIP final</th>
     </tr></thead><tbody id="scr_body"></tbody></table></div>
+    <p class="lede" style="font-size:.78rem; margin:0 0 26px">Timed HODL figures. Sharpe, Sortino, Calmar, profit factor, Ulcer and Martin are measured on the fund-style NAV (monthly deposits stripped out), so they show the strategy, not the saving.
+      <b>Profit factor</b> = sum of up-day returns ÷ sum of down-day losses. <b>Calmar</b> = annual return ÷ worst drawdown. <b>Ulcer</b> = how deep and how long the book sits under its high (lower is better). <b>Martin</b> = return above 6% ÷ Ulcer.
+      ${SHORT_HZ(HZ)?"<b>Win rate</b>, <b>payoff</b> (avg winner % ÷ avg loser %) and <b>position PF</b> score each stock's whole position at the window's last close.":"Win rate, payoff and position profit factor appear on the 1Y and 3Y views only: over longer windows every stock in today's screen has survived and risen, so they read 90-99% and say nothing."}</p>
+    <div id="scr_change"></div>
     <div class="sec-head" id="scr_inspect" style="margin:10px 0 16px"><div><h1 style="font-size:1.15rem">Inspect a list</h1><p class="lede">${HZ==="All"?"Full-history":HZ} equity & drawdown · Timed HODL vs SIP vs NIFTY 50.</p></div></div>
     <div class="chips" id="scr_chips" style="margin-bottom:16px"></div>
     <div class="grid" style="grid-template-columns:1.5fr 1fr">
@@ -990,7 +1012,7 @@ function scrCurve(key){
 }
 function renderScrBoard(){
   const hk=SIX_MAP[HZ]; const rows=(SIX.comparison[hk]||[]).slice();
-  const sv=r=>SCR_SORT==="final"?(r.timed.final||0):SCR_SORT==="xirr"?(r.timed.xirr??-999):SCR_SORT==="sharpe"?(r.timed.sharpe??-999):(r.timed.maxdd??-999);
+  const sv=r=>SCR_SORT==="final"?(r.timed.final||0):(r.timed[SCR_SORT]??-999);
   rows.sort((a,b)=>sv(b)-sv(a));
   const live=rows.filter(r=>!r.benchmark); const bestF=Math.max(...live.map(r=>r.timed.final||0));
   $("#scr_body").innerHTML=rows.map(r=>{
@@ -1005,8 +1027,49 @@ function renderScrBoard(){
       <td>${fmtCr(r.timed.final)}</td><td>${fmtX(r.timed.final/r.invested)}</td>
       <td class="${cls(r.timed.ret)}">${fmtPct(r.timed.ret)}</td><td class="${cls(r.timed.xirr)}">${fmtPct(r.timed.xirr)}</td>
       <td>${fmtNum(r.timed.sharpe)}</td><td class="down">${fmtPctRaw(r.timed.maxdd)}</td>
+      ${RATIO_COLS.map(c=>`<td>${c[3](r.timed[c[0]])}</td>`).join("")}
+      ${SHORT_HZ(HZ)?POS_COLS.map(c=>`<td>${c[3](r.timed[c[0]])}</td>`).join(""):""}
       <td style="color:var(--bench)">${fmtCr(r.sip.final)}</td></tr>`;
   }).join("");
+  renderScrChange();
+}
+function chgSet(k){ CHG_METRIC=k; renderScrChange(); }
+/* Old screen vs new screen. Three runs of the same Timed HODL engine:
+   old  = June lists on the June window (the archived almanac),
+   same = today's lists on that same June window (only the lists differ),
+   new  = today's lists on today's window (the leaderboard above). */
+function renderScrChange(){
+  const host=$("#scr_change"), sc=SIX.screen_change; if(!host) return;
+  if(!sc){ host.innerHTML=""; return; }
+  const hk=SIX_MAP[HZ], rows=sc.horizons[hk]||{};
+  const [mk,ml,hib,mf]=CHG_METRICS.find(m=>m[0]===CHG_METRIC);
+  const d=s=>{ if(!s) return "–"; const [y,m,dd]=s.split("-"); return `${+dd} ${["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][+m-1]} ${y}`; };
+  const keys=[...SIX.list_order,"nifty50"].filter(k=>rows[k]);
+  const label=k=>k==="nifty50"?"NIFTY 50 SIP":(SIX.meta[k]||{label:k}).label;
+  const body=keys.map(k=>{
+    const c=rows[k], o=c.old||{}, s2=c.same||{}, n=c.new||{};
+    const a=o[mk], b=s2[mk], delta=(a!=null&&b!=null)?b-a:null;
+    const good=delta==null?"":((hib?delta>=0:delta<=0)?"up":"down");
+    const nn=v=>v==null?"":`<span class="nsub">${v} stk</span>`;
+    return `<tr><td>${label(k)}</td><td>${mf(a)}${nn(o.n)}</td><td>${mf(b)}${nn(s2.n)}</td>
+      <td class="${good}">${delta==null?"–":(delta>=0?"+":"")+(mk==="xirr"||mk==="maxdd"?delta.toFixed(1)+" pts":delta.toFixed(2))}</td>
+      <td>${mf(n[mk])}${nn(n.n)}</td></tr>`;
+  }).join("");
+  host.innerHTML=`
+    <div class="sec-head" style="margin:6px 0 14px"><div><h1 style="font-size:1.15rem">Old screen vs new screen</h1>
+      <p class="lede">six7 changed its rules on 7 Oct 2026. Did the new lists do better or worse? Timed HODL, ${HZ==="All"?"full history":HZ}.</p></div></div>
+    <dl class="gloss">
+      <div><dt>Old screen</dt><dd>The six7 lists as scored on ${d(sc.old_snapshot)}: debt-to-equity up to 1.2, PEG scored the pre-August way, and the Top 100 taken straight from the ranking with no size or valuation gate.</dd></div>
+      <div><dt>New screen</dt><dd>The lists from the ${d(SIX.snapshot_date)} scan: debt-to-equity capped at 0.6, the rebuilt PEG, and a Top 100 that only admits market cap over ₹2,000 cr with PEG under 2, so it holds 88 names.</dd></div>
+      <div><dt>Old window</dt><dd>The backtest period the old almanac used: 2010 (or the trailing ${HZ==="All"?"horizon":HZ}) up to ${d(sc.old_end)}.</dd></div>
+      <div><dt>New window</dt><dd>The same period stretched to today's data, up to ${d(sc.new_end)}. Four more months of market.</dd></div>
+      <div class="full"><dd><b>Like-for-like</b> is the middle column: the new screen run over the old window. Only the stock lists differ from the first column, so the <b>Change</b> column is the effect of the new rules alone. Comparing the first and last columns would mix the rule change with four extra months of market moves.</dd></div>
+    </dl>
+    <div class="controls"><span class="hz-label" style="display:inline">Metric</span>
+      <span class="seg sm wrap">${CHG_METRICS.map(([k,l])=>`<button aria-pressed="${k===CHG_METRIC}" onclick="chgSet('${k}')">${l}</button>`).join("")}</span></div>
+    <div class="table-wrap" style="margin-bottom:26px"><table><thead><tr>
+      <th>List</th><th>Old screen · old window</th><th>New screen · old window</th><th>Change (new rules only)</th><th>New screen · new window</th>
+    </tr></thead><tbody>${body}</tbody></table></div>`;
 }
 function renderScrInspect(){
   const k=SCR_LIST, m=SIX.meta[k], hk=SIX_MAP[HZ];
@@ -1027,6 +1090,8 @@ function renderScrInspect(){
   $("#scr_metrics").innerHTML=[
     ["Final",fmtCr(t.final)],["XIRR",fmtPctRaw(t.xirr)],["Sharpe",fmtNum(t.sharpe)],["Sortino",fmtNum(t.sortino)],
     ["Max DD",fmtPctRaw(t.maxdd)],["Volatility",fmtPctRaw(t.vol)],
+    ["Calmar",fmtNum(t.calmar)],["Profit factor",fmtNum(t.pf)],["Ulcer",fmtNum(t.ulcer,1)],["Martin",fmtNum(t.martin)],
+    ...(SHORT_HZ(HZ)?[["Win rate",fmtPctRaw(t.win,0)],["Payoff",t.payoff==null?"–":t.payoff.toFixed(1)+"×"]]:[]),
   ].map(([k2,v])=>tile(k2,v)).join("");
 }
 

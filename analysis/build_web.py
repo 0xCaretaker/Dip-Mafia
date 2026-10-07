@@ -13,6 +13,7 @@ Run: python3 analysis/build_web.py   (from the repo root, after backtest_six7.py
 """
 
 import os
+import glob
 import json
 from datetime import datetime, timezone
 
@@ -112,6 +113,73 @@ def build_curve(curve):
     return {"equity": eq, "drawdowns": dd}
 
 
+# Extended ratios from analysis/ratios_six7.py (ratios.json) -> short web keys.
+# Daily ratios are on the unit NAV; pos_* are whole-position stats at the window's
+# last close (survivorship-dominated past ~3y, so the page shows them on 1Y/3Y only).
+RATIO_KEYS = {"calmar": "calmar", "profit_factor": "pf", "ulcer": "ulcer", "martin": "martin",
+              "pos_profit_factor": "pos_pf", "win_rate": "win", "payoff": "payoff"}
+CHANGE_KEYS = {"n": None, "xirr": "xirr", "sharpe": "sharpe", "sortino": "sortino", "calmar": "calmar",
+               "profit_factor": "pf", "ulcer": "ulcer", "martin": "martin", "max_dd": "maxdd"}
+
+
+def _r(v):
+    return round(float(v), 3) if isinstance(v, (int, float)) else v
+
+
+def load_ratios(path):
+    return json.load(open(path)) if os.path.isfile(path) else None
+
+
+def merge_ratios(comparison, ratios):
+    """Fold ratios.json into the comparison rows (timed + sip) in place."""
+    if not ratios:
+        return
+    for h, rows in comparison.items():
+        rr = ratios["horizons"].get(h, {}).get("rows", {})
+        for row in rows:
+            src = rr.get(row["key"])
+            if not src:
+                continue
+            for side in ("timed", "sip"):
+                if side in src:
+                    row[side].update({web: _r(src[side].get(k)) for k, web in RATIO_KEYS.items()
+                                      if src[side].get(k) is not None})
+
+
+def screen_change():
+    """Old screen vs new screen, Timed HODL, per horizon -> {h: {list: {old, same, new}}}.
+
+    old  = archived almanac (backtest_output/six7_<date>/ratios.json): old lists, old window
+    same = new lists rerun on the old window (six7/samewindow_<end>/ratios.json)
+    new  = new lists, new window (six7/ratios.json)
+    """
+    archives = sorted(d for d in glob.glob(os.path.join(run_paths.BASE, "six7_*"))
+                      if os.path.isfile(os.path.join(d, "ratios.json")))
+    samewin = sorted(glob.glob(os.path.join(OUT, "samewindow_*", "ratios.json")))
+    new = load_ratios(os.path.join(OUT, "ratios.json"))
+    if not (archives and samewin and new):
+        return None
+    runs = {"old": load_ratios(os.path.join(archives[-1], "ratios.json")),
+            "same": load_ratios(samewin[-1]), "new": new}
+    old_manifest = os.path.join(archives[-1], "lists", "_manifest.json")
+    om = json.load(open(old_manifest)) if os.path.isfile(old_manifest) else {}
+    out = {"old_snapshot": (om.get("snapshot_generated_at") or "")[:10],
+           "old_end": runs["old"]["end"], "new_end": runs["new"]["end"], "horizons": {}}
+    for h, _ in HORIZONS:
+        lists = {}
+        for key in CURVE_LISTS + ["nifty50"]:
+            cell = {}
+            for tag, R in runs.items():
+                row = R["horizons"].get(h, {}).get("rows", {}).get(key)
+                if row:
+                    t = row["timed"]
+                    cell[tag] = {"n": row.get("n"), **{web: _r(t.get(k)) for k, web in CHANGE_KEYS.items() if web}}
+            if cell:
+                lists[key] = cell
+        out["horizons"][h] = lists
+    return out
+
+
 def main():
     manifest = json.load(open(os.path.join("analysis", "six7_stocks", "lists", "_manifest.json")))
     counts = {k: v["count"] for k, v in manifest["lists"].items()}
@@ -127,6 +195,8 @@ def main():
         if os.path.isfile(path):
             blob = json.load(open(path))
             comparison[h] = [comparison_row(r) for r in blob["results"]]
+
+    merge_ratios(comparison, load_ratios(os.path.join(OUT, "ratios.json")))
 
     curves = {}
     for key in CURVE_LISTS:
@@ -178,8 +248,9 @@ def main():
         "comparison": comparison,
         "curves": curves,
         "curves_h": curves_h,
-        "caveat": ("Lists are a current (2026-06-01) fundamental screen run backward - "
-                   "survivorship / look-ahead biased hindsight, not a tradeable signal."),
+        "screen_change": screen_change(),
+        "caveat": (f"Lists are a current ({(manifest.get('snapshot_generated_at') or '')[:10]}) fundamental "
+                   "screen run backward - survivorship / look-ahead biased hindsight, not a tradeable signal."),
     }
 
     os.makedirs(DOCS, exist_ok=True)
