@@ -17,7 +17,7 @@ gate + Impulse MACD Timed HODL, SIP, NIFTY 50 benchmark). It:
 backtest.py's own run subfolders under backtest_output/ are left untouched;
 chart output is redirected by setting bt.OUTPUT_DIR per list.
 
-CAVEAT (labelled in output): the lists are a *current* (2026-06-01) fundamental
+CAVEAT (labelled in output): the lists are a *current* (see _manifest.json) fundamental
 screen, so this is survivorship/look-ahead-biased hindsight -- good for ranking
 lists against each other and across horizons, NOT a tradeable signal.
 
@@ -50,14 +50,19 @@ OLD_DASHBOARD = os.path.join(run_paths.current_run() or run_paths.BASE, "dashboa
 SIX7_LISTS = ["top10", "top30", "top50", "top100",
               "strong_buy", "buy_plus", "six_plus", "perfect7"]
 
-END = "2026-06-03"   # latest; all trailing windows end here
-HORIZONS = [          # (label, start_date) -- end is END for all
-    ("full", "2010-01-01"),
-    ("10y", "2016-06-03"),
-    ("5y", "2021-06-03"),
-    ("3y", "2023-06-03"),
-    ("1y", "2025-06-03"),
-]
+MIDCAP_TICKER = "^NSEMDCP50"   # NIFTY Midcap 50 benchmark (see main)
+END = "2026-10-07"   # latest; all trailing windows end here (yfinance end is exclusive)
+
+
+def horizons(end):
+    """(label, start_date) per horizon; every window ends at `end`."""
+    e = pd.Timestamp(end)
+    back = lambda yrs: (e - pd.DateOffset(years=yrs)).strftime("%Y-%m-%d")
+    return [("full", "2010-01-01"), ("10y", back(10)), ("5y", back(5)),
+            ("3y", back(3)), ("1y", back(1))]
+
+
+HORIZONS = horizons(END)
 # Short windows use a flat monthly SIP instead of the 2010 salary-growth model
 # (a recent investor putting in a fixed amount). full/10y keep the salary model.
 FLAT_MONTHLY = {"5y": 20000, "3y": 20000, "1y": 20000}
@@ -373,7 +378,18 @@ def write_comparison(horizon, period, results):
 
 # ── orchestration ──────────────────────────────────────────────────────────────
 
-def main():
+def main(argv=None):
+    # --end / --out re-run the same lists over an earlier window into a separate
+    # folder (e.g. to compare a new screen against an archived one like-for-like)
+    # without touching backtest_output/six7/.
+    import argparse
+    global END, HORIZONS, OUT_DIR
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--end", default=END)
+    ap.add_argument("--out", default=OUT_DIR)
+    args = ap.parse_args(argv)
+    END, OUT_DIR = args.end, args.out
+    HORIZONS = horizons(END)
     os.makedirs(OUT_DIR, exist_ok=True)
     lists = load_lists()
     print(f"Lists ({len(lists)}): {', '.join(lists)}")
@@ -395,6 +411,22 @@ def main():
                 print(f"\nUsing cached prices for {len(stock_dfs)} tickers (delete {cache_path} to refresh).")
         except Exception:
             pass
+    if stock_dfs is None and OUT_DIR != run_paths.SIX7:
+        # An --end/--out rerun over an earlier window: slice the main almanac cache
+        # when it already covers every ticker through a later date (no re-download).
+        main_cache = os.path.join(run_paths.SIX7, "_price_cache.pkl")
+        try:
+            cached = pickle.load(open(main_cache, "rb"))
+            ctick, cend = cached["key"]
+            if set(tickers) <= set(ctick) and str(cend) >= END:
+                cut = pd.Timestamp(END)          # END is exclusive, like yfinance's end
+                stock_dfs = {t: df[df.index < cut] for t, df in cached["stock_dfs"].items()
+                             if t in tickers and not df[df.index < cut].empty}
+                nd = cached["nifty_data"]
+                nifty_data = nd[nd.index < cut] if nd is not None else None
+                print(f"\nSliced {len(stock_dfs)} tickers from {main_cache} (to {END}).")
+        except Exception:
+            pass
     if stock_dfs is None:
         print(f"\nDownloading union of {len(tickers)} tickers over full history (single pass)...")
         stock_dfs = bt.download_batch(tickers, full_cfg)
@@ -406,22 +438,25 @@ def main():
                     open(cache_path, "wb"))
     nifty_price = nifty_data["Close"] if nifty_data is not None else None
 
-    # NIFTY Midcap 100 benchmark (downloaded separately so it doesn't churn the
+    # NIFTY Midcap benchmark (downloaded separately so it doesn't churn the
     # union price cache). Cached in its own small file.
     mid_cache = os.path.join(OUT_DIR, "_midcap_cache.pkl")
     midcap_data = None
     if os.path.isfile(mid_cache):
         try:
             mc = pickle.load(open(mid_cache, "rb"))
-            if mc.get("end") == END:
+            if mc.get("end") == END and mc.get("ticker") == MIDCAP_TICKER:
                 midcap_data = mc["data"]
         except Exception:
             pass
     if midcap_data is None:
-        print("Downloading NIFTY Midcap 100...")
-        mraw = yf.download("NIFTY_MIDCAP_100.NS", start="2010-01-01", end=END, progress=False)
+        # NIFTY Midcap 50 (^NSEMDCP50, history from 2010). It replaced NIFTY Midcap 100
+        # on 2026-10-07 when Yahoo stopped serving NIFTY_MIDCAP_100.NS (no data at all).
+        print("Downloading NIFTY Midcap 50...")
+        mraw = yf.download(MIDCAP_TICKER, start="2010-01-01", end=END, progress=False)
         midcap_data = bt.flatten_cols(mraw).dropna() if not mraw.empty else None
-        pickle.dump({"end": END, "data": midcap_data}, open(mid_cache, "wb"))
+        if midcap_data is not None:      # never cache a failed download
+            pickle.dump({"end": END, "ticker": MIDCAP_TICKER, "data": midcap_data}, open(mid_cache, "wb"))
     BENCH = [("nifty50", nifty_data), ("nifty_midcap", midcap_data)]
 
     print("Computing BB + Impulse signals on full history (once)...")

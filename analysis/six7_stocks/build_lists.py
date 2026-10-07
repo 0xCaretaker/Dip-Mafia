@@ -12,6 +12,17 @@ Reproduces the exact filter/score logic of the deployed dashboard
     This mirrors the row filter at index.template.html:1183.
   - clicking a verdict segment ("Strong"/"Buy+") adds a composite floor on top of
     the default criteria floor of 6 (index.template.html:1184).
+  - the Top-N lists carry the watchlist gates of six7's Top 100 view (2026-10-07):
+    market cap > MIN_MARKET_CAP_CR and 0 < peg_eff < MAX_TOP_PEG, NOT backfilled,
+    so top100 can hold fewer than 100 names (88 on 2026-10-07). This mirrors
+    six7 `sync_hodl_stocks.top_tickers`, so top100 == the live six7.txt. The
+    verdict/criteria lists (strong_buy, buy_plus, six_plus, perfect7) take no
+    gates, exactly as the site's presets drop them outside the Top 100 view.
+
+The D/E rule (criterion #5, 0 <= D/E <= 0.6 since 2026-10-07) and the composite
+are NOT re-derived here: the snapshot's `criteria` flags and `composite` are
+whatever six7 scored at scan time, so use a snapshot taken under the rules you
+want to test.
 
 Lists written to lists/ (one ticker per line, no .NS suffix, stocks.txt format):
   top10/top30/top50/top100  - ranked by 0-10 composite (ties: criteria, mkt cap)
@@ -20,20 +31,33 @@ Lists written to lists/ (one ticker per line, no .NS suffix, stocks.txt format):
   six_plus                  - criteria 6+ (incl. Financials 5/5)
   perfect7                  - criteria == denominator (7/7 or 5/5)
 
-Run: python3 six7_stocks/build_lists.py
+Run: python3 analysis/six7_stocks/build_lists.py [snapshot.json]
+     (default: the newest snapshot_*.json next to this script)
 """
 
+import glob
 import json
 import os
+import sys
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-SNAPSHOT = os.path.join(HERE, "snapshot_20260616.json")
 LISTS_DIR = os.path.join(HERE, "lists")
 
 DEFAULT_MIN = 6          # site default criteria floor (scan mode)
 STRONG_BUY_FUND = 8.0    # "Strong" verdict segment composite floor
 BUY_PLUS_FUND = 6.5      # "Buy+"  verdict segment composite floor
+# Top-N watchlist gates. Must equal six7 sync_hodl_stocks.MIN_MARKET_CAP_CR /
+# MAX_TOP_PEG (and MIN_MARKET_CAP_CR / MAX_TOP_PEG in its dashboard template).
+MIN_MARKET_CAP_CR = 2000 # strictly greater than; missing cap fails
+MAX_TOP_PEG = 2.0        # 0 < peg_eff < 2.0; missing peg_eff fails
+
+
+def latest_snapshot():
+    snaps = sorted(glob.glob(os.path.join(HERE, "snapshot_*.json")))
+    if not snaps:
+        sys.exit(f"no snapshot_*.json in {HERE}")
+    return snaps[-1]
 
 
 def denominator(item):
@@ -57,8 +81,17 @@ def passes_criteria(item, floor):
     return s >= floor or s == denominator(item)
 
 
-def main():
-    with open(SNAPSHOT) as f:
+def watchlist_gates(item):
+    """six7 Top-N gates: market cap > MIN_MARKET_CAP_CR and 0 < peg_eff < MAX_TOP_PEG."""
+    peg_eff = item.get("peg_eff")
+    return ((item.get("market_cap") or 0) > MIN_MARKET_CAP_CR
+            and peg_eff is not None and 0 < peg_eff < MAX_TOP_PEG)
+
+
+def main(argv=None):
+    argv = sys.argv[1:] if argv is None else argv
+    snapshot = argv[0] if argv else latest_snapshot()
+    with open(snapshot) as f:
         snap = json.load(f)
     items = snap["items"]
     for it in items:
@@ -66,10 +99,12 @@ def main():
 
     scored = [it for it in items if it.get("composite") is not None]
     # Top-N are drawn from the default 6+ universe (what you see when you sort by
-    # Fundamental Score on the landing view), ranked by composite then criteria.
+    # Fundamental Score on the landing view) behind the watchlist gates, ranked
+    # by composite then criteria then market cap. Not backfilled.
     universe6 = [it for it in scored if passes_criteria(it, DEFAULT_MIN)]
+    gated = [it for it in universe6 if watchlist_gates(it)]
     ranked = sorted(
-        universe6,
+        gated,
         key=lambda x: (x.get("composite") or 0, x.get("score") or 0, x.get("market_cap") or 0),
         reverse=True,
     )
@@ -88,11 +123,13 @@ def main():
     os.makedirs(LISTS_DIR, exist_ok=True)
     manifest = {
         "generated_at": datetime.now(timezone.utc).isoformat(),
-        "source_snapshot": os.path.basename(SNAPSHOT),
+        "source_snapshot": os.path.basename(snapshot),
         "snapshot_generated_at": snap.get("meta", {}).get("generatedAt"),
         "universe_scanned": len(items),
         "definitions": {
-            "top10/30/50/100": "ranked by 0-10 composite within the 6+ criteria universe; ties -> criteria count -> market cap",
+            "top10/30/50/100": (f"ranked by 0-10 composite within the 6+ criteria universe, gated on market cap > "
+                                f"{MIN_MARKET_CAP_CR}cr and 0 < peg_eff < {MAX_TOP_PEG} (not backfilled); "
+                                "ties -> criteria count -> market cap"),
             "strong_buy": f"composite >= {STRONG_BUY_FUND} AND (score >= {DEFAULT_MIN} OR perfect) -- site 'Strong' segment",
             "buy_plus": f"composite >= {BUY_PLUS_FUND} AND (score >= {DEFAULT_MIN} OR perfect) -- site 'Buy+' segment",
             "six_plus": f"score >= {DEFAULT_MIN} OR perfect (Financials 5/5 included)",
@@ -115,7 +152,8 @@ def main():
     with open(os.path.join(LISTS_DIR, "_manifest.json"), "w") as f:
         json.dump(manifest, f, indent=2)
     print(f"\n  Manifest: {os.path.relpath(os.path.join(LISTS_DIR, '_manifest.json'), HERE)}")
-    print(f"  Universe: {len(items)} scanned, {len(scored)} with composite, {len(universe6)} at 6+")
+    print(f"  Universe: {len(items)} scanned, {len(scored)} with composite, {len(universe6)} at 6+, "
+          f"{len(gated)} through the Top-N gates")
 
 
 if __name__ == "__main__":

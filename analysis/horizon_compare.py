@@ -36,7 +36,7 @@ import yfinance as yf
 import backtest as bt
 import run_paths
 
-END = pd.Timestamp("2026-04-20")               # data-as-of (matches the strat run)
+END = pd.Timestamp("2026-10-06")               # data-as-of (matches the strat run: last close before backtest.CONFIG["end"])
 PRICE_CACHE = os.path.join(run_paths.SIX7, "_price_cache.pkl")
 OUT = os.path.join(run_paths.current_run() or run_paths.BASE, "horizons.json")
 

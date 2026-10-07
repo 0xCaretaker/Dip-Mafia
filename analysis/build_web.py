@@ -27,22 +27,22 @@ HORIZONS = [("full", "Full · ~16y"), ("10y", "10 years"), ("5y", "5 years"),
 CONTRIB = {"full": "₹5,500/mo → +10%/yr", "10y": "₹5,500/mo → +10%/yr",
            "5y": "₹20,000/mo", "3y": "₹20,000/mo", "1y": "₹20,000/mo"}
 
-# Display order + labels + one-line definitions. Two requested renames:
-#   stocks_current        -> "Univest + six7 Hybrid"  (today's live watchlist)
+# Display order + labels + one-line definitions. Renames:
+#   stocks_current        -> "Live watchlist"  (today's six7.txt ∪ holdings.txt)
 #   stocks.txt (OLD 61)   -> "Univest Old"            (previous watchlist)
 META = {
     "top10":      ("Top 10",   "Highest 10 by Fundamental Score"),
     "top30":      ("Top 30",   "Highest 30 by Fundamental Score"),
     "top50":      ("Top 50",   "Highest 50 by Fundamental Score"),
-    "top100":     ("Top 100",  "Highest 100 by Fundamental Score"),
+    "top100":     ("Top 100",  "six7 watchlist · mcap > ₹2,000cr · PEG < 2 (== six7.txt)"),
     "strong_buy": ("Strong Buy", "Composite ≥ 8.0 (site 'Strong')"),
     "buy_plus":   ("Buy+",     "Composite ≥ 6.5 (site 'Buy+')"),
     "six_plus":   ("6+ Criteria", "≥ 6 criteria met · Financials 5/5"),
     "perfect7":   ("Perfect 7", "All criteria · 7/7 or 5/5"),
     "univest_old":    ("Univest Old", "Univest base · before six7 additions"),
-    "stocks_current": ("Univest + six7 Hybrid", "Live watchlist · Univest + six7 perfect stocks"),
+    "stocks_current": ("Live watchlist", "six7 Top 100 ∪ your holdings (stocks.txt)"),
     "nifty50":        ("NIFTY 50", "Index SIP benchmark"),
-    "nifty_midcap":   ("NIFTY Midcap 100", "Index SIP benchmark"),
+    "nifty_midcap":   ("NIFTY Midcap 50", "Index SIP benchmark"),
 }
 CURVE_LISTS = ["top10", "top30", "top50", "top100", "strong_buy",
                "buy_plus", "six_plus", "perfect7", "univest_old", "stocks_current"]

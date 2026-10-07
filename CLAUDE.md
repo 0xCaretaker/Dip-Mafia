@@ -81,6 +81,7 @@ backtest_output/
                              horizons.json, trades.csv, meta.json, stocks.txt snapshot)
   …                          older runs, same naming
   six7/                      six7 almanac outputs (results tracked; *.pkl caches git-ignored)
+  six7_<YYYYMMDD>/            archived almanac (results + the lists it ran), named by source snapshot date
 ```
 
 There is **no separate archive folder**. The "current" run is simply the newest subfolder - `run_paths.current_run()` returns the one with the highest `meta.json` date, then newest `meta.json` `generated_at` (wall-clock), folder name last (so a freshly generated run wins a same-data-date tie even when its symbol count sorts lower, e.g. `50sym` vs `75sym`); `run_paths.archived_runs()` returns the rest. `portfolio_view.py`, `horizon_compare.py`, and `backtest_six7.py` all resolve paths through `run_paths` - never hard-code `backtest_output/...`.
@@ -104,5 +105,6 @@ The unified dashboard (`docs/index.html`) has five horizon-aware sections (Overv
 
 The six7 almanac (`docs/`, published on GitHub Pages) compares the screener lists in `analysis/six7_stocks/lists/` plus the live watchlist, running **Timed HODL vs SIP** across 1y/3y/5y/10y/Full horizons. `analysis/backtest_six7.py` does *not* define its own strategy - it deep-copies `bt.CONFIG` (so `bb_lookback=60`) and calls `bt.simulate_timed_hodl`, which honors `BUY_REQUIRE_BELOW_MID` and the V4 idle-cash fallback by default. **So the almanac's "Timed" numbers are the same V4 + midline + bb-60 strategy as the strat dashboard** - whenever that strategy or `stocks.txt` changes, the almanac is stale until rebuilt:
 
+0. **Rebuild the lists** `python3 analysis/six7_stocks/build_lists.py [snapshot.json]` (default: newest `analysis/six7_stocks/snapshot_*.json`, git-ignored; fetch one from `https://six7stocks.vercel.app/api/snapshot/latest`). Top-N lists carry six7's watchlist gates (mcap > ₹2,000cr, 0 < peg_eff < 2.0, not backfilled), so `top100` == the live `six7.txt`. Archive the previous `backtest_output/six7/` to `backtest_output/six7_<snapshot date>/` first (results + `lists/`, no `.pkl`); `run_paths` ignores it. `backtest_six7.py --end <date> --out <dir>` reruns the lists over an earlier window for a like-for-like comparison. The midcap benchmark is NIFTY Midcap 50 (`^NSEMDCP50`) since Yahoo dropped `NIFTY_MIDCAP_100.NS` (2026-10-07).
 1. **Recompute** `python3 analysis/backtest_six7.py` (from the repo root) → writes `backtest_output/six7/` (per-list 8-chart suites + `comparison_<h>.{csv,json,png}`). Reuses `backtest_output/six7/_price_cache.pkl` when the ticker-union + `END` match; otherwise it re-downloads and rewrites the cache. `END` is pinned in the script for reproducibility.
 2. **Rebuild the web data** `python3 analysis/build_web.py` → assembles `docs/data.js` (`window.SIX7_DATA`) from the comparison JSON, which the GitHub Pages almanac reads.

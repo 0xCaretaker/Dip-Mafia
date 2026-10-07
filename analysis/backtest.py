@@ -56,7 +56,7 @@ LABEL_PARTIAL = "Partial SIP+Timed"
 
 CONFIG = {
     "start": "2010-01-01",
-    "end": "2026-08-28",
+    "end": "2026-10-07",
     "initial_salary": 22_000,
     "invest_pct": 0.25,
     "salary_growth": 0.10,

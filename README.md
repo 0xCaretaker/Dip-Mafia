@@ -189,77 +189,76 @@ python3 analysis/backtest.py  # run from the repo root
 
 Generates 8 charts in a dated run subfolder under `backtest_output/` + console summary.
 
-### Latest Results (50 stocks, 2010–2026)
+### Latest Results (six7 Top 100, 2010–2026)
 
-> Run as of 2026-04-17 against `six7.txt` alone - the **six7 Top 50** as it stood then (highest 50 by 0-10 Fundamental Score, refreshed 2026-06-16 after the floor-0.5 financials scoring fix). 46 of 50 had enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py` and `BUY_REQUIRE_BELOW_MID = True` in `backtest.py` - aligned 2026-06-17), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none - see `notes/STRATEGY_COMPARISON.md`). The live bot signals on `six7.txt ∪ holdings.txt`; the strat backtest above isolates the six7 list so the headline reflects the curated fundamental screen, not the ~50 personal SME/illiquid names in `holdings.txt` that drag returns ~1pp.
+Live almanac (every six7 list × 1y/3y/5y/10y/Full, plus the strat dashboard): **https://0xcaretaker.github.io/Dip-Mafia/**
+
+> Run as of 2026-10-06 against `six7.txt` alone: the **six7 Top 100** as of the 2026-10-07 scan (6+ criteria with D/E ≤ 0.6, then market cap > ₹2,000cr and PEG < 2.0, not backfilled, so 88 names). 75 of 88 have enough history for the 200-bar Bollinger warmup. 60-bar watch window, **midline buy gate** (`REQUIRE_CLOSE_BELOW_MIDLINE = True` in `bot.py`, `BUY_REQUIRE_BELOW_MID = True` in `backtest.py`), and the **V4 idle-cash fallback** (deploy after 21 idle days across any watchlist stock below its 200-SMA, force-deploy if none; see `notes/STRATEGY_COMPARISON.md`). Source: the almanac's `top100` list, `backtest_output/six7/top100/`. The live bot signals on `six7.txt ∪ holdings.txt`; that 150-symbol union is the strat run `backtest_output/20261006_150sym_bb60/` (Timed 26.6% vs SIP 28.5% XIRR). The headline isolates the six7 screen from the personal SME/illiquid holdings.
 
 ```
 ════════════════════════════════════════════════════════════════════════════════════════════════════
   INVESTMENT ASSUMPTIONS
 ────────────────────────────────────────────────────────────────────────────────────────────────────
-  Period:             2010-01-04 → 2026-04-17 (16.3 years)
+  Period:             2010-01-04 → 2026-10-06 (16.8 years)
   Starting salary:    ₹22,000/month → ₹101,089/month (10% annual hike)
   Monthly SIP:        ₹5,500 → ₹25,272 (25% of salary)
-  Total invested:     ₹24.7L (inflation-adjusted: ₹9.6L in 2010 rupees)
-  Inflation (6%/yr):  ₹1 in 2010 = ₹2.6 today
+  Total invested:     ₹26.3L
+  Inflation (6%/yr):  ₹1 in 2010 = ₹2.65 today
 
 ════════════════════════════════════════════════════════════════════════════════════════════════════
-  RESULTS - 46 stocks, ₹24.7L invested
+  RESULTS - 75 stocks, ₹26.3L invested
 ════════════════════════════════════════════════════════════════════════════════════════════════════
                             Your Strategy (Timed HODL)     SIP on Your Stocks       Timed Entry+Exit        SIP on NIFTY 50
   ───────────────────────────────────────────────────────────────────────────────────────────────
-  Final Value                              ₹238.6L                ₹221.2L                 ₹76.3L                 ₹52.3L
-  Inflation-Adj Value                       ₹92.4L                 ₹85.7L                 ₹29.5L                 ₹20.2L
-  Wealth Multiple                             9.6x                   8.9x                   3.1x                   2.1x
-  Real Multiple (infl-adj)                    3.7x                   3.4x                   1.2x                   0.8x
-  XIRR                                       29.2%                  28.3%                  15.8%                  10.9%
-  Real XIRR (minus 6% infl)                  23.2%                  22.3%                   9.8%                   4.9%
-  Sharpe                                      1.38                   1.35                   1.06                   1.13
-  Sortino                                     3.40                   3.41                   2.30                   3.40
-  Max Drawdown                              -41.3%                 -45.0%                 -57.9%                 -37.3%
-  Max DD Duration                         639 days               698 days               653 days               183 days
-  Volatility                                 38.0%                  38.4%                  45.6%                  37.7%
+  Final Value                              ₹272.3L                ₹291.6L                ₹154.1L                 ₹50.3L
+  Inflation-Adj Value                      ₹102.8L                ₹110.0L                 ₹58.1L                 ₹19.0L
+  Wealth Multiple                            10.4x                  11.1x                   5.9x                   1.9x
+  XIRR                                       29.3%                  30.0%                  22.9%                   9.4%
+  Real XIRR (minus 6% infl)                  23.3%                  24.0%                  16.9%                   3.4%
+  Sharpe                                      1.00                   1.03                   0.29                   0.28
+  Sortino                                     1.23                   1.26                   0.49                   0.36
+  Max Drawdown                              -53.5%                 -54.5%                 -78.1%                 -38.4%
+  Max DD Duration                         770 days               769 days              2169 days               727 days
+  Volatility                                 19.5%                  19.9%                  32.8%                  16.4%
 
-  Buy signals fired on 181 days across 46/46 stocks
-  Cash drag (Your Strategy): 1.3%   ·   longest idle: 21 trading days (~1 month)   ·   502 fallback buys
+  Buy signals fired on 188 days across 68/75 stocks
+  Cash drag (Your Strategy): 1.3%   ·   longest idle: 21 trading days (~1 month)   ·   838 fallback buys
 ```
 
 ### Key Findings
 
 | Metric | Your Strategy | SIP (same stocks) | NIFTY 50 SIP |
 |---|---|---|---|
-| Final Value | ₹239L | ₹221L | ₹52L |
-| Inflation-Adjusted | ₹92L | ₹86L | ₹20L |
-| XIRR | **29.2%** | 28.3% | 10.9% |
-| Real XIRR (−6% inflation) | **23.2%** | 22.3% | 4.9% |
-| Sharpe | **1.38** | 1.35 | 1.13 |
-| Sortino | 3.40 | 3.41 | 3.40 |
-| Max Drawdown | **-41%** | -45% | -37% |
-| Volatility | 38.0% | 38.4% | 37.7% |
+| Final Value | ₹272L | ₹292L | ₹50L |
+| Inflation-Adjusted | ₹103L | ₹110L | ₹19L |
+| XIRR | 29.3% | **30.0%** | 9.4% |
+| Real XIRR (−6% inflation) | 23.3% | **24.0%** | 3.4% |
+| Sharpe | 1.00 | **1.03** | 0.28 |
+| Max Drawdown | **-53.5%** | -54.5% | -38.4% |
+| Volatility | 19.5% | 19.9% | 16.4% |
 
-- **Both strategies crush NIFTY 50 by ~4.6x** - stock picking matters more than timing, and the six7 watchlist sets the fundamental quality bar (every name is a Strong Buy).
-- **Timed HODL edges SIP across the full run** (29.2% vs 28.3% XIRR) and stays ahead on every horizon ≥ 10y. Mid-horizons (3y/5y) are close - the midline gate suppresses buys during strong uptrends, where SIP just deploys monthly.
-- **Drawdown is structurally better** - -41% vs SIP's -45% vs the union's -49%. Concentrating into the curated screen cuts tail risk.
-- **Backtest gate and live bot gate are aligned** - both `BUY_REQUIRE_BELOW_MID` (backtest) and `REQUIRE_CLOSE_BELOW_MIDLINE` (bot) are True, so the Telegram + Discord posts drop Watch names that recovered above the 200-SMA. What you see is what the backtest would actually buy.
-- **Cash drag low at 1.3%**, longest idle stretch 21 trading days, V4 fallback deploying across any below-midline name when signals dry up.
-- **Real returns easily beat inflation** - 23.2% real XIRR for Timed HODL vs 4.9% for NIFTY 50.
-- **Entry+Exit is worse than just holding** - XIRR 15.8% vs Timed HODL's 29.2%; selling on MACD Sell destroys compounding.
+- **Both strategies beat NIFTY 50 by ~3x on XIRR** (29-30% vs 9.4%). Stock picking matters far more than timing.
+- **Timed HODL no longer beats SIP over the full run** (29.3% vs 30.0%). It wins the 5y and 10y windows by under a point and loses 1y/3y. The new screen is lower-beta (D/E ≤ 0.6), so there are fewer deep dips for the BB/MACD gate to buy. On the 150-symbol live union, SIP leads at every horizon.
+- **The new screen trades return for drawdown.** Run over the same window as the June screen (to 2026-06-03), the new Top 100 gives 28.8% Full XIRR vs 32.1%, with max drawdown -53.5% vs -56.8% (5y: -21.7% vs -26.5%). Details: [`notes/2026-10-07-backtest-rerun.md`](notes/2026-10-07-backtest-rerun.md).
+- **The market-cap and PEG gates do work.** The ungated screens (Strong Buy, 6+) made ≈0% over the same 1y window. The gated Top 100 made 17.6%.
+- **Cash drag is low at 1.3%**: longest idle stretch 21 trading days, with the V4 fallback deploying when signals dry up.
+- **Entry+Exit is still worse than holding**: 22.9% XIRR vs Timed HODL's 29.3%, with a -78% drawdown. Selling on MACD Sell destroys compounding.
 
-> The backtest is current-screen hindsight (the then-current Top 50 run backward - survivorship/look-ahead biased), so treat the levels as relative, not predictive. It has **not** been re-run since the list widened to 100 or since the 2026-08-28 six7 scoring rebuild.
+> The backtest is current-screen hindsight (today's Top 100 run backward, so survivorship and look-ahead biased). Treat the levels as relative, not predictive. Sharpe/Sortino are computed on a unit NAV since 2026-06-21, so they are not comparable with the pre-June README figures.
 
 ### Returns by horizon (six7.txt alone)
 
-The summary table above is the full ~16-year run. Recent trailing-window XIRR for the same 50-symbol list:
+The summary table above is the full ~16.8-year run. Trailing-window XIRR for the same 88-symbol list (75 with data):
 
 | Horizon | Timed HODL | SIP (same stocks) | NIFTY 50 |
 |---|---|---|---|
-| 1 year | **30.4%** | 18.3% | -4.6% |
-| 3 years | **34.7%** | 32.4% | 4.2% |
-| 5 years | 42.3% | **43.8%** | 7.5% |
-| 10 years | **39.0%** | 37.9% | 10.9% |
-| Full (~16y) | **29.1%** | 28.2% | 10.9% |
+| 1 year | 26.9% | **33.4%** | -13.2% |
+| 3 years | 24.3% | **26.6%** | -2.2% |
+| 5 years | **39.4%** | 38.6% | 3.5% |
+| 10 years | **37.4%** | 37.1% | 8.4% |
+| Full (~16.8y) | 29.3% | **30.0%** | 9.4% |
 
-> Each horizon is a fresh windowed sim on the salary model (₹22k/mo from 2010, +10%/yr, 25% invested), calendar-anchored then restricted to the window. Timed HODL's edge concentrates in the recent down year (1y: NIFTY −4.6%, Timed +30.4% deploying into the dip) and over the long run; SIP narrowly wins the 5y window because the midline gate sat out a stretch of the post-2020 uptrend.
+> Full and 10y use the salary model (₹22k/mo from 2010, +10%/yr, 25% invested); 5y/3y/1y use a flat ₹20,000/mo. Every window ends 2026-10-06. In the 1y window NIFTY fell 13% and SIP outran Timed: the midline gate sat out the rebound, while SIP kept deploying every month.
 
 ### Charts
 
@@ -274,9 +273,9 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 | `7_buy_timeline.png` | When buys happened over time |
 | `8_summary_table.png` | Full metrics table with best values highlighted |
 
-![Equity Curves](backtest_output/six7/stocks_current/1_equity_curves.png)
-![Regime Returns](backtest_output/six7/stocks_current/4_regime_returns.png)
-![Summary Table](backtest_output/six7/stocks_current/8_summary_table.png)
+![Equity Curves](backtest_output/six7/top100/1_equity_curves.png)
+![Regime Returns](backtest_output/six7/top100/4_regime_returns.png)
+![Summary Table](backtest_output/six7/top100/8_summary_table.png)
 
 ## Architecture
 
@@ -298,7 +297,7 @@ The summary table above is the full ~16-year run. Recent trailing-window XIRR fo
 ├── pine/                  # TradingView ports (indicator + strategy)
 ├── notes/                 # STRATEGY_COMPARISON.md, context.md, specs/
 ├── tests/                 # test_bb_position.py, test_watchlist.py
-├── backtest_output/       # dated run subfolders + six7/ almanac
+├── backtest_output/       # dated run subfolders + six7/ almanac (+ six7_<date>/ archives)
 ├── docs/                  # GitHub Pages: index.html (unified dashboard) + data.js + strat_data.js
 ├── requirements.txt       # yfinance, requests
 └── .github/workflows/
